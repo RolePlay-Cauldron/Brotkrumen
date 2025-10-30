@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class DijkstraAlgorithmTest {
+class DijkstraAlgorithmTest {
 
     private Graph graph;
 
@@ -50,60 +50,50 @@ public class DijkstraAlgorithmTest {
 
     @Test
     void testDijkstraSuitability() {
-        Warp spawn = new Warp("Spawn", 1, 1.0, true);
-        TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        assertTrue(algorithm.suitable(graph, rules));
+        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
+        assertTrue(algorithm.suitable(graph, rules), "The algorithm should be suitable, but it isn't");
     }
 
     @Test
     void testDijkstraPathFinderWithLocalTeleport() {
-        Warp spawn = new Warp("Spawn", 1, 1.0, true);
-        TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        List<Node> pathNodes = algorithm.findPath(graph, 1, 7, null, rules);
+        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
+        final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, null, rules);
 
-        assertNotNull(pathNodes);
-        assertFalse(pathNodes.isEmpty());
-        assertEquals(1, pathNodes.getFirst().getId());
-        assertEquals(7, pathNodes.getLast().getId());
+        assertNotNull(pathNodes, "The path should not be null");
 
-        List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
-        List<Integer> expected = List.of(1, 6, 7);
-
-        assertIterableEquals(expected, pathIds);
+        final List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> expected = List.of(1, 6, 7);
+        assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }
 
     @Test
     void testDijkstraPathFinderWithGlobalTeleport() {
-        Warp spawn = new Warp("Spawn", 1, 1.0, true);
-        TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        List<Node> pathNodes = algorithm.findPath(graph, 3, 1, null, rules);
+        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
+        final List<Node> pathNodes = algorithm.findPath(graph, 3, 1, null, rules);
 
-        assertNotNull(pathNodes);
-        assertFalse(pathNodes.isEmpty());
-        assertEquals(3, pathNodes.getFirst().getId());
-        assertEquals(1, pathNodes.getLast().getId());
+        assertNotNull(pathNodes, "The path should not be null");
 
-        List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
-        List<Integer> expected = List.of(3, 1);
-
-        assertIterableEquals(expected, pathIds);
+        final List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> expected = List.of(3, 1);
+        assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }
 
     @Test
-    void testAStarBlockedPath() {
-        Warp spawn = new Warp("Spawn", 1, 1.0, true);
-        TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        Predicate<Edge> filterWithoutGlobalTeleport = edge -> !edge.hasFlag(EdgeFlag.TELEPORT_GLOBAL) && !edge.hasFlag(EdgeFlag.BLOCKED);
-        List<Node> pathNodes = algorithm.findPath(graph, 3, 1, filterWithoutGlobalTeleport, rules);
+    void testBlockedPathWithoutGlobalTeleport() {
+        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
+        final Predicate<Edge> filterWithoutGlobalTeleport =
+                edge -> !edge.hasFlag(EdgeFlag.TELEPORT_GLOBAL) && !edge.hasFlag(EdgeFlag.BLOCKED);
 
-        assertNotNull(pathNodes);
-        assertFalse(pathNodes.isEmpty());
-        assertEquals(3, pathNodes.getFirst().getId());
-        assertEquals(1, pathNodes.getLast().getId());
+        final List<Node> pathNodes = algorithm.findPath(graph, 3, 1, filterWithoutGlobalTeleport, rules);
 
-        List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
-        List<Integer> expected = List.of(3, 7, 6, 1);
+        assertNotNull(pathNodes, "The path should not be null");
 
-        assertIterableEquals(expected, pathIds);
+        final List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> expected = List.of(3, 7, 6, 1);
+        assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }
 }

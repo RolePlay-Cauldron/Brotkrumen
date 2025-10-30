@@ -19,33 +19,43 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Predicate;
 
+/**
+ * Implementation of the Dijkstra algorithm.
+ */
 public class DijkstraAlgorithm implements PathAlgorithm {
 
+    /**
+     * Default constructor.
+     */
+    public DijkstraAlgorithm() {
+        // Empty
+    }
+
     @Override
-    public boolean suitable(Graph graph, TeleportRules rules) {
+    public boolean suitable(final Graph graph, final TeleportRules rules) {
         return true;
     }
 
     @Override
-    public List<Node> findPath(Graph g, int start, int goal,
-                               Predicate<Edge> edgeFilter, TeleportRules rules) {
+    public List<Node> findPath(final Graph g, final int start, final int goal,
+                               final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         if (g.getNodeById(start) == null || g.getNodeById(goal) == null) return List.of();
-        Predicate<Edge> filter = (edgeFilter == null) ? e -> true : edgeFilter;
+        final Predicate<Edge> filter = (edgeFilter == null) ? e -> true : edgeFilter;
 
-        Map<Integer, Double> gScore = new HashMap<>();
-        Map<Integer, Integer> parent = new HashMap<>();
+        final Map<Integer, Double> gScore = new HashMap<>();
+        final Map<Integer, Integer> parent = new HashMap<>();
 
-        Comparator<int[]> cmp = Comparator
+        final Comparator<int[]> cmp = Comparator
                 .<int[]>comparingDouble(a -> gScore.getOrDefault(a[0], Double.POSITIVE_INFINITY))
                 .thenComparingInt(a -> a[0]);
-        PriorityQueue<int[]> open = new PriorityQueue<>(cmp);
+        final PriorityQueue<int[]> open = new PriorityQueue<>(cmp);
 
         gScore.put(start, 0.0);
         open.add(new int[]{start});
-        Set<Integer> closed = new HashSet<>();
+        final Set<Integer> closed = new HashSet<>();
 
         while (!open.isEmpty()) {
-            int u = open.poll()[0];
+            final int u = open.poll()[0];
             if (u == goal) {
                 return reconstructNodes(g, parent, goal);
             }
@@ -53,7 +63,7 @@ public class DijkstraAlgorithm implements PathAlgorithm {
                 continue;
             }
 
-            for (Edge e : g.neighbors(u)) {
+            for (final Edge e : g.neighbors(u)) {
                 if (e.hasFlag(EdgeFlag.BLOCKED)) {
                     continue;
                 }
@@ -67,15 +77,15 @@ public class DijkstraAlgorithm implements PathAlgorithm {
             }
 
             if (rules.isWarpingEnabled()) {
-                for (Warp w : rules.getWarps()) {
+                for (final Warp w : rules.getWarps()) {
                     if (!w.enabled()) {
                         continue;
                     }
-                    int to = w.targetNodeId();
+                    final int to = w.targetNodeId();
                     if (u == to) {
                         continue;
                     }
-                    Edge virtual = new Edge(-1, u, to, w.cost(), EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
+                    final Edge virtual = new Edge(-1, u, to, w.cost(), EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
                     if (!filter.test(virtual)) {
                         continue;
                     }
@@ -86,12 +96,12 @@ public class DijkstraAlgorithm implements PathAlgorithm {
         return List.of();
     }
 
-    private void relax(int u, Edge e, Graph g,
-                       Map<Integer, Double> gScore,
-                       Map<Integer, Integer> parent,
-                       PriorityQueue<int[]> open) {
-        int v = e.getTo();
-        double tentative = gScore.get(u) + e.getCost();
+    private void relax(final int u, final Edge e, final Graph g,
+                       final Map<Integer, Double> gScore,
+                       final Map<Integer, Integer> parent,
+                       final PriorityQueue<int[]> open) {
+        final int v = e.getTo();
+        final double tentative = gScore.get(u) + e.getCost();
         if (tentative < gScore.getOrDefault(v, Double.POSITIVE_INFINITY)) {
             parent.put(v, u);
             gScore.put(v, tentative);
@@ -99,8 +109,8 @@ public class DijkstraAlgorithm implements PathAlgorithm {
         }
     }
 
-    private List<Node> reconstructNodes(Graph graph, Map<Integer, Integer> parent, int goal) {
-        LinkedList<Node> path = new LinkedList<>();
+    private List<Node> reconstructNodes(final Graph graph, final Map<Integer, Integer> parent, final int goal) {
+        final LinkedList<Node> path = new LinkedList<>();
         Integer cur = goal;
         while (cur != null) {
             path.addFirst(graph.getNodeById(cur));

@@ -13,11 +13,11 @@ public class Edge {
 
     private EnumSet<EdgeFlag> flags;
 
-    public Edge(int id, int from, int to, double cost) {
+    public Edge(final int id, final int from, final int to, final double cost) {
         this(id, from, to, cost, EnumSet.noneOf(EdgeFlag.class));
     }
 
-    public Edge(int id, int from, int to, double cost, EnumSet<EdgeFlag> flags) {
+    public Edge(final int id, final int from, final int to, final double cost, final EnumSet<EdgeFlag> flags) {
         this.id = id;
         this.from = from;
         this.to = to;
@@ -29,7 +29,7 @@ public class Edge {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(final int id) {
         this.id = id;
     }
 
@@ -37,7 +37,7 @@ public class Edge {
         return from;
     }
 
-    public void setFrom(int from) {
+    public void setFrom(final int from) {
         this.from = from;
     }
 
@@ -45,7 +45,7 @@ public class Edge {
         return to;
     }
 
-    public void setTo(int to) {
+    public void setTo(final int to) {
         this.to = to;
     }
 
@@ -53,11 +53,11 @@ public class Edge {
         return cost;
     }
 
-    public void setCost(double cost) {
+    public void setCost(final double cost) {
         this.cost = cost;
     }
 
-    public boolean hasFlag(EdgeFlag flag) {
+    public boolean hasFlag(final EdgeFlag flag) {
         return flags.contains(flag);
     }
 
@@ -65,7 +65,7 @@ public class Edge {
         return flags;
     }
 
-    public void setFlags(EnumSet<EdgeFlag> updatedFlags) {
+    public void setFlags(final EnumSet<EdgeFlag> updatedFlags) {
         if (updatedFlags == null) {
             flags = EnumSet.noneOf(EdgeFlag.class);
             return;

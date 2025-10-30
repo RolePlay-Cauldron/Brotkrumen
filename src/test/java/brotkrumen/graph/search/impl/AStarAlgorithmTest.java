@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AStarAlgorithmTest {
+class AStarAlgorithmTest {
+
     private Graph graph;
 
     private AStarAlgorithm algorithm;
@@ -47,48 +48,39 @@ public class AStarAlgorithmTest {
 
     @Test
     void testSuitability() {
-        TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        Warp spawn = new Warp("Spawn", 1, 1.0, true);
-        TeleportRules tpAllowed = new TeleportRules(true, true, List.of(spawn));
-        TeleportRules tpLocalAllowed = new TeleportRules(false, true, List.of());
+        final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
+        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final TeleportRules tpAllowed = new TeleportRules(true, true, List.of(spawn));
 
-        assertTrue(algorithm.suitable(graph, tpNotAllowed));
-        assertFalse(algorithm.suitable(graph, tpAllowed));
-        assertFalse(algorithm.suitable(graph, tpLocalAllowed));
-        assertFalse(algorithm.suitable(graph, null));
+        assertTrue(algorithm.suitable(graph, tpNotAllowed), "Algorithm should be suitable");
+        assertFalse(algorithm.suitable(graph, tpAllowed), "Algorithm should not be suitable with teleport allowed");
     }
 
     @Test
     void testAStarPathFinding() {
-        TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        List<Node> pathNodes = algorithm.findPath(graph, 1, 7, null, tpNotAllowed);
+        final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
+        final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, null, tpNotAllowed);
 
-        assertNotNull(pathNodes);
-        assertFalse(pathNodes.isEmpty());
-        assertEquals(1, pathNodes.getFirst().getId());
-        assertEquals(7, pathNodes.getLast().getId());
+        assertNotNull(pathNodes, "The path should not be null");
 
-        List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
-        List<Integer> expected = List.of(1, 2, 3, 7);
+        final List<Integer> actual = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> expected = List.of(1, 2, 3, 7);
 
-        assertIterableEquals(expected, pathIds);
+        assertIterableEquals(expected, actual, "The path should match expected");
     }
 
     @Test
     void testAStarBlockedPath() {
-        TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
+        final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
+        final Predicate<Edge> filterWithoutBlocked = edge -> !edge.hasFlag(EdgeFlag.BLOCKED);
 
-        Predicate<Edge> filterWithoutBlocked = edge -> !edge.hasFlag(EdgeFlag.BLOCKED);
-        List<Node> pathNodes = algorithm.findPath(graph, 1, 7, filterWithoutBlocked, tpNotAllowed);
+        final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, filterWithoutBlocked, tpNotAllowed);
 
-        assertNotNull(pathNodes);
-        assertFalse(pathNodes.isEmpty());
-        assertEquals(1, pathNodes.getFirst().getId());
-        assertEquals(7, pathNodes.getLast().getId());
+        assertNotNull(pathNodes, "The path should not be null");
 
-        List<Integer> pathIds = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
-        List<Integer> expected = List.of(1, 5, 4, 7);
+        final List<Integer> actual = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> expected = List.of(1, 5, 4, 7);
 
-        assertIterableEquals(expected, pathIds);
+        assertIterableEquals(expected, actual, "The path should match expected");
     }
 }

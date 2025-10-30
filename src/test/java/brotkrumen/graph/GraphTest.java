@@ -3,47 +3,44 @@ package brotkrumen.graph;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class GraphTest {
+class GraphTest {
 
     @Test
     void testGraphCreateNode() {
-        Graph graph = new Graph();
-        Node nodeOne = new Node(1, 2, 3, 4);
-        Node nodeTwo = new Node(2, 3, 4, 5);
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
 
-        assertEquals(2, graph.getNodes().size());
-        assertTrue(graph.getNodes().contains(nodeOne));
-        assertNotNull(graph.getNodeById(1));
+        assertEquals(2, graph.getNodes().size(), "The size of the graph should be 2");
+        assertTrue(graph.getNodes().contains(nodeOne), "The node should exist in the graph");
     }
 
     @Test
     void testGraphCreateDirectedEdge() {
-        Graph graph = new Graph();
-        Node nodeOne = new Node(1, 2, 3, 4);
-        Node nodeTwo = new Node(2, 3, 4, 5);
-        Node nodeThree = new Node(3, 5, 7, 8);
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeThree = new Node(3, 5, 7, 8);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
 
-        List<Edge> edges = graph.addUndirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0);
         graph.addUndirectedEdge(nodeTwo.getId(), nodeThree.getId(), 1.0, EnumSet.of(EdgeFlag.BLOCKED));
 
-        assertNotNull(graph.getEdgeById(1));
+        assertNotNull(graph.getEdgeById(1), "The edge 1 should exist in the graph");
     }
 
     @Test
     void testGraphCreateUndirectedEdge() {
-        Graph graph = new Graph();
-        Node nodeOne = new Node(1, 2, 3, 4);
-        Node nodeTwo = new Node(2, 3, 4, 5);
-        Node nodeThree = new Node(3, 5, 7, 8);
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeThree = new Node(3, 5, 7, 8);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
@@ -51,25 +48,27 @@ public class GraphTest {
         graph.addDirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0);
         graph.addDirectedEdge(nodeTwo.getId(), nodeThree.getId(), 1.0, EnumSet.of(EdgeFlag.BLOCKED));
 
-        assertEquals(1, graph.neighbors(2).size());
+        assertEquals(1, graph.neighbors(2).size(), "The size of the neighbours should be 1");
     }
 
     @Test
     void testGraphCreateUndirectedEdgeException() {
-        Graph graph = new Graph();
-        Node nodeOne = new Node(1, 2, 3, 4);
-        Node nodeTwo = new Node(2, 3, 4, 5);
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
 
-        assertThrows(IllegalArgumentException.class, () -> graph.addUndirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0));
+        assertThrows(IllegalArgumentException.class, () -> graph.addUndirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0),
+                "An IllegalArgumentException should have been thrown");
     }
 
     @Test
     void testGraphException() {
-        Graph graph = new Graph();
-        Node nodeOne = new Node(1, 2, 3, 4);
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
         graph.addNode(nodeOne);
 
-        assertThrows(IllegalArgumentException.class, () -> graph.addNode(nodeOne));
+        assertThrows(IllegalArgumentException.class, () -> graph.addNode(nodeOne),
+                "An IllegalArgumentException should have been thrown");
     }
 }

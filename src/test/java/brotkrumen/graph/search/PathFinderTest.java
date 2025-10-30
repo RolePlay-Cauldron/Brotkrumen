@@ -4,40 +4,59 @@ import brotkrumen.graph.Graph;
 import brotkrumen.graph.Node;
 import brotkrumen.graph.TeleportRules;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-public class PathFinderTest {
+class PathFinderTest {
 
     @Test
-    void testPathfinderUsesSelectedAlgorithm() {
-        PathAlgorithm algo = mock(PathAlgorithm.class);
-        SearchRegistry registry = mock(SearchRegistry.class);
+    void returnsExpectedPathFromSelectedAlgorithm() {
+        final PathAlgorithm algo = mock(PathAlgorithm.class);
+        final SearchRegistry registry = mock(SearchRegistry.class);
 
-
-        Graph graph = new Graph();
+        final Graph graph = new Graph();
         graph.addNode(new Node(1, 0, 0, 0));
         graph.addNode(new Node(2, 0, 0, 0));
         graph.addDirectedEdge(1, 2, 1.0);
 
-        TeleportRules rules = TeleportRules.disableTeleports();
-
+        final TeleportRules rules = TeleportRules.disableTeleports();
         when(registry.select(graph, rules)).thenReturn(algo);
 
-        List<Node> expected = List.of(graph.getNodeById(1), graph.getNodeById(2));
+        final List<Node> expected = List.of(graph.getNodeById(1), graph.getNodeById(2));
         when(algo.findPath(graph, 1, 2, null, rules)).thenReturn(expected);
 
-        PathFinder finderOne = new PathFinder(registry);
-        PathFinder finderTwo = new PathFinder();
-        List<Node> resultOne = finderOne.findPath(graph, 1, 2, null, rules);
-        List<Node> resultTwo = finderTwo.findPath(graph, 1, 2, null, rules);
+        final PathFinder finderWithRegistry = new PathFinder(registry);
+        final PathFinder defaultFinder = new PathFinder();
 
-        assertEquals(expected, resultOne);
-        assertEquals(expected, resultTwo);
-        verify(registry).select(graph, rules);
-        verify(algo).findPath(graph, 1, 2, null, rules);
+        final List<Node> resultOne = finderWithRegistry.findPath(graph, 1, 2, null, rules);
+        final List<Node> resultTwo = defaultFinder.findPath(graph, 1, 2, null, rules);
+
+        assertEquals(List.of(expected, expected), List.of(resultOne, resultTwo), "The results should be the same");
+    }
+
+    @Test
+    void delegatesToRegistryAndAlgorithm() {
+        final PathAlgorithm algo = mock(PathAlgorithm.class);
+        final SearchRegistry registry = mock(SearchRegistry.class);
+
+        final Graph graph = new Graph();
+        graph.addNode(new Node(1, 0, 0, 0));
+        graph.addNode(new Node(2, 0, 0, 0));
+        graph.addDirectedEdge(1, 2, 1.0);
+
+        final TeleportRules rules = TeleportRules.disableTeleports();
+        when(registry.select(graph, rules)).thenReturn(algo);
+        when(algo.findPath(graph, 1, 2, null, rules))
+                .thenReturn(List.of(graph.getNodeById(1), graph.getNodeById(2)));
+
+        new PathFinder(registry).findPath(graph, 1, 2, null, rules);
+
+        final InOrder inOrder = inOrder(registry, algo);
+        inOrder.verify(registry).select(graph, rules);
+        inOrder.verify(algo).findPath(graph, 1, 2, null, rules);
     }
 }
