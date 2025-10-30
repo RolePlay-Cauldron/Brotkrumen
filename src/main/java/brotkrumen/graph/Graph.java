@@ -1,25 +1,19 @@
 package brotkrumen.graph;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Graph {
-    private final Map<Integer, Node> nodes;
+    private final Map<Integer, Node> nodes = new HashMap<>();
 
-    private final Map<Integer, List<Edge>> adj;
+    private final Map<Integer, List<Edge>> adj = new HashMap<>();
 
-    public Graph() {
-        this.nodes = new HashMap<>();
-        this.adj = new HashMap<>();
-    }
+    private final Map<Integer, Edge> edgesById = new HashMap<>();
+
+    private int nextEdgeId = 1;
 
     public void addNode(Node node) {
         if (nodes.putIfAbsent(node.getId(), node) != null) {
-            throw new IllegalArgumentException(String.format("Duplicate node id: %d", node.getId()));
+            throw new IllegalArgumentException("Duplicate node id: " + node.getId());
         }
         adj.computeIfAbsent(node.getId(), k -> new ArrayList<>());
     }
@@ -32,37 +26,43 @@ public class Graph {
         return nodes.values();
     }
 
-    public void addDirectedEdge(int from, int to, double cost) {
-        addDirectedEdge(from, to, cost, EnumSet.noneOf(EdgeFlag.class), null);
+    public Edge addDirectedEdge(int from, int to, double cost) {
+        return addDirectedEdge(from, to, cost, EnumSet.noneOf(EdgeFlag.class));
     }
 
-    public void addDirectedEdge(int from, int to, double cost, EnumSet<EdgeFlag> flags, Map<String, String> attrs) {
+    public Edge addDirectedEdge(int from, int to, double cost, EnumSet<EdgeFlag> flags) {
         requireNode(from);
         requireNode(to);
-        adj.get(from).add(new Edge(from, to, cost, flags, attrs));
+        int id = nextEdgeId++;
+        Edge e = new Edge(id, from, to, cost, flags);
+        edgesById.put(id, e);
+        adj.computeIfAbsent(from, k -> new ArrayList<>()).add(e);
+        return e;
     }
 
-    public void addUndirectedEdge(int nodeA, int nodeB, double cost) {
-        addDirectedEdge(nodeA, nodeB, cost);
-        addDirectedEdge(nodeB, nodeA, cost);
+    public List<Edge> addUndirectedEdge(int nodeA, int nodeB, double cost) {
+        Edge e1 = addDirectedEdge(nodeA, nodeB, cost);
+        Edge e2 = addDirectedEdge(nodeB, nodeA, cost);
+        return List.of(e1, e2);
     }
 
-    public void addTeleportEdge(int from, int to, double cost) {
-        addDirectedEdge(from, to, cost, EnumSet.of(EdgeFlag.TELEPORT), Map.of("type","fixed_teleport"));
+    public List<Edge> addUndirectedEdge(int nodeA, int nodeB, double cost, EnumSet<EdgeFlag> flags) {
+        Edge e1 = addDirectedEdge(nodeA, nodeB, cost, flags);
+        Edge e2 = addDirectedEdge(nodeB, nodeA, cost, flags);
+        return List.of(e1, e2);
     }
 
-    public void addTeleportEdgeBidirectional(int nodeA, int nodeB, double cost) {
-        addTeleportEdge(nodeA, nodeB, cost);
-        addTeleportEdge(nodeB, nodeA, cost);
+    public List<Edge> neighbors(int nodeId) {
+        return adj.getOrDefault(nodeId, List.of());
     }
 
-    public List<Edge> neighbors(int neighborId) {
-        return adj.getOrDefault(neighborId, List.of());
+    public Edge getEdgeById(int edgeId) {
+        return edgesById.get(edgeId);
     }
 
     private void requireNode(int nodeId) {
         if (!nodes.containsKey(nodeId)) {
-            throw new IllegalArgumentException(String.format("Unknown node nodeId: %d", nodeId));
+            throw new IllegalArgumentException("Unknown node id: " + nodeId);
         }
     }
 }

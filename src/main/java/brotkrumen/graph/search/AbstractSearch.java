@@ -26,7 +26,7 @@ public abstract class AbstractSearch implements ShortestPathAlgorithm {
             throw new IllegalArgumentException("Start/Goal unknown");
         }
         if (tp == null) {
-            tp = TeleportRules.disabled();
+            tp = TeleportRules.disableTeleports();
         }
 
         Map<Integer, Double> gScore = new HashMap<>();
@@ -55,8 +55,8 @@ public abstract class AbstractSearch implements ShortestPathAlgorithm {
             }
 
             if (tp.isGlobalTeleportEnabled() && u != tp.getGlobalTargetNodeId()) {
-                Edge virtual = new Edge(u, tp.getGlobalTargetNodeId(), tp.getGlobalTeleportCost(),
-                        EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL), Map.of("type", "global_spawn"));
+                Edge virtual = new Edge(-1, u, tp.getGlobalTargetNodeId(), tp.getGlobalTeleportCost(),
+                        EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
                 if (edgeFilter.test(virtual)) {
                     relax(u, virtual.getTo(), virtual.getCost(), gScore, fScore, parent, goal, g, open);
                 }

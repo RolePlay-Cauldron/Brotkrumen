@@ -7,14 +7,17 @@ public class TeleportRules {
 
     private final double globalTeleportCost;
 
-    public TeleportRules(boolean enableGlobalTeleport, int globalTargetNodeId, double globalTeleportCost) {
+    private final boolean enableLocalTeleport;
+
+    public TeleportRules(boolean enableGlobalTeleport, int globalTargetNodeId, double globalTeleportCost, boolean enableLocalTeleport) {
         this.enableGlobalTeleport = enableGlobalTeleport;
         this.globalTargetNodeId = globalTargetNodeId;
         this.globalTeleportCost = globalTeleportCost;
+        this.enableLocalTeleport = enableLocalTeleport;
     }
 
-    public static TeleportRules disabled(){
-        return new TeleportRules(false, -1, Double.POSITIVE_INFINITY);
+    public static TeleportRules disableTeleports(){
+        return new TeleportRules(false, -1, Double.POSITIVE_INFINITY, false);
     }
 
     public boolean isGlobalTeleportEnabled() {
@@ -27,5 +30,9 @@ public class TeleportRules {
 
     public double getGlobalTeleportCost() {
         return globalTeleportCost;
+    }
+
+    public boolean isLocalTeleportEnabled() {
+        return enableLocalTeleport;
     }
 }
