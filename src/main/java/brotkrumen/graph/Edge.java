@@ -1,8 +1,6 @@
 package brotkrumen.graph;
 
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Edge {
     private int id;
@@ -75,7 +73,8 @@ public class Edge {
         flags = EnumSet.copyOf(updatedFlags);
     }
 
-    @Override public String toString(){
+    @Override
+    public String toString() {
         return String.format("%d %d->%d (%.2f) %s", id, from, to, cost, flags);
     }
 }

@@ -16,7 +16,7 @@ public class TeleportRules {
         this.enableLocalTeleport = enableLocalTeleport;
     }
 
-    public static TeleportRules disableTeleports(){
+    public static TeleportRules disableTeleports() {
         return new TeleportRules(false, -1, Double.POSITIVE_INFINITY, false);
     }
 

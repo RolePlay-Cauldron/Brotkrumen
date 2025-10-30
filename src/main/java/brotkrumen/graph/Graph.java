@@ -1,6 +1,11 @@
 package brotkrumen.graph;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Graph {
     private final Map<Integer, Node> nodes = new HashMap<>();
