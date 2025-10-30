@@ -24,7 +24,7 @@ public class AStarAlgorithm implements PathAlgorithm {
         if (rules == null) {
             return false;
         }
-        if (rules.isGlobalTeleportEnabled()) {
+        if (rules.isWarpingEnabled()) {
             return false;
         }
         if (rules.isLocalTeleportEnabled()) {
@@ -35,8 +35,9 @@ public class AStarAlgorithm implements PathAlgorithm {
 
     @Override
     public List<Node> findPath(Graph g, int start, int goal, Predicate<Edge> edgeFilter, TeleportRules rules) {
-        if (g.getNodeById(start) == null || g.getNodeById(goal) == null) return List.of();
-        Predicate<Edge> filter = normalizeFilter(edgeFilter, rules);
+        if (g.getNodeById(start) == null || g.getNodeById(goal) == null) {
+            return List.of();
+        }
 
         Map<Integer, Double> gScore = new HashMap<>();
         Map<Integer, Double> fScore = new HashMap<>();
@@ -58,7 +59,12 @@ public class AStarAlgorithm implements PathAlgorithm {
             if (!closed.add(u)) continue;
 
             for (Edge e : g.neighbors(u)) {
-                if (!filter.test(e)) continue;
+                if (e.hasFlag(EdgeFlag.TELEPORT) || e.hasFlag(EdgeFlag.TELEPORT_GLOBAL)) {
+                    continue;
+                }
+                if (edgeFilter != null && !edgeFilter.test(e)) {
+                    continue;
+                }
                 relax(u, e, g, goal, gScore, fScore, parent, open);
             }
         }
@@ -97,26 +103,19 @@ public class AStarAlgorithm implements PathAlgorithm {
         return path;
     }
 
-    private boolean isEuclidHeuristicAdmissible(Graph g) {
-        for (Node a : g.getNodes()) {
-            for (Edge e : g.neighbors(a.getId())) {
-                Node b = g.getNodeById(e.getTo());
+    private boolean isEuclidHeuristicAdmissible(Graph graph) {
+        for (Node a : graph.getNodes()) {
+            for (Edge e : graph.neighbors(a.getId())) {
+                Node b = graph.getNodeById(e.getTo());
                 double dx = a.getX() - b.getX();
                 double dy = a.getY() - b.getY();
                 double dz = a.getZ() - b.getZ();
                 double euclid = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (e.getCost() < euclid - 1e-9) return false;
+                if (e.getCost() < euclid - 1e-9) {
+                    return false;
+                }
             }
         }
         return true;
-    }
-
-    private Predicate<Edge> normalizeFilter(Predicate<Edge> input, TeleportRules rules) {
-        Predicate<Edge> base = e -> !e.hasFlag(EdgeFlag.BLOCKED);
-        Predicate<Edge> noTeleports = e -> !e.hasFlag(EdgeFlag.TELEPORT) && !e.hasFlag(EdgeFlag.TELEPORT_GLOBAL);
-        if (input == null) {
-            return base.and(noTeleports);
-        }
-        return base.and(noTeleports).and(input);
     }
 }

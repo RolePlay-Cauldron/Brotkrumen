@@ -9,41 +9,41 @@ import static org.junit.jupiter.api.Assertions.*;
 public class EdgeTest {
 
     @Test
-    void edgeCreationTest() {
+    void testEdgeCreation() {
         Edge edgeOne = new Edge(1, 1, 2, 4.0);
-        Edge edgeTwo = new Edge(2, 1, 2, 4.0, EnumSet.of(EdgeFlag.ONE_WAY));
+        Edge edgeTwo = new Edge(2, 1, 2, 4.0, EnumSet.of(EdgeFlag.BLOCKED));
 
         assertEquals(1, edgeOne.getFrom());
         assertEquals(2, edgeOne.getTo());
         assertEquals(4.0, edgeOne.getCost());
-        assertEquals(EnumSet.of(EdgeFlag.ONE_WAY), edgeTwo.getFlags());
+        assertEquals(EnumSet.of(EdgeFlag.BLOCKED), edgeTwo.getFlags());
     }
 
     @Test
-    void edgeEditTest() {
+    void testEdgeEdit() {
         Edge edgeOne = new Edge(2, 1, 2, 4.0);
 
         edgeOne.setId(1);
         edgeOne.setFrom(3);
         edgeOne.setTo(4);
         edgeOne.setCost(5.0);
-        edgeOne.setFlags(EnumSet.of(EdgeFlag.ONE_WAY));
+        edgeOne.setFlags(EnumSet.of(EdgeFlag.BLOCKED));
 
         assertEquals(1, edgeOne.getId());
         assertEquals(3, edgeOne.getFrom());
         assertEquals(4, edgeOne.getTo());
         assertEquals(5.0, edgeOne.getCost());
-        assertEquals(EnumSet.of(EdgeFlag.ONE_WAY), edgeOne.getFlags());
+        assertEquals(EnumSet.of(EdgeFlag.BLOCKED), edgeOne.getFlags());
     }
 
     @Test
-    void edgeToStringTest() {
-        Edge edge = new Edge(1, 2, 3, 4.0, EnumSet.of(EdgeFlag.ONE_WAY));
-        assertEquals("1 2->3 (4,00) [ONE_WAY]", edge.toString());
+    void testEdgeToString() {
+        Edge edge = new Edge(1, 2, 3, 4.0, EnumSet.of(EdgeFlag.BLOCKED));
+        assertEquals("1 2->3 (4,00) [BLOCKED]", edge.toString());
     }
 
     @Test
-    void edgeAttributeNotNullTest() {
+    void testEdgeAttributeNotNull() {
         Edge edge = new Edge(1, 2, 3, 4.0, null);
         assertNotNull(edge.getFlags());
 
@@ -55,8 +55,8 @@ public class EdgeTest {
     }
 
     @Test
-    void edgeHasFlagTest() {
-        Edge edge = new Edge(1, 2, 3, 4.0, EnumSet.of(EdgeFlag.ONE_WAY));
-        assertTrue(edge.hasFlag(EdgeFlag.ONE_WAY));
+    void testEdgeHasFlag() {
+        Edge edge = new Edge(1, 2, 3, 4.0, EnumSet.of(EdgeFlag.BLOCKED));
+        assertTrue(edge.hasFlag(EdgeFlag.BLOCKED));
     }
 }

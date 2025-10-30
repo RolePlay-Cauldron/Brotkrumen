@@ -9,7 +9,7 @@ import static org.mockito.Mockito.*;
 public class NodeTest {
 
     @Test
-    void nodeSetTest() {
+    void testNodeSet() {
         Node node = new Node(2, 2, 3, 4);
 
         node.setId(1);
@@ -24,7 +24,7 @@ public class NodeTest {
     }
 
     @Test
-    void nodeLocationTest() {
+    void testNodeLocation() {
         Location loc = mock(Location.class);
         when(loc.getBlockX()).thenReturn(1);
         when(loc.getBlockY()).thenReturn(2);

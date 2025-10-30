@@ -1,38 +1,46 @@
 package brotkrumen.graph;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 public class TeleportRules {
-    private final boolean enableGlobalTeleport;
-
-    private final int globalTargetNodeId;
-
-    private final double globalTeleportCost;
+    private final boolean enableWarps;
 
     private final boolean enableLocalTeleport;
 
-    public TeleportRules(boolean enableGlobalTeleport, int globalTargetNodeId, double globalTeleportCost, boolean enableLocalTeleport) {
-        this.enableGlobalTeleport = enableGlobalTeleport;
-        this.globalTargetNodeId = globalTargetNodeId;
-        this.globalTeleportCost = globalTeleportCost;
+    private final Map<String, Warp> warps;
+
+    public TeleportRules(boolean enableWarps, boolean enableLocalTeleport, Collection<Warp> warps) {
+        this.enableWarps = enableWarps;
         this.enableLocalTeleport = enableLocalTeleport;
+        Map<String, Warp> warpMap = new HashMap<>();
+        if (warps != null) {
+            for (Warp warp : warps) warpMap.put(warp.key(), warp);
+        }
+        this.warps = Collections.unmodifiableMap(warpMap);
     }
 
     public static TeleportRules disableTeleports() {
-        return new TeleportRules(false, -1, Double.POSITIVE_INFINITY, false);
+        return new TeleportRules(false, false, new ArrayList<>());
     }
 
-    public boolean isGlobalTeleportEnabled() {
-        return enableGlobalTeleport;
-    }
-
-    public int getGlobalTargetNodeId() {
-        return globalTargetNodeId;
-    }
-
-    public double getGlobalTeleportCost() {
-        return globalTeleportCost;
+    public boolean isWarpingEnabled() {
+        return enableWarps;
     }
 
     public boolean isLocalTeleportEnabled() {
         return enableLocalTeleport;
+    }
+
+    public Collection<Warp> getWarps() {
+        return warps.values();
+    }
+
+    public Optional<Warp> getWarp(String key) {
+        return Optional.ofNullable(warps.get(key));
     }
 }

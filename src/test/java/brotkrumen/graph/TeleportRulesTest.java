@@ -2,27 +2,32 @@ package brotkrumen.graph;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TeleportRulesTest {
 
     @Test
-    void teleportDisabledTest() {
+    void testTeleportDisabled() {
         TeleportRules rules = TeleportRules.disableTeleports();
 
-        assertFalse(rules.isGlobalTeleportEnabled());
+        assertFalse(rules.isWarpingEnabled());
         assertFalse(rules.isLocalTeleportEnabled());
-        assertEquals(Double.POSITIVE_INFINITY, rules.getGlobalTeleportCost());
-        assertEquals(-1, rules.getGlobalTargetNodeId());
+        assertEquals(0, rules.getWarps().size());
     }
 
     @Test
-    void teleportEnabledTest() {
-        TeleportRules rules = new TeleportRules(true, 10, 5.0, true);
+    void testTeleportEnabled() {
+        Warp warp = new Warp("Spawn", 1, 10.0, true);
+        TeleportRules rules = new TeleportRules(true, true, List.of(warp));
 
-        assertTrue(rules.isGlobalTeleportEnabled());
+        assertTrue(rules.isWarpingEnabled());
         assertTrue(rules.isLocalTeleportEnabled());
-        assertEquals(5.0, rules.getGlobalTeleportCost());
-        assertEquals(10, rules.getGlobalTargetNodeId());
+        assertNotNull(rules.getWarp("Spawn"));
+
+        Warp ruleWarp = rules.getWarp("Spawn").get();
+        assertEquals(10.0, ruleWarp.cost());
+        assertEquals(1, ruleWarp.targetNodeId());
     }
 }

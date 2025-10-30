@@ -5,6 +5,7 @@ import brotkrumen.graph.EdgeFlag;
 import brotkrumen.graph.Graph;
 import brotkrumen.graph.Node;
 import brotkrumen.graph.TeleportRules;
+import brotkrumen.graph.Warp;
 import brotkrumen.graph.search.PathAlgorithm;
 
 import java.util.Comparator;
@@ -26,9 +27,10 @@ public class DijkstraAlgorithm implements PathAlgorithm {
     }
 
     @Override
-    public List<Node> findPath(Graph g, int start, int goal, Predicate<Edge> edgeFilter, TeleportRules rules) {
+    public List<Node> findPath(Graph g, int start, int goal,
+                               Predicate<Edge> edgeFilter, TeleportRules rules) {
         if (g.getNodeById(start) == null || g.getNodeById(goal) == null) return List.of();
-        Predicate<Edge> filter = normalizeFilter(edgeFilter, rules);
+        Predicate<Edge> filter = (edgeFilter == null) ? e -> true : edgeFilter;
 
         Map<Integer, Double> gScore = new HashMap<>();
         Map<Integer, Integer> parent = new HashMap<>();
@@ -44,18 +46,39 @@ public class DijkstraAlgorithm implements PathAlgorithm {
 
         while (!open.isEmpty()) {
             int u = open.poll()[0];
-            if (u == goal) return reconstructNodes(g, parent, goal);
-            if (!closed.add(u)) continue;
+            if (u == goal) {
+                return reconstructNodes(g, parent, goal);
+            }
+            if (!closed.add(u)) {
+                continue;
+            }
 
             for (Edge e : g.neighbors(u)) {
-                if (!filter.test(e)) continue;
+                if (e.hasFlag(EdgeFlag.BLOCKED)) {
+                    continue;
+                }
+                if (e.hasFlag(EdgeFlag.TELEPORT) && !rules.isLocalTeleportEnabled()) {
+                    continue;
+                }
+                if (!filter.test(e)) {
+                    continue;
+                }
                 relax(u, e, g, gScore, parent, open);
             }
 
-            if (rules.isGlobalTeleportEnabled() && u != rules.getGlobalTargetNodeId()) {
-                Edge virtual = new Edge(-1, u, rules.getGlobalTargetNodeId(), rules.getGlobalTeleportCost(),
-                        EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
-                if (filter.test(virtual)) {
+            if (rules.isWarpingEnabled()) {
+                for (Warp w : rules.getWarps()) {
+                    if (!w.enabled()) {
+                        continue;
+                    }
+                    int to = w.targetNodeId();
+                    if (u == to) {
+                        continue;
+                    }
+                    Edge virtual = new Edge(-1, u, to, w.cost(), EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
+                    if (!filter.test(virtual)) {
+                        continue;
+                    }
                     relax(u, virtual, g, gScore, parent, open);
                 }
             }
@@ -84,14 +107,5 @@ public class DijkstraAlgorithm implements PathAlgorithm {
             cur = parent.get(cur);
         }
         return path;
-    }
-
-    private Predicate<Edge> normalizeFilter(Predicate<Edge> input, TeleportRules rules) {
-        Predicate<Edge> base = e -> !e.hasFlag(EdgeFlag.BLOCKED);
-        Predicate<Edge> teleportPolicy = rules.isLocalTeleportEnabled()
-                ? base
-                : base.and(e -> !e.hasFlag(EdgeFlag.TELEPORT));
-        if (input == null) return teleportPolicy;
-        return teleportPolicy.and(input);
     }
 }
