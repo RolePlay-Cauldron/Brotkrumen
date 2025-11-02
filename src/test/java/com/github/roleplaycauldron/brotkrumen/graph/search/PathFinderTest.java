@@ -1,8 +1,8 @@
-package brotkrumen.graph.search;
+package com.github.roleplaycauldron.brotkrumen.graph.search;
 
-import brotkrumen.graph.Graph;
-import brotkrumen.graph.Node;
-import brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 

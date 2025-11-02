@@ -1,7 +1,8 @@
-package brotkrumen.graph.search;
+package com.github.roleplaycauldron.brotkrumen.graph.search;
 
-import brotkrumen.graph.Graph;
-import brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,7 +24,7 @@ class SearchRegistryTest {
         registry.register(algo2);
 
         final Graph graph = new Graph();
-        graph.addNode(new brotkrumen.graph.Node(1, 0, 0, 0));
+        graph.addNode(new Node(1, 0, 0, 0));
 
         final TeleportRules rules = TeleportRules.disableTeleports();
 

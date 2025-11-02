@@ -1,9 +1,9 @@
-package brotkrumen.graph.search;
+package com.github.roleplaycauldron.brotkrumen.graph.search;
 
-import brotkrumen.graph.Edge;
-import brotkrumen.graph.Graph;
-import brotkrumen.graph.Node;
-import brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Edge;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
 import java.util.List;
 import java.util.function.Predicate;

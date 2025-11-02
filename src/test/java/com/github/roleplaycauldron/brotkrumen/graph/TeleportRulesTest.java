@@ -1,4 +1,4 @@
-package brotkrumen.graph;
+package com.github.roleplaycauldron.brotkrumen.graph;
 
 import org.junit.jupiter.api.Test;
 

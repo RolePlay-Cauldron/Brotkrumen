@@ -1,7 +1,7 @@
-package brotkrumen.graph.search;
+package com.github.roleplaycauldron.brotkrumen.graph.search;
 
-import brotkrumen.graph.Graph;
-import brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
 import java.util.ArrayList;
 import java.util.Collections;

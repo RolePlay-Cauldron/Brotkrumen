@@ -1,4 +1,4 @@
-package brotkrumen.graph;
+package com.github.roleplaycauldron.brotkrumen.graph;
 
 import java.util.EnumSet;
 

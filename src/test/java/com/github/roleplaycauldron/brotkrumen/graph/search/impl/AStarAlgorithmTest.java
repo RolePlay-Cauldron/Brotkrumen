@@ -1,11 +1,11 @@
-package brotkrumen.graph.search.impl;
+package com.github.roleplaycauldron.brotkrumen.graph.search.impl;
 
-import brotkrumen.graph.Edge;
-import brotkrumen.graph.EdgeFlag;
-import brotkrumen.graph.Graph;
-import brotkrumen.graph.Node;
-import brotkrumen.graph.TeleportRules;
-import brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.graph.Edge;
+import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
