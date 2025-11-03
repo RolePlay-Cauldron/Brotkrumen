@@ -5,124 +5,64 @@ import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
-import com.github.roleplaycauldron.brotkrumen.graph.search.PathAlgorithm;
 
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Implementation of the A* algorithm.
  */
-public class AStarAlgorithm implements PathAlgorithm {
+public class AStarAlgorithm extends AbstractShortestPath {
+
+    private final Map<Integer, Double> fScores = new HashMap<>();
 
     /**
-     * Default constructor.
+     * The default constructor.
      */
     public AStarAlgorithm() {
-        // Empty
+        super();
     }
 
     @Override
     public boolean suitable(final Graph graph, final TeleportRules rules) {
-        if (rules == null) {
-            return false;
-        }
-        if (rules.isWarpingEnabled()) {
-            return false;
-        }
-        if (rules.isLocalTeleportEnabled()) {
+        if (rules == null || rules.isWarpingEnabled() || rules.isLocalTeleportEnabled()) {
             return false;
         }
         return isEuclidHeuristicAdmissible(graph);
     }
 
     @Override
-    public List<Node> findPath(final Graph g, final int start, final int goal, final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        if (g.getNodeById(start) == null || g.getNodeById(goal) == null) {
-            return List.of();
-        }
-
-        final Map<Integer, Double> gScore = new HashMap<>();
-        final Map<Integer, Double> fScore = new HashMap<>();
-        final Map<Integer, Integer> parent = new HashMap<>();
-
-        final Comparator<int[]> cmp = Comparator
-                .<int[]>comparingDouble(a -> fScore.getOrDefault(a[0], Double.POSITIVE_INFINITY))
-                .thenComparingInt(a -> a[0]);
-        final PriorityQueue<int[]> open = new PriorityQueue<>(cmp);
-
-        gScore.put(start, 0.0);
-        fScore.put(start, heuristic(g, start, goal));
-        open.add(new int[]{start});
-        final Set<Integer> closed = new HashSet<>();
-
-        while (!open.isEmpty()) {
-            final int u = open.poll()[0];
-            if (u == goal) return reconstructNodes(g, parent, goal);
-            if (!closed.add(u)) continue;
-
-            for (final Edge e : g.neighbors(u)) {
-                if (e.flags().contains(EdgeFlag.TELEPORT) || e.flags().contains(EdgeFlag.TELEPORT_GLOBAL)) {
-                    continue;
-                }
-                if (edgeFilter != null && !edgeFilter.test(e)) {
-                    continue;
-                }
-                relax(u, e, g, goal, gScore, fScore, parent, open);
-            }
-        }
-        return List.of();
+    protected boolean isEdgeAllowed(final Graph graph, final Edge edge, final TeleportRules rules) {
+        return !edge.flags().contains(EdgeFlag.TELEPORT) && !edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL);
     }
 
-    private void relax(final int u, final Edge e, final Graph g, final int goal,
-                       final Map<Integer, Double> gScore, final Map<Integer, Double> fScore,
-                       final Map<Integer, Integer> parent, final PriorityQueue<int[]> open) {
-        final int v = e.target();
-        final double tentative = gScore.get(u) + e.cost();
-        if (tentative < gScore.getOrDefault(v, Double.POSITIVE_INFINITY)) {
-            parent.put(v, u);
-            gScore.put(v, tentative);
-            final double f = tentative + heuristic(g, v, goal);
-            fScore.put(v, f);
-            open.add(new int[]{v});
-        }
+    @Override
+    protected void initializeStart(final Graph graph, final int start, final int goal, final Map<Integer, Double> gScore) {
+        fScores.put(start, heuristic(graph, start, goal));
     }
 
-    private double heuristic(final Graph g, final int a, final int b) {
-        final Node na = g.getNodeById(a);
-        final Node nb = g.getNodeById(b);
-        final double dx = na.x() - nb.x();
-        final double dy = na.y() - nb.y();
-        final double dz = na.z() - nb.z();
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    @Override
+    protected void afterRelax(final Graph graph, final int nodeId, final int goal, final double tentativeG,
+                              final Map<Integer, Double> gScore) {
+        final double fScore = tentativeG + heuristic(graph, nodeId, goal);
+        fScores.put(nodeId, fScore);
     }
 
-    private List<Node> reconstructNodes(final Graph g, final Map<Integer, Integer> parent, final int goal) {
-        final LinkedList<Node> path = new LinkedList<>();
-        Integer cur = goal;
-        while (cur != null) {
-            path.addFirst(g.getNodeById(cur));
-            cur = parent.get(cur);
-        }
-        return path;
+    @Override
+    protected double priorityScore(final int nodeId, final Map<Integer, Double> gScore) {
+        return fScores.getOrDefault(nodeId, Double.POSITIVE_INFINITY);
     }
 
+    @SuppressWarnings("PMD.ShortVariable")
     private boolean isEuclidHeuristicAdmissible(final Graph graph) {
-        for (final Node a : graph.getNodes()) {
-            for (final Edge e : graph.neighbors(a.id())) {
-                final Node b = graph.getNodeById(e.target());
-                final double dx = a.x() - b.x();
-                final double dy = a.y() - b.y();
-                final double dz = a.z() - b.z();
+        for (final Node nodeA : graph.getNodes()) {
+            for (final Edge edge : graph.neighbors(nodeA.id())) {
+                final Node nodeB = graph.getNodeById(edge.target());
+                final double dx = nodeA.x() - nodeB.x();
+                final double dy = nodeA.y() - nodeB.y();
+                final double dz = nodeA.z() - nodeB.z();
                 final double euclid = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (e.cost() < euclid - 1e-9) {
+                if (edge.cost() < euclid - 1e-9) {
                     return false;
                 }
             }

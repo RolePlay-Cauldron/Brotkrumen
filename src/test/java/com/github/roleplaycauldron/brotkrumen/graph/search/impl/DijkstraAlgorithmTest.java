@@ -9,7 +9,6 @@ import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
