@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -34,7 +35,7 @@ class AStarAlgorithmTest {
         graph.addNode(new Node(6, 5, -25, 0));
         graph.addNode(new Node(7, 90, -5, 0));
 
-        graph.addUndirectedEdge(1, 2, 40, EnumSet.of(EdgeFlag.BLOCKED));
+        graph.addUndirectedEdge(1, 2, 40, Set.of(EdgeFlag.BLOCKED));
         graph.addUndirectedEdge(1, 6, 40);
         graph.addDirectedEdge(1, 5, 40);
         graph.addUndirectedEdge(2, 3, 40);
@@ -63,7 +64,7 @@ class AStarAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> actual = pathNodes.stream().map(Node::id).collect(Collectors.toList());
         final List<Integer> expected = List.of(1, 2, 3, 7);
 
         assertIterableEquals(expected, actual, "The path should match expected");
@@ -72,13 +73,13 @@ class AStarAlgorithmTest {
     @Test
     void testAStarBlockedPath() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final Predicate<Edge> filterWithoutBlocked = edge -> !edge.hasFlag(EdgeFlag.BLOCKED);
+        final Predicate<Edge> filterWithoutBlocked = edge -> !edge.flags().contains(EdgeFlag.BLOCKED);
 
         final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, filterWithoutBlocked, tpNotAllowed);
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::getId).collect(Collectors.toList());
+        final List<Integer> actual = pathNodes.stream().map(Node::id).collect(Collectors.toList());
         final List<Integer> expected = List.of(1, 5, 4, 7);
 
         assertIterableEquals(expected, actual, "The path should match expected");

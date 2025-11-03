@@ -69,7 +69,7 @@ public class AStarAlgorithm implements PathAlgorithm {
             if (!closed.add(u)) continue;
 
             for (final Edge e : g.neighbors(u)) {
-                if (e.hasFlag(EdgeFlag.TELEPORT) || e.hasFlag(EdgeFlag.TELEPORT_GLOBAL)) {
+                if (e.flags().contains(EdgeFlag.TELEPORT) || e.flags().contains(EdgeFlag.TELEPORT_GLOBAL)) {
                     continue;
                 }
                 if (edgeFilter != null && !edgeFilter.test(e)) {
@@ -84,8 +84,8 @@ public class AStarAlgorithm implements PathAlgorithm {
     private void relax(final int u, final Edge e, final Graph g, final int goal,
                        final Map<Integer, Double> gScore, final Map<Integer, Double> fScore,
                        final Map<Integer, Integer> parent, final PriorityQueue<int[]> open) {
-        final int v = e.getTo();
-        final double tentative = gScore.get(u) + e.getCost();
+        final int v = e.target();
+        final double tentative = gScore.get(u) + e.cost();
         if (tentative < gScore.getOrDefault(v, Double.POSITIVE_INFINITY)) {
             parent.put(v, u);
             gScore.put(v, tentative);
@@ -98,9 +98,9 @@ public class AStarAlgorithm implements PathAlgorithm {
     private double heuristic(final Graph g, final int a, final int b) {
         final Node na = g.getNodeById(a);
         final Node nb = g.getNodeById(b);
-        final double dx = na.getX() - nb.getX();
-        final double dy = na.getY() - nb.getY();
-        final double dz = na.getZ() - nb.getZ();
+        final double dx = na.x() - nb.x();
+        final double dy = na.y() - nb.y();
+        final double dz = na.z() - nb.z();
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
@@ -116,13 +116,13 @@ public class AStarAlgorithm implements PathAlgorithm {
 
     private boolean isEuclidHeuristicAdmissible(final Graph graph) {
         for (final Node a : graph.getNodes()) {
-            for (final Edge e : graph.neighbors(a.getId())) {
-                final Node b = graph.getNodeById(e.getTo());
-                final double dx = a.getX() - b.getX();
-                final double dy = a.getY() - b.getY();
-                final double dz = a.getZ() - b.getZ();
+            for (final Edge e : graph.neighbors(a.id())) {
+                final Node b = graph.getNodeById(e.target());
+                final double dx = a.x() - b.x();
+                final double dy = a.y() - b.y();
+                final double dz = a.z() - b.z();
                 final double euclid = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (e.getCost() < euclid - 1e-9) {
+                if (e.cost() < euclid - 1e-9) {
                     return false;
                 }
             }

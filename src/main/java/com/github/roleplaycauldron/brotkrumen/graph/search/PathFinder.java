@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * The path finder class that uses the search registry to find the shortest path.
+ * The pathfinder class that uses the search registry to find the shortest path.
  */
 public class PathFinder {
 

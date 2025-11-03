@@ -64,10 +64,10 @@ public class DijkstraAlgorithm implements PathAlgorithm {
             }
 
             for (final Edge e : g.neighbors(u)) {
-                if (e.hasFlag(EdgeFlag.BLOCKED)) {
+                if (e.flags().contains(EdgeFlag.BLOCKED)) {
                     continue;
                 }
-                if (e.hasFlag(EdgeFlag.TELEPORT) && !rules.isLocalTeleportEnabled()) {
+                if (e.flags().contains(EdgeFlag.TELEPORT) && !rules.isLocalTeleportEnabled()) {
                     continue;
                 }
                 if (!filter.test(e)) {
@@ -85,7 +85,7 @@ public class DijkstraAlgorithm implements PathAlgorithm {
                     if (u == to) {
                         continue;
                     }
-                    final Edge virtual = new Edge(-1, u, to, w.cost(), EnumSet.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
+                    final Edge virtual = new Edge(-1, u, to, w.cost(), Set.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
                     if (!filter.test(virtual)) {
                         continue;
                     }
@@ -96,12 +96,12 @@ public class DijkstraAlgorithm implements PathAlgorithm {
         return List.of();
     }
 
-    private void relax(final int u, final Edge e, final Graph g,
+    private void relax(final int u, final Edge edge, final Graph graph,
                        final Map<Integer, Double> gScore,
                        final Map<Integer, Integer> parent,
                        final PriorityQueue<int[]> open) {
-        final int v = e.getTo();
-        final double tentative = gScore.get(u) + e.getCost();
+        final int v = edge.target();
+        final double tentative = gScore.get(u) + edge.cost();
         if (tentative < gScore.getOrDefault(v, Double.POSITIVE_INFINITY)) {
             parent.put(v, u);
             gScore.put(v, tentative);

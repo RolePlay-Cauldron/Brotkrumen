@@ -2,7 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.graph;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.EnumSet;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,7 +30,7 @@ class GraphTest {
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
 
-        graph.addUndirectedEdge(nodeTwo.getId(), nodeThree.getId(), 1.0, EnumSet.of(EdgeFlag.BLOCKED));
+        graph.addUndirectedEdge(nodeTwo.id(), nodeThree.id(), 1.0, Set.of(EdgeFlag.BLOCKED));
 
         assertNotNull(graph.getEdgeById(1), "The edge 1 should exist in the graph");
     }
@@ -45,8 +45,8 @@ class GraphTest {
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
 
-        graph.addDirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0);
-        graph.addDirectedEdge(nodeTwo.getId(), nodeThree.getId(), 1.0, EnumSet.of(EdgeFlag.BLOCKED));
+        graph.addDirectedEdge(nodeOne.id(), nodeTwo.id(), 1.0);
+        graph.addDirectedEdge(nodeTwo.id(), nodeThree.id(), 1.0, Set.of(EdgeFlag.BLOCKED));
 
         assertEquals(1, graph.neighbors(2).size(), "The size of the neighbours should be 1");
     }
@@ -58,7 +58,7 @@ class GraphTest {
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
 
-        assertThrows(IllegalArgumentException.class, () -> graph.addUndirectedEdge(nodeOne.getId(), nodeTwo.getId(), 1.0),
+        assertThrows(IllegalArgumentException.class, () -> graph.addUndirectedEdge(nodeOne.id(), nodeTwo.id(), 1.0),
                 "An IllegalArgumentException should have been thrown");
     }
 

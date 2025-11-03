@@ -227,6 +227,7 @@
   <rule ref="category/java/documentation.xml/CommentRequired">
     <properties>
       <property name="violationSuppressXPath" value="//ancestor::ClassDeclaration[matches(@SimpleName, '^.*(IT|Test|Fixture)$')]"/>
+      <property name="fieldCommentRequirement" value="Ignored"/>
     </properties>
   </rule>
   <rule ref="category/java/documentation.xml/CommentSize">

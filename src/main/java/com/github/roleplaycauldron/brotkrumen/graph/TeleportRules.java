@@ -30,7 +30,9 @@ public class TeleportRules {
         this.enableLocalTeleport = enableLocalTeleport;
         final Map<String, Warp> warpMap = new HashMap<>();
         if (warps != null) {
-            for (final Warp warp : warps) warpMap.put(warp.key(), warp);
+            for (final Warp warp : warps) {
+                warpMap.put(warp.key(), warp);
+            }
         }
         this.warps = Collections.unmodifiableMap(warpMap);
     }

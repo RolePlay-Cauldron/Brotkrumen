@@ -2,56 +2,24 @@ package com.github.roleplaycauldron.brotkrumen.graph;
 
 import org.bukkit.Location;
 
-public class Node {
+/**
+ * A node in the graph.
+ *
+ * @param id the id of the node.
+ * @param x the x coordinate of the node.
+ * @param y the y coordinate of the node.
+ * @param z the z coordinate of the node.
+ */
+@SuppressWarnings("PMD.ShortVariable")
+public record Node(int id, int x, int y, int z) {
 
-    private int id;
-
-    private int x;
-
-    private int y;
-
-    private int z;
-
+    /**
+     * An alternative constructor using the {@link Location} instead of x, y and z coordinates.
+     *
+     * @param id the id of the node.
+     * @param loc the {@link Location} of the node.
+     */
     public Node(final int id, final Location loc) {
         this(id, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-    }
-
-    public Node(final int id, final int x, final int y, final int z) {
-        this.id = id;
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(final int id) {
-        this.id = id;
-    }
-
-    public int getX() {
-        return x;
-    }
-
-    public void setX(final int x) {
-        this.x = x;
-    }
-
-    public int getY() {
-        return y;
-    }
-
-    public void setY(final int y) {
-        this.y = y;
-    }
-
-    public int getZ() {
-        return z;
-    }
-
-    public void setZ(final int z) {
-        this.z = z;
     }
 }
