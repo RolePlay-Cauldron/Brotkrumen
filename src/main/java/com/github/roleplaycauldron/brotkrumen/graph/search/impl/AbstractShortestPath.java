@@ -23,7 +23,7 @@ import java.util.function.Predicate;
 abstract class AbstractShortestPath implements PathAlgorithm {
 
     /**
-     * Constructor.
+     * The default constructor.
      */
     public AbstractShortestPath() {
         // Empty
