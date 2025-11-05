@@ -63,6 +63,26 @@ public class Graph {
     }
 
     /**
+     * Add a new edge to the graph based on the flags
+     *
+     * @param source the source node
+     * @param target the target node
+     * @param cost   the cost of the edge
+     * @param flags  the flags of the edge
+     * @return the created {@link Edge}s
+     */
+    public List<Edge> addEdge(final int source, final int target, final double cost, final Set<EdgeFlag> flags) {
+        if (flags == null || flags.isEmpty()) {
+            throw new IllegalArgumentException("You need to specify at least one flag per Edge");
+        }
+        final EdgeFlag flag = flags.iterator().next();
+        return switch (flag) {
+            case BLOCKED, DIRECTED, TELEPORT_GLOBAL -> List.of(addDirectedEdge(source, target, cost, flags));
+            case UNDIRECTED, TELEPORT -> addUndirectedEdge(source, target, cost, flags);
+        };
+    }
+
+    /**
      * Add a new directed edge target the graph.
      *
      * @param source the id of the source node

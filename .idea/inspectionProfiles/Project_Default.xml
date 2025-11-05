@@ -71,7 +71,7 @@
       </option>
       <option name="FIELD_SETTINGS">
         <Options>
-          <option name="MINIMAL_VISIBILITY" value="private" />
+          <option name="MINIMAL_VISIBILITY" value="protected" />
         </Options>
       </option>
     </inspection_tool>

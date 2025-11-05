@@ -2,6 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.graph;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,5 +71,42 @@ class GraphTest {
 
         assertThrows(IllegalArgumentException.class, () -> graph.addNode(nodeOne),
                 "An IllegalArgumentException should have been thrown");
+    }
+
+    @Test
+    void testAddEdgeWithoutFlags() {
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> graph.addEdge(nodeOne.id(), nodeTwo.id(), 1.0, null),
+                "An IllegalArgumentException should have been thrown while trying to add an edge without flags");
+    }
+
+    @Test
+    void testAddEdgeWithOneWayFlag() {
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+
+        final List<Edge> resultEdges = graph.addEdge(nodeOne.id(), nodeTwo.id(), 1.0, Set.of(EdgeFlag.DIRECTED));
+        assertEquals(1, resultEdges.size(), "The size of the result edges should be 1");
+    }
+
+    @Test
+    void testAddEdgeWithTwoWayFlag() {
+        final Graph graph = new Graph();
+        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeTwo = new Node(2, 3, 4, 5);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+
+        final List<Edge> resultEdges = graph.addEdge(nodeOne.id(), nodeTwo.id(), 1.0, Set.of(EdgeFlag.TELEPORT));
+        assertEquals(2, resultEdges.size(), "The size of the result edges should be 2");
     }
 }
