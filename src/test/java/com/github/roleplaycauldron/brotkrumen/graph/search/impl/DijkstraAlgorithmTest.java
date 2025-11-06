@@ -63,7 +63,7 @@ class DijkstraAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> pathIds = pathNodes.stream().map(Node::id).collect(Collectors.toList());
+        final List<Integer> pathIds = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<Integer> expected = List.of(1, 6, 7);
         assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }
@@ -76,7 +76,7 @@ class DijkstraAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> pathIds = pathNodes.stream().map(Node::id).collect(Collectors.toList());
+        final List<Integer> pathIds = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<Integer> expected = List.of(3, 1);
         assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }
@@ -92,7 +92,7 @@ class DijkstraAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> pathIds = pathNodes.stream().map(Node::id).collect(Collectors.toList());
+        final List<Integer> pathIds = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<Integer> expected = List.of(3, 7, 6, 1);
         assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
     }

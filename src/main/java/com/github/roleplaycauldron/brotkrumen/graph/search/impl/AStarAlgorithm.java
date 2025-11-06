@@ -56,7 +56,7 @@ public class AStarAlgorithm extends AbstractShortestPath {
     @SuppressWarnings("PMD.ShortVariable")
     private boolean isEuclidHeuristicAdmissible(final Graph graph) {
         for (final Node nodeA : graph.getNodes()) {
-            for (final Edge edge : graph.neighbors(nodeA.id())) {
+            for (final Edge edge : graph.neighbors(nodeA.graphId())) {
                 final Node nodeB = graph.getNodeById(edge.target());
                 final double dx = nodeA.x() - nodeB.x();
                 final double dy = nodeA.y() - nodeB.y();

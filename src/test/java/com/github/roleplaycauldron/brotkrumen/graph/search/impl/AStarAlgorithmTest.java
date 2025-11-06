@@ -63,7 +63,7 @@ class AStarAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::id).collect(Collectors.toList());
+        final List<Integer> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<Integer> expected = List.of(1, 2, 3, 7);
 
         assertIterableEquals(expected, actual, "The path should match expected");
@@ -78,7 +78,7 @@ class AStarAlgorithmTest {
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::id).collect(Collectors.toList());
+        final List<Integer> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<Integer> expected = List.of(1, 5, 4, 7);
 
         assertIterableEquals(expected, actual, "The path should match expected");

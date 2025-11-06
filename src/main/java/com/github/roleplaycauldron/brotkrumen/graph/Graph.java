@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The class representing a graph. It includes the creation of Edges between nodes.
@@ -18,7 +19,7 @@ public class Graph {
 
     private final Map<Integer, Edge> edgesById;
 
-    private int nextEdgeId;
+    private final IdRegistry idRegistry;
 
     /**
      * Create a new graph.
@@ -28,19 +29,64 @@ public class Graph {
         this.nodes = new HashMap<>();
         this.adj = new HashMap<>();
         this.edgesById = new HashMap<>();
-        this.nextEdgeId = 1;
+        this.idRegistry = new IdRegistry();
+    }
+
+    /**
+     * Create a new graph based on the given nodes and edges. The next edge id and node id will be set to the given values.
+     *
+     * @param nodes      the nodes of the graph containing the graphId as a key
+     * @param adjacency  the edges of the graph containing the nodeId as a key
+     * @param idRegistry the id registry to use
+     */
+    public Graph(final Map<Integer, Node> nodes, final Map<Integer, List<Edge>> adjacency, final IdRegistry idRegistry) {
+        this.nodes = new HashMap<>(nodes);
+        this.adj = new HashMap<>(adjacency);
+        this.edgesById = new HashMap<>();
+        this.idRegistry = idRegistry;
+
+        edgesById.putAll(adj.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(edge -> Map.entry(edge.edgeId(), edge))).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
 
     /**
      * Add a new node to the graph.
      *
      * @param node the node to add
+     * @return the added {@link Node}
      */
-    public void addNode(final Node node) {
-        if (nodes.putIfAbsent(node.id(), node) != null) {
-            throw new IllegalArgumentException("Duplicate node id: " + node.id());
+    public Node addNode(final Node node) {
+        if (idRegistry.isNodeInUse(node.graphId())) {
+            throw new IllegalArgumentException("Duplicate node id: " + node.graphId());
         }
-        adj.computeIfAbsent(node.id(), k -> new ArrayList<>());
+
+        final Node genNode;
+        if (node.graphId() <= 0) {
+            genNode = new Node(node.dbId(), idRegistry.getNextNodeId(), node.x(), node.y(), node.z());
+        } else {
+            genNode = node;
+        }
+
+        if (nodes.putIfAbsent(genNode.graphId(), genNode) != null) {
+            throw new IllegalArgumentException("An node with id " + genNode.graphId() + " already exists and therefore cannot be added to the nodes again.");
+        }
+        adj.computeIfAbsent(genNode.graphId(), k -> new ArrayList<>());
+
+        return genNode;
+    }
+
+    /**
+     * Remove a node from the graph.
+     *
+     * @param node the node to remove
+     */
+    public void removeNode(final Node node) {
+        if (node.graphId() <= 0 || !idRegistry.isNodeInUse(node.graphId())) {
+            throw new IllegalArgumentException("Cannot remove node with invalid id: " + node.graphId());
+        }
+        nodes.remove(node.graphId());
+        adj.remove(node.graphId());
+        idRegistry.releaseNodeId(node.graphId());
+        edgesById.values().removeIf(edge -> edge.source() == node.graphId() || edge.target() == node.graphId());
     }
 
     /**
@@ -63,13 +109,13 @@ public class Graph {
     }
 
     /**
-     * Add a new edge to the graph based on the flags
+     * Add a new edge to the graph based on the flags.
      *
      * @param source the source node
      * @param target the target node
      * @param cost   the cost of the edge
      * @param flags  the flags of the edge
-     * @return the created {@link Edge}s
+     * @return the created {@link Edge}
      */
     public List<Edge> addEdge(final int source, final int target, final double cost, final Set<EdgeFlag> flags) {
         if (flags == null || flags.isEmpty()) {
@@ -83,11 +129,11 @@ public class Graph {
     }
 
     /**
-     * Add a new directed edge target the graph.
+     * Add a new directed edge target to the graph.
      *
      * @param source the id of the source node
      * @param target the id of the target node
-     * @param cost the cost of the edge
+     * @param cost   the cost of the edge
      * @return the created {@link Edge}
      */
     public Edge addDirectedEdge(final int source, final int target, final double cost) {
@@ -95,22 +141,22 @@ public class Graph {
     }
 
     /**
-     * Add a new directed edge target the graph.
+     * Add a new directed edge target to the graph.
      *
      * @param source the id of the source node
      * @param target the id of the target node
-     * @param cost the cost of the edge
-     * @param flags the {@link EdgeFlag}s of the edge
+     * @param cost   the cost of the edge
+     * @param flags  the {@link EdgeFlag}s of the edge
      * @return the created {@link Edge}
      */
     public Edge addDirectedEdge(final int source, final int target, final double cost, final Set<EdgeFlag> flags) {
         requireNode(source);
         requireNode(target);
-        final int generatedId = nextEdgeId;
-        nextEdgeId++;
-        final Edge edge = new Edge(generatedId, source, target, cost, flags);
+        final int generatedId = idRegistry.getNextEdgeId();
+        final Edge edge = new Edge(-1, generatedId, source, target, cost, flags);
         edgesById.put(generatedId, edge);
         adj.computeIfAbsent(source, k -> new ArrayList<>()).add(edge);
+
         return edge;
     }
 
@@ -119,12 +165,13 @@ public class Graph {
      *
      * @param nodeA the id of the first node
      * @param nodeB the id of the second node
-     * @param cost the cost of the edge
-     * @return the created {@link Edge}s
+     * @param cost  the cost of the edge
+     * @return a {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final int nodeA, final int nodeB, final double cost) {
         final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost);
         final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost);
+
         return List.of(edgeOne, edgeTwo);
     }
 
@@ -133,14 +180,27 @@ public class Graph {
      *
      * @param nodeA The id of the first node.
      * @param nodeB The id of the second node.
-     * @param cost The cost of the edge.
-     * @param flags The {@link EdgeFlag}s of the edge.
-     * @return The a {@link List} containing the created {@link Edge}s.
+     * @param cost  The cost of the edge.
+     * @param flags The {@link EdgeFlag}s of the edge
+     * @return A {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final int nodeA, final int nodeB, final double cost, final Set<EdgeFlag> flags) {
         final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, flags);
         final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, flags);
+
         return List.of(edgeOne, edgeTwo);
+    }
+
+    /**
+     * Remove an edge from the graph.
+     *
+     * @param edge The edge to remove.
+     */
+    public void removeEdge(final Edge edge) {
+        edgesById.remove(edge.edgeId());
+        adj.get(edge.source()).remove(edge);
+        adj.get(edge.target()).remove(edge);
+        idRegistry.releaseEdgeId(edge.edgeId());
     }
 
     /**
