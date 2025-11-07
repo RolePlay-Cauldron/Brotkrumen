@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Test class for the {@link SearchRegistry}.
+ */
 class SearchRegistryTest {
 
     @Test
@@ -23,7 +26,7 @@ class SearchRegistryTest {
         registry.register(algo1);
         registry.register(algo2);
 
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         graph.addNode(new Node(1, 0, 0, 0));
 
         final TeleportRules rules = TeleportRules.disableTeleports();

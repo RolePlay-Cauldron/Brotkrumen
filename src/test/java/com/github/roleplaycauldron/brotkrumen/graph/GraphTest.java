@@ -10,13 +10,13 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test class for the Graph class.
+ * Test class for the {@link Graph} class.
  */
 class GraphTest {
 
     @Test
     void testGraphCreateNode() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
@@ -28,7 +28,7 @@ class GraphTest {
 
     @Test
     void testGraphCreateDirectedEdge() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         final Node nodeThree = new Node(3, 5, 7, 8);
@@ -43,7 +43,7 @@ class GraphTest {
 
     @Test
     void testGraphCreateUndirectedEdge() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         final Node nodeThree = new Node(3, 5, 7, 8);
@@ -59,7 +59,7 @@ class GraphTest {
 
     @Test
     void testGraphCreateUndirectedEdgeException() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
@@ -70,7 +70,7 @@ class GraphTest {
 
     @Test
     void testGraphException() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         graph.addNode(nodeOne);
 
@@ -80,7 +80,7 @@ class GraphTest {
 
     @Test
     void testAddEdgeWithoutFlags() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
@@ -93,7 +93,7 @@ class GraphTest {
 
     @Test
     void testAddEdgeWithOneWayFlag() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
@@ -105,7 +105,7 @@ class GraphTest {
 
     @Test
     void testAddEdgeWithTwoWayFlag() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);
@@ -128,7 +128,7 @@ class GraphTest {
         final Map<Integer, List<Edge>> adjacency = new HashMap<>();
         adjacency.put(1, List.of(new Edge(1, 2, 1, 10, Set.of(EdgeFlag.DIRECTED))));
 
-        final Graph graph = new Graph(nodes, adjacency, idRegistry);
+        final Graph graph = new Graph(-1, "Test", nodes, adjacency, idRegistry);
 
         graph.removeNode(nodeOne);
         assertNull(graph.getNodeById(1), "The node should have been removed");
@@ -149,7 +149,7 @@ class GraphTest {
         final Map<Integer, List<Edge>> adjacency = new HashMap<>();
         adjacency.put(1, List.of(new Edge(1, 2, 1, 10, Set.of(EdgeFlag.DIRECTED))));
 
-        final Graph graph = new Graph(nodes, adjacency, idRegistry);
+        final Graph graph = new Graph(-1, "Test", nodes, adjacency, idRegistry);
 
         assertThrows(IllegalArgumentException.class, () -> graph.removeNode(new Node(10, 2, 3, 4)),
                 "An IllegalArgumentException should have been thrown because the node is not in use");
@@ -160,7 +160,7 @@ class GraphTest {
 
     @Test
     void testEdgeRemoval() {
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         final Node nodeOne = new Node(1, 2, 3, 4);
         final Node nodeTwo = new Node(2, 3, 4, 5);
         graph.addNode(nodeOne);

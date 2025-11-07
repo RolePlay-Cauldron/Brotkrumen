@@ -16,6 +16,9 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Test class for the {@link DijkstraAlgorithm}.
+ */
 class DijkstraAlgorithmTest {
 
     private Graph graph;
@@ -24,7 +27,7 @@ class DijkstraAlgorithmTest {
 
     @BeforeEach
     void setUp() {
-        graph = new Graph();
+        graph = new Graph("Test");
 
         graph.addNode(new Node(1, 0, 0, 0));
         graph.addNode(new Node(2, 35, 15, 0));

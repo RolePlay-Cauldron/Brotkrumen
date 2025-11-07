@@ -11,6 +11,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Test class for the {@link PathFinder}.
+ */
 class PathFinderTest {
 
     @Test
@@ -18,7 +21,7 @@ class PathFinderTest {
         final PathAlgorithm algo = mock(PathAlgorithm.class);
         final SearchRegistry registry = mock(SearchRegistry.class);
 
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         graph.addNode(new Node(1, 0, 0, 0));
         graph.addNode(new Node(2, 0, 0, 0));
         graph.addDirectedEdge(1, 2, 1.0);
@@ -43,7 +46,7 @@ class PathFinderTest {
         final PathAlgorithm algo = mock(PathAlgorithm.class);
         final SearchRegistry registry = mock(SearchRegistry.class);
 
-        final Graph graph = new Graph();
+        final Graph graph = new Graph("Test");
         graph.addNode(new Node(1, 0, 0, 0));
         graph.addNode(new Node(2, 0, 0, 0));
         graph.addDirectedEdge(1, 2, 1.0);

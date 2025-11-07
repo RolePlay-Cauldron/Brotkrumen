@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
  * The class representing a graph. It includes the creation of Edges between nodes.
  */
 public class Graph {
+    private final int graphId;
+
     private final Map<Integer, Node> nodes;
 
     private final Map<Integer, List<Edge>> adj;
@@ -21,11 +23,18 @@ public class Graph {
 
     private final IdRegistry idRegistry;
 
+    private String name;
+
     /**
      * Create a new graph.
      * The graph is initially empty.
+     *
+     * @param graphId the database id of the graph. If you create a new one not saved yet, use -1 for the id.
+     * @param name    the name of the graph
      */
-    public Graph() {
+    public Graph(final int graphId, final String name) {
+        this.graphId = graphId;
+        this.name = name;
         this.nodes = new HashMap<>();
         this.adj = new HashMap<>();
         this.edgesById = new HashMap<>();
@@ -33,13 +42,27 @@ public class Graph {
     }
 
     /**
+     * Create a new graph.
+     * The graph is initially empty.
+     *
+     * @param name the name of the graph
+     */
+    public Graph(final String name) {
+        this(-1, name);
+    }
+
+    /**
      * Create a new graph based on the given nodes and edges. The next edge id and node id will be set to the given values.
      *
+     * @param graphId    the database id of the graph. If you create a new one not saved yet, use -1 for the id.
+     * @param name       the name of the graph
      * @param nodes      the nodes of the graph containing the graphId as a key
      * @param adjacency  the edges of the graph containing the nodeId as a key
      * @param idRegistry the id registry to use
      */
-    public Graph(final Map<Integer, Node> nodes, final Map<Integer, List<Edge>> adjacency, final IdRegistry idRegistry) {
+    public Graph(final int graphId, final String name, final Map<Integer, Node> nodes, final Map<Integer, List<Edge>> adjacency, final IdRegistry idRegistry) {
+        this.graphId = graphId;
+        this.name = name;
         this.nodes = new HashMap<>(nodes);
         this.adj = new HashMap<>(adjacency);
         this.edgesById = new HashMap<>();
@@ -233,5 +256,32 @@ public class Graph {
         if (!nodes.containsKey(nodeId)) {
             throw new IllegalArgumentException("Unknown node id: " + nodeId);
         }
+    }
+
+    /**
+     * Get the name of the graph.
+     *
+     * @return The name of the graph.
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Set the name of the graph.
+     *
+     * @param name The new name of the graph.
+     */
+    public void setName(final String name) {
+        this.name = name;
+    }
+
+    /**
+     * Get the database id of the graph.
+     *
+     * @return The database id of the graph.
+     */
+    public int getGraphId() {
+        return graphId;
     }
 }
