@@ -8,6 +8,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
@@ -45,7 +46,7 @@ public class PathFinder {
      * @param rules      the {@link TeleportRules} to use
      * @return the path as a {@link List} of {@link Node}s
      */
-    public List<Node> findPath(final Graph graph, final int start, final int goal, final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+    public List<Node> findPath(final Graph graph, final UUID start, final UUID goal, final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         final PathAlgorithm algo = registry.select(graph, rules);
         return algo.findPath(graph, start, goal, edgeFilter, rules);
     }

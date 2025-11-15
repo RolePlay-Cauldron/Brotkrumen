@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -15,13 +16,11 @@ import java.util.stream.Collectors;
 public class Graph {
     private final int graphId;
 
-    private final Map<Integer, Node> nodes;
+    private final Map<UUID, Node> nodes;
 
-    private final Map<Integer, List<Edge>> adj;
+    private final Map<UUID, List<Edge>> adj;
 
-    private final Map<Integer, Edge> edgesById;
-
-    private final IdRegistry idRegistry;
+    private final Map<UUID, Edge> edgesById;
 
     private String name;
 
@@ -38,7 +37,6 @@ public class Graph {
         this.nodes = new HashMap<>();
         this.adj = new HashMap<>();
         this.edgesById = new HashMap<>();
-        this.idRegistry = new IdRegistry();
     }
 
     /**
@@ -54,19 +52,17 @@ public class Graph {
     /**
      * Create a new graph based on the given nodes and edges. The next edge id and node id will be set to the given values.
      *
-     * @param graphId    the database id of the graph. If you create a new one not saved yet, use -1 for the id.
-     * @param name       the name of the graph
-     * @param nodes      the nodes of the graph containing the graphId as a key
-     * @param adjacency  the edges of the graph containing the nodeId as a key
-     * @param idRegistry the id registry to use
+     * @param graphId   the database id of the graph. If you create a new one not saved yet, use -1 for the id.
+     * @param name      the name of the graph
+     * @param nodes     the nodes of the graph containing the graphId as a key
+     * @param adjacency the edges of the graph containing the nodeId as a key
      */
-    public Graph(final int graphId, final String name, final Map<Integer, Node> nodes, final Map<Integer, List<Edge>> adjacency, final IdRegistry idRegistry) {
+    public Graph(final int graphId, final String name, final Map<UUID, Node> nodes, final Map<UUID, List<Edge>> adjacency) {
         this.graphId = graphId;
         this.name = name;
         this.nodes = new HashMap<>(nodes);
         this.adj = new HashMap<>(adjacency);
         this.edgesById = new HashMap<>();
-        this.idRegistry = idRegistry;
 
         edgesById.putAll(adj.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(edge -> Map.entry(edge.edgeId(), edge))).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
@@ -78,19 +74,19 @@ public class Graph {
      * @return the added {@link Node}
      */
     public Node addNode(final Node node) {
-        if (idRegistry.isNodeInUse(node.graphId())) {
+        if (nodes.containsKey(node.graphId())) {
             throw new IllegalArgumentException("Duplicate node id: " + node.graphId());
         }
 
         final Node genNode;
-        if (node.graphId() <= 0) {
-            genNode = new Node(node.dbId(), idRegistry.getNextNodeId(), node.x(), node.y(), node.z());
+        if (node.graphId() == null) {
+            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z());
         } else {
             genNode = node;
         }
 
         if (nodes.putIfAbsent(genNode.graphId(), genNode) != null) {
-            throw new IllegalArgumentException("An node with id " + genNode.graphId() + " already exists and therefore cannot be added to the nodes again.");
+            throw new IllegalArgumentException("An node with id " + genNode.graphId().toString() + " already exists and therefore cannot be added to the nodes again.");
         }
         adj.computeIfAbsent(genNode.graphId(), k -> new ArrayList<>());
 
@@ -103,13 +99,12 @@ public class Graph {
      * @param node the node to remove
      */
     public void removeNode(final Node node) {
-        if (node.graphId() <= 0 || !idRegistry.isNodeInUse(node.graphId())) {
+        if (node.graphId() == null || !nodes.containsKey(node.graphId())) {
             throw new IllegalArgumentException("Cannot remove node with invalid id: " + node.graphId());
         }
         nodes.remove(node.graphId());
         adj.remove(node.graphId());
-        idRegistry.releaseNodeId(node.graphId());
-        edgesById.values().removeIf(edge -> edge.source() == node.graphId() || edge.target() == node.graphId());
+        edgesById.values().removeIf(edge -> edge.source().equals(node.graphId()) || edge.target().equals(node.graphId()));
     }
 
     /**
@@ -118,7 +113,7 @@ public class Graph {
      * @param nodeId the id of the node to get
      * @return the node with the given id
      */
-    public Node getNodeById(final int nodeId) {
+    public Node getNodeById(final UUID nodeId) {
         return nodes.get(nodeId);
     }
 
@@ -140,7 +135,7 @@ public class Graph {
      * @param flags  the flags of the edge
      * @return the created {@link Edge}
      */
-    public List<Edge> addEdge(final int source, final int target, final double cost, final Set<EdgeFlag> flags) {
+    public List<Edge> addEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
         if (flags == null || flags.isEmpty()) {
             throw new IllegalArgumentException("You need to specify at least one flag per Edge");
         }
@@ -159,7 +154,7 @@ public class Graph {
      * @param cost   the cost of the edge
      * @return the created {@link Edge}
      */
-    public Edge addDirectedEdge(final int source, final int target, final double cost) {
+    public Edge addDirectedEdge(final UUID source, final UUID target, final double cost) {
         return addDirectedEdge(source, target, cost, EnumSet.noneOf(EdgeFlag.class));
     }
 
@@ -172,12 +167,11 @@ public class Graph {
      * @param flags  the {@link EdgeFlag}s of the edge
      * @return the created {@link Edge}
      */
-    public Edge addDirectedEdge(final int source, final int target, final double cost, final Set<EdgeFlag> flags) {
+    public Edge addDirectedEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
         requireNode(source);
         requireNode(target);
-        final int generatedId = idRegistry.getNextEdgeId();
-        final Edge edge = new Edge(-1, generatedId, source, target, cost, flags);
-        edgesById.put(generatedId, edge);
+        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, flags);
+        edgesById.put(edge.edgeId(), edge);
         adj.computeIfAbsent(source, k -> new ArrayList<>()).add(edge);
 
         return edge;
@@ -191,7 +185,7 @@ public class Graph {
      * @param cost  the cost of the edge
      * @return a {@link List} containing the two edges.
      */
-    public List<Edge> addUndirectedEdge(final int nodeA, final int nodeB, final double cost) {
+    public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost) {
         final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost);
         final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost);
 
@@ -207,7 +201,7 @@ public class Graph {
      * @param flags The {@link EdgeFlag}s of the edge
      * @return A {@link List} containing the two edges.
      */
-    public List<Edge> addUndirectedEdge(final int nodeA, final int nodeB, final double cost, final Set<EdgeFlag> flags) {
+    public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost, final Set<EdgeFlag> flags) {
         final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, flags);
         final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, flags);
 
@@ -223,7 +217,6 @@ public class Graph {
         edgesById.remove(edge.edgeId());
         adj.get(edge.source()).remove(edge);
         adj.get(edge.target()).remove(edge);
-        idRegistry.releaseEdgeId(edge.edgeId());
     }
 
     /**
@@ -232,7 +225,7 @@ public class Graph {
      * @param nodeId The id of the node.
      * @return A {@link List} containing the neighbors.
      */
-    public List<Edge> neighbors(final int nodeId) {
+    public List<Edge> neighbors(final UUID nodeId) {
         return adj.getOrDefault(nodeId, List.of());
     }
 
@@ -242,7 +235,7 @@ public class Graph {
      * @param edgeId The id of the edge.
      * @return The {@link Edge} with the given id.
      */
-    public Edge getEdgeById(final int edgeId) {
+    public Edge getEdgeById(final UUID edgeId) {
         return edgesById.get(edgeId);
     }
 
@@ -252,9 +245,9 @@ public class Graph {
      * @param nodeId The id of the node.
      * @throws IllegalArgumentException If the node does not exist.
      */
-    private void requireNode(final int nodeId) {
+    private void requireNode(final UUID nodeId) {
         if (!nodes.containsKey(nodeId)) {
-            throw new IllegalArgumentException("Unknown node id: " + nodeId);
+            throw new IllegalArgumentException("Unknown node id: " + nodeId.toString());
         }
     }
 

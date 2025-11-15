@@ -4,10 +4,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class TeleportRulesTest {
+
+    private final UUID uuidOne = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
 
     @Test
     void testTeleportDisabled() {
@@ -24,7 +27,7 @@ class TeleportRulesTest {
 
     @Test
     void testTeleportEnabled() {
-        final Warp warp = new Warp("Spawn", 1, 10.0, true);
+        final Warp warp = new Warp("Spawn", uuidOne, 10.0, true);
         final TeleportRules rules = new TeleportRules(true, true, List.of(warp));
 
         final Optional<Warp> warpOpt = rules.getWarp("Spawn");
@@ -36,7 +39,7 @@ class TeleportRulesTest {
                 warpOpt.map(Warp::cost).orElse(null),
                 warpOpt.map(Warp::targetNodeId).orElse(null)
         );
-        final List<Object> expected = List.of(true, true, true, 10.0, 1);
+        final List<Object> expected = List.of(true, true, true, 10.0, uuidOne);
         assertEquals(expected, actual, "Enabled rules + warp properties should match");
     }
 }

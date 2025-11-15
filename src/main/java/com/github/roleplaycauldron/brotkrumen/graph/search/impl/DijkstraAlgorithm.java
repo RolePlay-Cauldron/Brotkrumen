@@ -9,6 +9,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
@@ -37,9 +38,9 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
     }
 
     @Override
-    protected void onExpandNode(final Graph graph, final int nodeId, final TeleportRules rules,
-                                final Predicate<Edge> filter, final Map<Integer, Double> gScore,
-                                final Map<Integer, Integer> parent, final Queue<int[]> open, final int goal) {
+    protected void onExpandNode(final Graph graph, final UUID nodeId, final TeleportRules rules,
+                                final Predicate<Edge> filter, final Map<UUID, Double> gScore,
+                                final Map<UUID, UUID> parent, final Queue<UUID> open, final UUID goal) {
         if (!rules.isWarpingEnabled()) {
             return;
         }
@@ -47,11 +48,11 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
             if (!warp.enabled()) {
                 continue;
             }
-            final int targetNodeId = warp.targetNodeId();
-            if (nodeId == targetNodeId) {
+            final UUID targetNodeId = warp.targetNodeId();
+            if (nodeId.equals(targetNodeId)) {
                 continue;
             }
-            final Edge virtualEdge = new Edge(-1, nodeId, targetNodeId, warp.cost(), Set.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
+            final Edge virtualEdge = new Edge(null, nodeId, targetNodeId, warp.cost(), Set.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
             if (!filter.test(virtualEdge)) {
                 continue;
             }

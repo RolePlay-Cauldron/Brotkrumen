@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,12 +14,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test class for the {@link Graph} class.
  */
 class GraphTest {
+    private final UUID uuidOne = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
+
+    private final UUID uuidTwo = UUID.fromString("18a6d815-2c26-4fde-8179-e74baca4bb4e");
+
+    private final UUID uuidThree = UUID.fromString("5e074931-0be1-46be-ac64-e88eb686463b");
+
+    private final UUID uuidSeven = UUID.fromString("4151132b-097d-46ab-941b-6491ceddf6cc");
 
     @Test
     void testGraphCreateNode() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
 
@@ -29,24 +37,23 @@ class GraphTest {
     @Test
     void testGraphCreateDirectedEdge() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
-        final Node nodeThree = new Node(3, 5, 7, 8);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
+        final Node nodeThree = new Node(uuidThree, 5, 7, 8);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
 
-        graph.addUndirectedEdge(nodeTwo.graphId(), nodeThree.graphId(), 1.0, Set.of(EdgeFlag.BLOCKED));
-
-        assertNotNull(graph.getEdgeById(1), "The edge 1 should exist in the graph");
+        final List<Edge> edge = graph.addUndirectedEdge(nodeTwo.graphId(), nodeThree.graphId(), 1.0, Set.of(EdgeFlag.BLOCKED));
+        assertNotNull(graph.getEdgeById(edge.getFirst().edgeId()), "There should exist an Edge in the graph");
     }
 
     @Test
     void testGraphCreateUndirectedEdge() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
-        final Node nodeThree = new Node(3, 5, 7, 8);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
+        final Node nodeThree = new Node(uuidThree, 5, 7, 8);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
         graph.addNode(nodeThree);
@@ -54,14 +61,14 @@ class GraphTest {
         graph.addDirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
         graph.addDirectedEdge(nodeTwo.graphId(), nodeThree.graphId(), 1.0, Set.of(EdgeFlag.BLOCKED));
 
-        assertEquals(1, graph.neighbors(2).size(), "The size of the neighbours should be 1");
+        assertEquals(1, graph.neighbors(uuidTwo).size(), "The size of the neighbours should be 1");
     }
 
     @Test
     void testGraphCreateUndirectedEdgeException() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
 
         assertThrows(IllegalArgumentException.class, () -> graph.addUndirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0),
@@ -71,7 +78,7 @@ class GraphTest {
     @Test
     void testGraphException() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
         graph.addNode(nodeOne);
 
         assertThrows(IllegalArgumentException.class, () -> graph.addNode(nodeOne),
@@ -81,8 +88,8 @@ class GraphTest {
     @Test
     void testAddEdgeWithoutFlags() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
 
@@ -94,8 +101,8 @@ class GraphTest {
     @Test
     void testAddEdgeWithOneWayFlag() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
 
@@ -106,8 +113,8 @@ class GraphTest {
     @Test
     void testAddEdgeWithTwoWayFlag() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
 
@@ -116,58 +123,33 @@ class GraphTest {
     }
 
     @Test
-    void testAddNodeWithRemovalAndReAcquire() {
-        final Map<Integer, Node> nodes = new HashMap<>();
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        nodes.put(1, nodeOne);
-        nodes.put(2, new Node(2, 4, 5, 6));
-
-        final IdRegistry idRegistry = new IdRegistry(1, 1);
-        idRegistry.seedNodeIds(List.of(1, 2));
-
-        final Map<Integer, List<Edge>> adjacency = new HashMap<>();
-        adjacency.put(1, List.of(new Edge(1, 2, 1, 10, Set.of(EdgeFlag.DIRECTED))));
-
-        final Graph graph = new Graph(-1, "Test", nodes, adjacency, idRegistry);
-
-        graph.removeNode(nodeOne);
-        assertNull(graph.getNodeById(1), "The node should have been removed");
-
-        graph.addNode(new Node(-1, 8, 9, 10));
-        assertNotNull(graph.getNodeById(1), "The node with the id 1 should have been re-acquired");
-    }
-
-    @Test
     void testThrowExceptionOnNodeInUseAndRemovalOfNonExistent() {
-        final Map<Integer, Node> nodes = new HashMap<>();
-        nodes.put(1, new Node(1, 2, 3, 4));
-        nodes.put(2, new Node(2, 4, 5, 6));
+        final Map<UUID, Node> nodes = new HashMap<>();
+        nodes.put(uuidOne, new Node(uuidOne, 2, 3, 4));
+        nodes.put(uuidTwo, new Node(uuidTwo, 4, 5, 6));
 
-        final IdRegistry idRegistry = new IdRegistry(1, 1);
-        idRegistry.seedNodeIds(List.of(1, 2));
+        final Map<UUID, List<Edge>> adjacency = new HashMap<>();
+        adjacency.put(uuidOne, List.of(new Edge(UUID.randomUUID(), uuidTwo, uuidOne, 10, Set.of(EdgeFlag.DIRECTED))));
 
-        final Map<Integer, List<Edge>> adjacency = new HashMap<>();
-        adjacency.put(1, List.of(new Edge(1, 2, 1, 10, Set.of(EdgeFlag.DIRECTED))));
+        final Graph graph = new Graph(-1, "Test", nodes, adjacency);
 
-        final Graph graph = new Graph(-1, "Test", nodes, adjacency, idRegistry);
-
-        assertThrows(IllegalArgumentException.class, () -> graph.removeNode(new Node(10, 2, 3, 4)),
+        assertThrows(IllegalArgumentException.class, () -> graph.removeNode(new Node(uuidSeven, 2, 3, 4)),
                 "An IllegalArgumentException should have been thrown because the node is not in use");
 
-        assertThrows(IllegalArgumentException.class, () -> graph.addNode(new Node(1, 2, 5, 8)),
+        assertThrows(IllegalArgumentException.class, () -> graph.addNode(new Node(uuidOne, 2, 5, 8)),
                 "An IllegalArgumentException should have been thrown because the node-id is already in use");
     }
 
     @Test
     void testEdgeRemoval() {
         final Graph graph = new Graph("Test");
-        final Node nodeOne = new Node(1, 2, 3, 4);
-        final Node nodeTwo = new Node(2, 3, 4, 5);
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5);
         graph.addNode(nodeOne);
         graph.addNode(nodeTwo);
-        graph.addUndirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
+        final List<Edge> edges = graph.addUndirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
 
-        graph.removeEdge(graph.getEdgeById(1));
-        assertNull(graph.getEdgeById(1), "The edge should have been removed");
+        graph.removeEdge(graph.getEdgeById(edges.getFirst().edgeId()));
+        assertNull(graph.getEdgeById(edges.getFirst().edgeId()), "The edge should have been removed");
     }
 }

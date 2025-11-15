@@ -8,13 +8,14 @@ import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Implementation of the A* algorithm.
  */
 public class AStarAlgorithm extends AbstractShortestPath {
 
-    private final Map<Integer, Double> fScores = new HashMap<>();
+    private final Map<UUID, Double> fScores = new HashMap<>();
 
     /**
      * The default constructor.
@@ -37,19 +38,19 @@ public class AStarAlgorithm extends AbstractShortestPath {
     }
 
     @Override
-    protected void initializeStart(final Graph graph, final int start, final int goal, final Map<Integer, Double> gScore) {
+    protected void initializeStart(final Graph graph, final UUID start, final UUID goal, final Map<UUID, Double> gScore) {
         fScores.put(start, heuristic(graph, start, goal));
     }
 
     @Override
-    protected void afterRelax(final Graph graph, final int nodeId, final int goal, final double tentativeG,
-                              final Map<Integer, Double> gScore) {
+    protected void afterRelax(final Graph graph, final UUID nodeId, final UUID goal, final double tentativeG,
+                              final Map<UUID, Double> gScore) {
         final double fScore = tentativeG + heuristic(graph, nodeId, goal);
         fScores.put(nodeId, fScore);
     }
 
     @Override
-    protected double priorityScore(final int nodeId, final Map<Integer, Double> gScore) {
+    protected double priorityScore(final UUID nodeId, final Map<UUID, Double> gScore) {
         return fScores.getOrDefault(nodeId, Double.POSITIVE_INFINITY);
     }
 

@@ -6,6 +6,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
@@ -31,5 +32,5 @@ public interface PathAlgorithm {
      * @param teleportRules the {@link TeleportRules} to use
      * @return the path as a {@link List} of {@link Node}s
      */
-    List<Node> findPath(Graph graph, int start, int goal, Predicate<Edge> edgeFilter, TeleportRules teleportRules);
+    List<Node> findPath(Graph graph, UUID start, UUID goal, Predicate<Edge> edgeFilter, TeleportRules teleportRules);
 }

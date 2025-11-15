@@ -5,6 +5,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -12,6 +14,7 @@ import static org.mockito.Mockito.*;
  * Test class for the {@link SearchRegistry}.
  */
 class SearchRegistryTest {
+    private final UUID uuidOne = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
 
     @Test
     void testSelectsFirstSuitableAlgorithm() {
@@ -27,7 +30,7 @@ class SearchRegistryTest {
         registry.register(algo2);
 
         final Graph graph = new Graph("Test");
-        graph.addNode(new Node(1, 0, 0, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0));
 
         final TeleportRules rules = TeleportRules.disableTeleports();
 

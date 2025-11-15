@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -21,6 +22,20 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class AStarAlgorithmTest {
 
+    private final UUID uuidOne = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
+
+    private final UUID uuidTwo = UUID.fromString("18a6d815-2c26-4fde-8179-e74baca4bb4e");
+
+    private final UUID uuidThree = UUID.fromString("5e074931-0be1-46be-ac64-e88eb686463b");
+
+    private final UUID uuidFour = UUID.fromString("4d81b0bc-2071-4c58-ab3e-2d0217597427");
+
+    private final UUID uuidFive = UUID.fromString("fa14be01-316e-4311-8fe1-5cb38c090eb1");
+
+    private final UUID uuidSix = UUID.fromString("fe931e7e-330b-4cbc-8cbf-f6174c426652");
+
+    private final UUID uuidSeven = UUID.fromString("4151132b-097d-46ab-941b-6491ceddf6cc");
+
     private Graph graph;
 
     private AStarAlgorithm algorithm;
@@ -29,22 +44,22 @@ class AStarAlgorithmTest {
     void setUp() {
         graph = new Graph("Test");
 
-        graph.addNode(new Node(1, 0, 0, 0));
-        graph.addNode(new Node(2, 35, 15, 0));
-        graph.addNode(new Node(3, 65, 5, 0));
-        graph.addNode(new Node(4, 60, -20, 0));
-        graph.addNode(new Node(5, 35, -5, 0));
-        graph.addNode(new Node(6, 5, -25, 0));
-        graph.addNode(new Node(7, 90, -5, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0));
+        graph.addNode(new Node(uuidTwo, 35, 15, 0));
+        graph.addNode(new Node(uuidThree, 65, 5, 0));
+        graph.addNode(new Node(uuidFour, 60, -20, 0));
+        graph.addNode(new Node(uuidFive, 35, -5, 0));
+        graph.addNode(new Node(uuidSix, 5, -25, 0));
+        graph.addNode(new Node(uuidSeven, 90, -5, 0));
 
-        graph.addUndirectedEdge(1, 2, 40, Set.of(EdgeFlag.BLOCKED));
-        graph.addUndirectedEdge(1, 6, 40);
-        graph.addDirectedEdge(1, 5, 40);
-        graph.addUndirectedEdge(2, 3, 40);
-        graph.addUndirectedEdge(3, 7, 40);
-        graph.addUndirectedEdge(7, 4, 40);
-        graph.addUndirectedEdge(4, 5, 40);
-        graph.addUndirectedEdge(5, 6, 40);
+        graph.addUndirectedEdge(uuidOne, uuidTwo, 40, Set.of(EdgeFlag.BLOCKED));
+        graph.addUndirectedEdge(uuidOne, uuidSix, 40);
+        graph.addDirectedEdge(uuidOne, uuidFive, 40);
+        graph.addUndirectedEdge(uuidTwo, uuidThree, 40);
+        graph.addUndirectedEdge(uuidThree, uuidSeven, 40);
+        graph.addUndirectedEdge(uuidSeven, uuidFour, 40);
+        graph.addUndirectedEdge(uuidFour, uuidFive, 40);
+        graph.addUndirectedEdge(uuidFive, uuidSix, 40);
 
         algorithm = new AStarAlgorithm();
     }
@@ -52,7 +67,7 @@ class AStarAlgorithmTest {
     @Test
     void testSuitability() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final Warp spawn = new Warp("Spawn", 1, 1.0, true);
+        final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
         final TeleportRules tpAllowed = new TeleportRules(true, true, List.of(spawn));
 
         assertTrue(algorithm.suitable(graph, tpNotAllowed), "Algorithm should be suitable");
@@ -62,12 +77,12 @@ class AStarAlgorithmTest {
     @Test
     void testAStarPathFinding() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, null, tpNotAllowed);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, uuidSeven, null, tpNotAllowed);
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
-        final List<Integer> expected = List.of(1, 2, 3, 7);
+        final List<UUID> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
+        final List<UUID> expected = List.of(uuidOne, uuidTwo, uuidThree, uuidSeven);
 
         assertIterableEquals(expected, actual, "The path should match expected");
     }
@@ -77,12 +92,12 @@ class AStarAlgorithmTest {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
         final Predicate<Edge> filterWithoutBlocked = edge -> !edge.flags().contains(EdgeFlag.BLOCKED);
 
-        final List<Node> pathNodes = algorithm.findPath(graph, 1, 7, filterWithoutBlocked, tpNotAllowed);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, uuidSeven, filterWithoutBlocked, tpNotAllowed);
 
         assertNotNull(pathNodes, "The path should not be null");
 
-        final List<Integer> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
-        final List<Integer> expected = List.of(1, 5, 4, 7);
+        final List<UUID> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
+        final List<UUID> expected = List.of(uuidOne, uuidFive, uuidFour, uuidSeven);
 
         assertIterableEquals(expected, actual, "The path should match expected");
     }

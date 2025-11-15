@@ -5,12 +5,12 @@ package com.github.roleplaycauldron.brotkrumen.graph;
  */
 public enum EdgeFlag {
     /**
-     * The edge is a directed edge, from node a to b
+     * The edge is a directed edge, from node a to b.
      */
     DIRECTED,
 
     /**
-     * The edge is an undirected edge, from node a to b and from b to a
+     * The edge is an undirected edge, from node a to b and from b to a.
      */
     UNDIRECTED,
 
