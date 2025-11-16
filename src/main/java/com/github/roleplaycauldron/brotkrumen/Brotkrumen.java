@@ -1,4 +1,4 @@
-package brotkrumen;
+package com.github.roleplaycauldron.brotkrumen;
 
 import org.bukkit.plugin.java.JavaPlugin;
 

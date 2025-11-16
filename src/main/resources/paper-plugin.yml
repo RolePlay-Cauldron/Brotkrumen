@@ -4,4 +4,4 @@ version: ${brotkrumen.version}
 api-version: '${minecraft.api.version}'
 description: ${project.description}
 website: 'https://github.com/RolePlay-Cauldron/Brotkrumen'
-authors: [ Lorias-Jak ]
+authors: [ Lorias-Jak, Velyn-N ]
