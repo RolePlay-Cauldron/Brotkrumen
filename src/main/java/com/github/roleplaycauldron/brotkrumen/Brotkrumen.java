@@ -7,6 +7,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualiser;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumSet;
@@ -58,5 +59,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
         visualiser.updateViewerFor(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onQuit(final PlayerQuitEvent event) {
+        visualiser.hideFor(event.getPlayer());
     }
 }
