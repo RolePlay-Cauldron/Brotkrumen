@@ -6,6 +6,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Transformation;
@@ -25,6 +26,12 @@ public class BlockDisplayVisualiser implements NodeLayer {
 
     private static final float DISPLAY_HALF_EXTENT = DISPLAY_SCALE / 2.0f;
 
+    private static final double VIEW_DISTANCE = 48.0D;
+
+    private static final double VIEW_DISTANCE_SQUARED = VIEW_DISTANCE * VIEW_DISTANCE;
+
+    private static final long VISIBILITY_CHECK_PERIOD_TICKS = 10L;
+
     private final Brotkrumen plugin;
 
     private final Collection<Node> nodes;
@@ -37,6 +44,8 @@ public class BlockDisplayVisualiser implements NodeLayer {
 
     private int rotationTaskId = -1;
 
+    private int visibilityTaskId = -1;
+
     public BlockDisplayVisualiser(final Brotkrumen plugin, final Collection<Node> nodes, final Collection<Edge> edges) {
         this.plugin = plugin;
         this.nodes = nodes;
@@ -46,11 +55,15 @@ public class BlockDisplayVisualiser implements NodeLayer {
             plugin.getLogger().warning("No edges configured for BlockDisplayVisualiser graph.");
         }
 
-        spawnAll();
+        startVisibilityTask();
         startRotationTask();
     }
 
     private void spawnAll() {
+        if (!displays.isEmpty()) {
+            return;
+        }
+
         for (final Node node : nodes) {
             final Location loc = node.toCenterLocation();
             if (loc.getWorld() == null) {
@@ -70,9 +83,74 @@ public class BlockDisplayVisualiser implements NodeLayer {
             });
             displays.put(node.graphId(), display);
         }
+    }
 
-        for (final Player p : Bukkit.getOnlinePlayers()) {
-            hideFor(p);
+    private void despawnAll() {
+        for (final BlockDisplay display : displays.values()) {
+            if (display.isValid()) {
+                display.remove();
+            }
+        }
+
+        displays.clear();
+    }
+
+    private void startVisibilityTask() {
+        visibilityTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
+                plugin,
+                this::updateAllViewers,
+                0L,
+                VISIBILITY_CHECK_PERIOD_TICKS
+        );
+    }
+
+    private void updateAllViewers() {
+        for (final Player player : Bukkit.getOnlinePlayers()) {
+            updateViewerFor(player);
+        }
+
+        viewers.removeIf(viewerId -> Bukkit.getPlayer(viewerId) == null);
+
+        if (viewers.isEmpty()) {
+            despawnAll();
+        }
+    }
+
+    private boolean isInViewRange(final Player player) {
+        final World playerWorld = player.getWorld();
+
+        for (final Node node : nodes) {
+            if (!node.worldId().equals(playerWorld.getUID())) {
+                continue;
+            }
+
+            final double dx = player.getLocation().getX() - (node.x() + 0.5D);
+            final double dy = player.getLocation().getY() - (node.y() + 0.5D);
+            final double dz = player.getLocation().getZ() - (node.z() + 0.5D);
+            final double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
+
+            if (distanceSquared <= VIEW_DISTANCE_SQUARED) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void updateViewerFor(final Player player) {
+        final boolean shouldSee = isInViewRange(player);
+        final boolean isViewer = viewers.contains(player.getUniqueId());
+
+        if (shouldSee && !isViewer) {
+            if (displays.isEmpty()) {
+                spawnAll();
+            }
+            showFor(player);
+            return;
+        }
+
+        if (!shouldSee && isViewer) {
+            hideFor(player);
         }
     }
 
@@ -88,7 +166,9 @@ public class BlockDisplayVisualiser implements NodeLayer {
                         final float rad = (float) Math.toRadians(angle);
 
                         for (final BlockDisplay display : displays.values()) {
-                            if (!display.isValid()) continue;
+                            if (!display.isValid()) {
+                                continue;
+                            }
                             final Transformation t = display.getTransformation();
                             final Quaternionf left = new Quaternionf().rotateY(rad);
 
@@ -111,7 +191,9 @@ public class BlockDisplayVisualiser implements NodeLayer {
         viewers.add(player.getUniqueId());
 
         for (final BlockDisplay display : displays.values()) {
-            if (!display.isValid()) continue;
+            if (!display.isValid()) {
+                continue;
+            }
             player.showEntity(plugin, display);
         }
     }
@@ -121,7 +203,9 @@ public class BlockDisplayVisualiser implements NodeLayer {
         viewers.remove(player.getUniqueId());
 
         for (final BlockDisplay display : displays.values()) {
-            if (!display.isValid()) continue;
+            if (!display.isValid()) {
+                continue;
+            }
             player.hideEntity(plugin, display);
         }
     }
@@ -133,11 +217,12 @@ public class BlockDisplayVisualiser implements NodeLayer {
             rotationTaskId = -1;
         }
 
-        for (final BlockDisplay display : displays.values()) {
-            if (display.isValid()) display.remove();
+        if (visibilityTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(visibilityTaskId);
+            visibilityTaskId = -1;
         }
 
-        displays.clear();
+        despawnAll();
         viewers.clear();
     }
 

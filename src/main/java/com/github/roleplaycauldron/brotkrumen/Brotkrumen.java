@@ -57,6 +57,6 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
-        visualiser.showFor(event.getPlayer());
+        visualiser.updateViewerFor(event.getPlayer());
     }
 }
