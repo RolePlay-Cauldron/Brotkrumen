@@ -10,6 +10,7 @@ import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Transformation;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,6 +20,10 @@ import java.util.Set;
 import java.util.UUID;
 
 public class BlockDisplayVisualiser implements NodeLayer {
+
+    private static final float DISPLAY_SCALE = 0.4f;
+
+    private static final float DISPLAY_HALF_EXTENT = DISPLAY_SCALE / 2.0f;
 
     private final Brotkrumen plugin;
 
@@ -37,6 +42,10 @@ public class BlockDisplayVisualiser implements NodeLayer {
         this.nodes = nodes;
         this.edges = edges;
 
+        if (edges.isEmpty()) {
+            plugin.getLogger().warning("No edges configured for BlockDisplayVisualiser graph.");
+        }
+
         spawnAll();
         startRotationTask();
     }
@@ -52,6 +61,12 @@ public class BlockDisplayVisualiser implements NodeLayer {
             final BlockDisplay display = loc.getWorld().spawn(loc, BlockDisplay.class, entity -> {
                 entity.setBlock(Material.COAL_BLOCK.createBlockData());
                 entity.setPersistent(false);
+                entity.setTransformation(new Transformation(
+                        new Vector3f(-DISPLAY_HALF_EXTENT, -DISPLAY_HALF_EXTENT, -DISPLAY_HALF_EXTENT),
+                        new Quaternionf(),
+                        new Vector3f(DISPLAY_SCALE, DISPLAY_SCALE, DISPLAY_SCALE),
+                        new Quaternionf()
+                ));
             });
             displays.put(node.graphId(), display);
         }
