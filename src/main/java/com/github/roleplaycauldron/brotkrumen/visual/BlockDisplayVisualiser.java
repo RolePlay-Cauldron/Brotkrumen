@@ -24,6 +24,12 @@ public class BlockDisplayVisualiser implements NodeLayer {
 
     private static final float DISPLAY_SCALE = 0.4f;
 
+    private static final float EDGE_THICKNESS = 0.15f;
+
+    private static final double EDGE_NODE_CLEARANCE = 0.35D;
+
+    private static final double MIN_EDGE_LENGTH = 1.0D;
+
     private static final float DISPLAY_HALF_EXTENT = DISPLAY_SCALE / 2.0f;
 
     private static final double VIEW_DISTANCE = 48.0D;
@@ -38,7 +44,11 @@ public class BlockDisplayVisualiser implements NodeLayer {
 
     private final Collection<Edge> edges;
 
-    private final Map<UUID, BlockDisplay> displays = new HashMap<>();
+    private final Map<UUID, Node> nodesById = new HashMap<>();
+
+    private final Map<UUID, BlockDisplay> nodeDisplays = new HashMap<>();
+
+    private final Map<UUID, BlockDisplay> edgeDisplays = new HashMap<>();
 
     private final Set<UUID> viewers = new HashSet<>();
 
@@ -51,6 +61,10 @@ public class BlockDisplayVisualiser implements NodeLayer {
         this.nodes = nodes;
         this.edges = edges;
 
+        for (final Node node : nodes) {
+            nodesById.put(node.graphId(), node);
+        }
+
         if (edges.isEmpty()) {
             plugin.getLogger().warning("No edges configured for BlockDisplayVisualiser graph.");
         }
@@ -60,7 +74,7 @@ public class BlockDisplayVisualiser implements NodeLayer {
     }
 
     private void spawnAll() {
-        if (!displays.isEmpty()) {
+        if (!nodeDisplays.isEmpty() || !edgeDisplays.isEmpty()) {
             return;
         }
 
@@ -81,18 +95,88 @@ public class BlockDisplayVisualiser implements NodeLayer {
                         new Quaternionf()
                 ));
             });
-            displays.put(node.graphId(), display);
+            nodeDisplays.put(node.graphId(), display);
+        }
+
+        for (final Edge edge : edges) {
+            final Node source = nodesById.get(edge.source());
+            final Node target = nodesById.get(edge.target());
+
+            if (source == null || target == null) {
+                plugin.getLogger().warning("Edge references unknown node: " + edge.edgeId());
+                continue;
+            }
+
+            if (!source.worldId().equals(target.worldId())) {
+                plugin.getLogger().warning("Edge spans worlds and cannot be visualised: " + edge.edgeId());
+                continue;
+            }
+
+            final World world = Bukkit.getWorld(source.worldId());
+            if (world == null) {
+                plugin.getLogger().warning("Edge world is unloaded or invalid: " + edge.edgeId());
+                continue;
+            }
+
+            final Vector3f sourceCenter = new Vector3f(source.x() + 0.5f, source.y() + 0.5f, source.z() + 0.5f);
+            final Vector3f targetCenter = new Vector3f(target.x() + 0.5f, target.y() + 0.5f, target.z() + 0.5f);
+            final Vector3f direction = new Vector3f(targetCenter).sub(sourceCenter);
+            final double distance = direction.length();
+
+            if (distance == 0.0D) {
+                continue;
+            }
+
+            final double maxLength = distance - (2.0D * EDGE_NODE_CLEARANCE);
+            if (maxLength <= 0.0D) {
+                continue;
+            }
+
+            final double displayLength = Math.max(MIN_EDGE_LENGTH, Math.min(maxLength, distance));
+            final double startOffset = (distance - displayLength) / 2.0D;
+            direction.normalize();
+
+            final Vector3f displayStart = new Vector3f(sourceCenter)
+                    .add(new Vector3f(direction).mul((float) startOffset));
+
+            final Location displayLoc = new Location(
+                    world,
+                    displayStart.x,
+                    displayStart.y,
+                    displayStart.z
+            );
+
+            final float renderedLength = (float) displayLength;
+            final Quaternionf rotation = new Quaternionf().rotateTo(0.0f, 0.0f, 1.0f, direction.x, direction.y, direction.z);
+            final BlockDisplay edgeDisplay = world.spawn(displayLoc, BlockDisplay.class, entity -> {
+                entity.setBlock(Material.GLASS_PANE.createBlockData());
+                entity.setPersistent(false);
+                entity.setTransformation(new Transformation(
+                        new Vector3f(-EDGE_THICKNESS / 2.0f, -EDGE_THICKNESS / 2.0f, 0.0f),
+                        rotation,
+                        new Vector3f(EDGE_THICKNESS, EDGE_THICKNESS, renderedLength),
+                        new Quaternionf()
+                ));
+            });
+            edgeDisplays.put(edge.edgeId(), edgeDisplay);
         }
     }
 
     private void despawnAll() {
-        for (final BlockDisplay display : displays.values()) {
+        for (final BlockDisplay display : nodeDisplays.values()) {
             if (display.isValid()) {
                 display.remove();
             }
         }
 
-        displays.clear();
+        for (final BlockDisplay display : edgeDisplays.values()) {
+            if (display.isValid()) {
+                display.remove();
+            }
+        }
+
+        nodeDisplays.clear();
+        edgeDisplays.clear();
     }
 
     private void startVisibilityTask() {
@@ -142,7 +226,7 @@ public class BlockDisplayVisualiser implements NodeLayer {
         final boolean isViewer = viewers.contains(player.getUniqueId());
 
         if (shouldSee && !isViewer) {
-            if (displays.isEmpty()) {
+            if (nodeDisplays.isEmpty() && edgeDisplays.isEmpty()) {
                 spawnAll();
             }
             showFor(player);
@@ -165,7 +249,7 @@ public class BlockDisplayVisualiser implements NodeLayer {
                         angle += 5f;
                         final float rad = (float) Math.toRadians(angle);
 
-                        for (final BlockDisplay display : displays.values()) {
+                        for (final BlockDisplay display : nodeDisplays.values()) {
                             if (!display.isValid()) {
                                 continue;
                             }
@@ -190,7 +274,14 @@ public class BlockDisplayVisualiser implements NodeLayer {
     public void showFor(final Player player) {
         viewers.add(player.getUniqueId());
 
-        for (final BlockDisplay display : displays.values()) {
+        for (final BlockDisplay display : nodeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.showEntity(plugin, display);
+        }
+
+        for (final BlockDisplay display : edgeDisplays.values()) {
             if (!display.isValid()) {
                 continue;
             }
@@ -202,7 +293,14 @@ public class BlockDisplayVisualiser implements NodeLayer {
     public void hideFor(final Player player) {
         viewers.remove(player.getUniqueId());
 
-        for (final BlockDisplay display : displays.values()) {
+        for (final BlockDisplay display : nodeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.hideEntity(plugin, display);
+        }
+
+        for (final BlockDisplay display : edgeDisplays.values()) {
             if (!display.isValid()) {
                 continue;
             }
