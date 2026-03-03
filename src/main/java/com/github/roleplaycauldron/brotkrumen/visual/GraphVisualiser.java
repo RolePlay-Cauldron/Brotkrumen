@@ -2,7 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.visual;
 
 import org.bukkit.entity.Player;
 
-public interface NodeLayer {
+public interface GraphVisualiser {
 
     void showFor(Player player);
 

@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class BlockDisplayVisualiser implements NodeLayer {
+public class BlockDisplayVisualiser implements GraphVisualiser {
 
     private static final float DISPLAY_SCALE = 0.4f;
 
@@ -77,9 +77,7 @@ public class BlockDisplayVisualiser implements NodeLayer {
     }
 
     private double spawnDistanceSquared() {
-        final int chunkDistance = Math.max(2, Bukkit.getViewDistance());
-        final double spawnDistance = (chunkDistance * 16.0D) + SPAWN_DISTANCE_BUFFER;
-        return spawnDistance * spawnDistance;
+        return VIEW_DISTANCE * SPAWN_DISTANCE_BUFFER;
     }
 
     private void updateSpawnedDisplays() {
@@ -269,7 +267,7 @@ public class BlockDisplayVisualiser implements NodeLayer {
                 entity -> entity instanceof BlockDisplay && entity.getScoreboardTags().contains(markerTag)
         );
         for (final Entity entity : nearbyEntities) {
-            if (entity instanceof BlockDisplay blockDisplay && blockDisplay.isValid()) {
+            if (entity instanceof final BlockDisplay blockDisplay && blockDisplay.isValid()) {
                 return blockDisplay;
             }
         }
