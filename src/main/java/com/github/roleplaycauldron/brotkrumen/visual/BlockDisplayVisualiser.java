@@ -3,6 +3,8 @@ package com.github.roleplaycauldron.brotkrumen.visual;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
+import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -21,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class BlockDisplayVisualiser implements GraphVisualiser {
+public class BlockDisplayVisualiser extends GraphVisualiser {
 
     private static final float DISPLAY_SCALE = 0.4f;
 
@@ -33,19 +35,17 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
 
     private static final float DISPLAY_HALF_EXTENT = DISPLAY_SCALE / 2.0f;
 
-    private static final double VIEW_DISTANCE = 48.0D;
+    private static final double VIEW_DISTANCE = 16.0D;
 
-    private static final double VIEW_DISTANCE_SQUARED = VIEW_DISTANCE * VIEW_DISTANCE;
+    private static final double VIEW_DISTANCE_SQUARED = GraphSpatial.radiusSquared(VIEW_DISTANCE);
 
     private static final double SPAWN_DISTANCE_BUFFER = 16.0D;
 
     private static final long VISIBILITY_CHECK_PERIOD_TICKS = 10L;
 
+    private final WrappedLogger log;
+
     private final Brotkrumen plugin;
-
-    private final Collection<Node> nodes;
-
-    private final Collection<Edge> edges;
 
     private final Map<UUID, Node> nodesById = new HashMap<>();
 
@@ -53,54 +53,103 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
 
     private final Map<UUID, BlockDisplay> edgeDisplays = new HashMap<>();
 
-    private final Set<UUID> viewers = new HashSet<>();
-
     private int rotationTaskId = -1;
 
     private int visibilityTaskId = -1;
 
-    public BlockDisplayVisualiser(final Brotkrumen plugin, final Collection<Node> nodes, final Collection<Edge> edges) {
+    public BlockDisplayVisualiser(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                  final Collection<Node> nodes, final Collection<Edge> edges) {
+        super(loggerFactory, nodes, edges);
+        this.log = loggerFactory.create(BlockDisplayVisualiser.class);
         this.plugin = plugin;
-        this.nodes = nodes;
-        this.edges = edges;
 
         for (final Node node : nodes) {
             nodesById.put(node.graphId(), node);
         }
 
         if (edges.isEmpty()) {
-            plugin.getLogger().warning("No edges configured for BlockDisplayVisualiser graph.");
+            log.warn("No edges configured for BlockDisplayVisualiser graph.");
         }
 
         startVisibilityTask();
-        startRotationTask();
     }
 
-    private double spawnDistanceSquared() {
-        return VIEW_DISTANCE * SPAWN_DISTANCE_BUFFER;
+    @Override
+    public void showFor(final Player player) {
+        viewers.add(player.getUniqueId());
+
+        for (final BlockDisplay display : nodeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.showEntity(plugin, display);
+        }
+
+        for (final BlockDisplay display : edgeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.showEntity(plugin, display);
+        }
+    }
+
+    @Override
+    public void hideFor(final Player player) {
+        viewers.remove(player.getUniqueId());
+
+        for (final BlockDisplay display : nodeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.hideEntity(plugin, display);
+        }
+
+        for (final BlockDisplay display : edgeDisplays.values()) {
+            if (!display.isValid()) {
+                continue;
+            }
+            player.hideEntity(plugin, display);
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        if (rotationTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(rotationTaskId);
+            rotationTaskId = -1;
+        }
+
+        if (visibilityTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(visibilityTaskId);
+            visibilityTaskId = -1;
+        }
+
+        despawnAll();
+        viewers.clear();
+    }
+
+    @Override
+    public boolean isViewer(final Player player) {
+        return viewers.contains(player.getUniqueId());
     }
 
     private void updateSpawnedDisplays() {
         final Map<UUID, Node> nodesToSpawn = new HashMap<>();
-        final double spawnDistanceSquared = spawnDistanceSquared();
+        final double spawnRadiusSq = GraphSpatial.spawnRadiusSquared(VIEW_DISTANCE, SPAWN_DISTANCE_BUFFER);
 
-        for (final Player player : Bukkit.getOnlinePlayers()) {
-            final World playerWorld = player.getWorld();
-            final double playerX = player.getLocation().getX();
-            final double playerY = player.getLocation().getY();
-            final double playerZ = player.getLocation().getZ();
+        for (final UUID uuid : new HashSet<>(viewers)) {
+            final Player player = Bukkit.getPlayer(uuid);
+            if (player == null) {
+                viewers.remove(uuid);
+                continue;
+            }
 
-            for (final Node node : nodes) {
-                if (!node.worldId().equals(playerWorld.getUID())) {
-                    continue;
-                }
-
-                final double dx = playerX - (node.x() + 0.5D);
-                final double dy = playerY - (node.y() + 0.5D);
-                final double dz = playerZ - (node.z() + 0.5D);
-                final double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
-                if (distanceSquared <= spawnDistanceSquared) {
-                    nodesToSpawn.put(node.graphId(), node);
+            final Location loc = player.getLocation();
+            final Set<UUID> nearby = GraphSpatial.nodesWithin(nodes, loc, spawnRadiusSq);
+            for (final UUID nodeId : nearby) {
+                final Node node = nodesById.get(nodeId);
+                if (node != null) {
+                    nodesToSpawn.put(nodeId, node);
                 }
             }
         }
@@ -130,7 +179,7 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
     private void spawnNodeDisplay(final Node node) {
         final Location loc = node.toCenterLocation();
         if (loc.getWorld() == null) {
-            plugin.getLogger().warning("Node is in an unloaded or invalid world: " + node.worldId());
+            log.warn("Node is in an unloaded or invalid world: " + node.worldId());
             return;
         }
 
@@ -188,18 +237,18 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
         final Node target = nodesById.get(edge.target());
 
         if (source == null || target == null) {
-            plugin.getLogger().warning("Edge references unknown node: " + edge.edgeId());
+            log.warn("Edge references unknown node: " + edge.edgeId());
             return;
         }
 
         if (!source.worldId().equals(target.worldId())) {
-            plugin.getLogger().warning("Edge spans worlds and cannot be visualised: " + edge.edgeId());
+            log.warn("Edge spans worlds and cannot be visualised: " + edge.edgeId());
             return;
         }
 
         final World world = Bukkit.getWorld(source.worldId());
         if (world == null) {
-            plugin.getLogger().warning("Edge world is unloaded or invalid: " + edge.edgeId());
+            log.warn("Edge world is unloaded or invalid: " + edge.edgeId());
             return;
         }
 
@@ -241,7 +290,7 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
         final float renderedLength = (float) displayLength;
         final Quaternionf rotation = new Quaternionf().rotateTo(0.0f, 0.0f, 1.0f, direction.x, direction.y, direction.z);
         final BlockDisplay edgeDisplay = world.spawn(displayLoc, BlockDisplay.class, entity -> {
-            entity.setBlock(Material.GLASS_PANE.createBlockData());
+            entity.setBlock(Material.WHITE_STAINED_GLASS_PANE.createBlockData());
             entity.setPersistent(false);
             entity.addScoreboardTag(markerTag);
             entity.setTransformation(new Transformation(
@@ -310,141 +359,50 @@ public class BlockDisplayVisualiser implements GraphVisualiser {
 
     private void updateAllViewers() {
         updateSpawnedDisplays();
-
-        for (final Player player : Bukkit.getOnlinePlayers()) {
-            updateViewerFor(player);
+        for (final UUID uuid : new HashSet<>(viewers)) {
+            final Player player = Bukkit.getPlayer(uuid);
+            if (player == null) {
+                viewers.remove(uuid);
+                continue;
+            }
+            updateVisibilityFor(player);
         }
-
-        viewers.removeIf(viewerId -> Bukkit.getPlayer(viewerId) == null);
 
         if (Bukkit.getOnlinePlayers().isEmpty()) {
             despawnAll();
         }
     }
 
-    private boolean isInViewRange(final Player player) {
-        final World playerWorld = player.getWorld();
-
-        for (final Node node : nodes) {
-            if (!node.worldId().equals(playerWorld.getUID())) {
-                continue;
-            }
-
-            final double dx = player.getLocation().getX() - (node.x() + 0.5D);
-            final double dy = player.getLocation().getY() - (node.y() + 0.5D);
-            final double dz = player.getLocation().getZ() - (node.z() + 0.5D);
-            final double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
-
-            if (distanceSquared <= VIEW_DISTANCE_SQUARED) {
-                return true;
-            }
-        }
-
-        return false;
+    private Set<UUID> visibleNodesFor(final Player player) {
+        final Location loc = player.getLocation();
+        return GraphSpatial.nodesWithin(nodes, loc, VIEW_DISTANCE_SQUARED);
     }
 
-    public void updateViewerFor(final Player player) {
-        final boolean shouldSee = isInViewRange(player);
-        final boolean isViewer = viewers.contains(player.getUniqueId());
+    private void updateVisibilityFor(final Player player) {
+        final Set<UUID> visibleNodes = visibleNodesFor(player);
 
-        if (shouldSee && !isViewer) {
-            showFor(player);
-            return;
-        }
+        for (final Map.Entry<UUID, BlockDisplay> e : nodeDisplays.entrySet()) {
+            final UUID nodeId = e.getKey();
+            final BlockDisplay display = e.getValue();
+            if (!display.isValid()) continue;
 
-        if (!shouldSee && isViewer) {
-            hideFor(player);
-        }
-    }
-
-    private void startRotationTask() {
-        rotationTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
-                plugin,
-                new Runnable() {
-                    private float angle = 0f;
-
-                    @Override
-                    public void run() {
-                        angle += 5f;
-                        final float rad = (float) Math.toRadians(angle);
-
-                        for (final BlockDisplay display : nodeDisplays.values()) {
-                            if (!display.isValid()) {
-                                continue;
-                            }
-                            final Transformation t = display.getTransformation();
-                            final Quaternionf left = new Quaternionf().rotateY(rad);
-
-                            display.setTransformation(new Transformation(
-                                    t.getTranslation(),
-                                    left,
-                                    t.getScale(),
-                                    t.getRightRotation()
-                            ));
-                        }
-                    }
-                },
-                0L,
-                2L
-        );
-    }
-
-    @Override
-    public void showFor(final Player player) {
-        viewers.add(player.getUniqueId());
-
-        for (final BlockDisplay display : nodeDisplays.values()) {
-            if (!display.isValid()) {
-                continue;
+            if (visibleNodes.contains(nodeId)) {
+                player.showEntity(plugin, display);
+            } else {
+                player.hideEntity(plugin, display);
             }
-            player.showEntity(plugin, display);
         }
 
-        for (final BlockDisplay display : edgeDisplays.values()) {
-            if (!display.isValid()) {
-                continue;
+        for (final Edge edge : edges) {
+            final BlockDisplay display = edgeDisplays.get(edge.edgeId());
+            if (display == null || !display.isValid()) continue;
+
+            final boolean show = visibleNodes.contains(edge.source()) && visibleNodes.contains(edge.target());
+            if (show) {
+                player.showEntity(plugin, display);
+            } else {
+                player.hideEntity(plugin, display);
             }
-            player.showEntity(plugin, display);
         }
-    }
-
-    @Override
-    public void hideFor(final Player player) {
-        viewers.remove(player.getUniqueId());
-
-        for (final BlockDisplay display : nodeDisplays.values()) {
-            if (!display.isValid()) {
-                continue;
-            }
-            player.hideEntity(plugin, display);
-        }
-
-        for (final BlockDisplay display : edgeDisplays.values()) {
-            if (!display.isValid()) {
-                continue;
-            }
-            player.hideEntity(plugin, display);
-        }
-    }
-
-    @Override
-    public void shutdown() {
-        if (rotationTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(rotationTaskId);
-            rotationTaskId = -1;
-        }
-
-        if (visibilityTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(visibilityTaskId);
-            visibilityTaskId = -1;
-        }
-
-        despawnAll();
-        viewers.clear();
-    }
-
-    @Override
-    public boolean isViewer(final Player player) {
-        return viewers.contains(player.getUniqueId());
     }
 }
