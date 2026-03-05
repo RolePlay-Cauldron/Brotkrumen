@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualiser;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualiserRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import org.bukkit.event.EventHandler;
@@ -20,6 +21,8 @@ import java.util.EnumSet;
 public class Brotkrumen extends JavaPlugin implements Listener {
 
     private BlockDisplayVisualiser visualiser;
+
+    private VisualiserRegistry visualiserRegistry;
 
     /**
      * Default constructor.
@@ -50,6 +53,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graph.addUndirectedEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graph.addUndirectedEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
+        final VisualiserRegistry reg = new VisualiserRegistry(this);
         visualiser = new BlockDisplayVisualiser(this, loggerFactory, graph.getNodes(), graph.getEdges());
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -62,6 +66,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
+        visualiserRegistry.register(event.getPlayer().getUniqueId(), visualiser);
         visualiser.showFor(event.getPlayer());
     }
 
