@@ -3,8 +3,9 @@ package com.github.roleplaycauldron.brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
-import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualiser;
-import com.github.roleplaycauldron.brotkrumen.visual.VisualiserRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import org.bukkit.event.EventHandler;
@@ -18,11 +19,14 @@ import java.util.EnumSet;
 /**
  * Starting point of the plugin.
  */
+@SuppressWarnings("PMD")
 public class Brotkrumen extends JavaPlugin implements Listener {
 
-    private BlockDisplayVisualiser visualiser;
+    private VisualizerRegistry reg;
 
-    private VisualiserRegistry visualiserRegistry;
+    private LoggerFactory loggerFactory;
+
+    private Graph graph;
 
     /**
      * Default constructor.
@@ -33,10 +37,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        final LoggerFactory loggerFactory = new LoggerFactory(getSLF4JLogger());
+        loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
         log.info("brotkrumen.Brotkrumen enabled");
-        final Graph graph = new Graph("TestGraph");
+        graph = new Graph("TestGraph");
 
         final Node nodeA = graph.addNode(new Node(null, 130, 71, -110, getServer().getWorld("world").getUID()));
         final Node nodeB = graph.addNode(new Node(null, 140, 78, -125, getServer().getWorld("world").getUID()));
@@ -53,25 +57,26 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graph.addUndirectedEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graph.addUndirectedEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
-        final VisualiserRegistry reg = new VisualiserRegistry(this);
-        visualiser = new BlockDisplayVisualiser(this, loggerFactory, graph.getNodes(), graph.getEdges());
+        this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
+        reg.startVisibilityUpdates();
 
         getServer().getPluginManager().registerEvents(this, this);
     }
 
     @Override
     public void onDisable() {
-        visualiser.shutdown();
+        reg.stopVisibilityUpdates();
     }
 
     @EventHandler
-    public void onJoin(final PlayerJoinEvent event) {
-        visualiserRegistry.register(event.getPlayer().getUniqueId(), visualiser);
-        visualiser.showFor(event.getPlayer());
+    public void playerJoin(final PlayerJoinEvent event) {
+        final BlockDisplayVisualizer visualiser = new BlockDisplayVisualizer(this, loggerFactory, graph,
+                event.getPlayer().getUniqueId(), VisualMode.EDIT);
+        reg.register(event.getPlayer().getUniqueId(), visualiser);
     }
 
     @EventHandler
-    public void onQuit(final PlayerQuitEvent event) {
-        visualiser.hideFor(event.getPlayer());
+    public void playerQuit(final PlayerQuitEvent event) {
+        reg.unregister(event.getPlayer().getUniqueId());
     }
 }
