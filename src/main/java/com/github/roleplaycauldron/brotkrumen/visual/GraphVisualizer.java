@@ -75,7 +75,7 @@ public abstract class GraphVisualizer {
      * @param node the {@code Node} whose center is used for distance calculation
      * @return the squared distance between the specified point and the center of the node
      */
-    public double nodeDistanceSquared(final double x, final double y, final double z, final Node node) {
+    protected double nodeDistanceSquared(final double x, final double y, final double z, final Node node) {
         final double dx = x - (node.x() + 0.5D);
         final double dy = y - (node.y() + 0.5D);
         final double dz = z - (node.z() + 0.5D);
@@ -91,7 +91,7 @@ public abstract class GraphVisualizer {
      * @param radiusSq the squared radius within which nodes will be searched
      * @return a {@code Set} of {@link UUID}s representing the graph IDs of the nodes within the specified radius
      */
-    public Set<UUID> nodesWithin(final Location location, final double radiusSq) {
+    protected Set<UUID> nodesWithin(final Location location, final double radiusSq) {
         final double xLoc = location.getX();
         final double yLoc = location.getY();
         final double zLoc = location.getZ();
@@ -119,7 +119,7 @@ public abstract class GraphVisualizer {
      * @param buffer       an additional buffer distance to be added to the view distance
      * @return the squared spawn radius calculated as (viewDistance + buffer)²
      */
-    public double spawnRadiusSquared(final double viewDistance, final double buffer) {
+    protected double spawnRadiusSquared(final double viewDistance, final double buffer) {
         final double r = viewDistance + buffer;
         return r * r;
     }

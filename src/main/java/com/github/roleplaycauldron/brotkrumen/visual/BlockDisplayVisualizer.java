@@ -276,9 +276,13 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
             }
         }
 
+        final double spawnRadiusSq = spawnRadiusSquared(VIEW_DISTANCE, SPAWN_DISTANCE_BUFFER);
         final List<Node> displayNodes = new ArrayList<>();
         for (int i = pathNodeIndex; i < Math.min(allNodes.size(), pathNodeIndex + PATH_NODE_WINDOW_SIZE); i++) {
-            displayNodes.add(allNodes.get(i));
+            final Node node = allNodes.get(i);
+            if (nodeDistanceSquared(locX, locY, locZ, node) <= spawnRadiusSq) {
+                displayNodes.add(node);
+            }
         }
 
         final List<Edge> visibleEdges = edgesBetweenNeighbours(displayNodes);
@@ -430,8 +434,8 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
             return;
         }
 
-        final Vector3f sourceCenter = new Vector3f(source.x() + 0.5f, source.y() + 0.5f, source.z() + 0.5f);
-        final Vector3f targetCenter = new Vector3f(target.x() + 0.5f, target.y() + 0.5f, target.z() + 0.5f);
+        final Vector3f sourceCenter = new Vector3f((float) source.x() + 0.5f, (float) source.y() + 0.5f, (float) source.z() + 0.5f);
+        final Vector3f targetCenter = new Vector3f((float) target.x() + 0.5f, (float) target.y() + 0.5f, (float) target.z() + 0.5f);
         final Vector3f direction = new Vector3f(targetCenter).sub(sourceCenter);
         final float distance = direction.length();
 

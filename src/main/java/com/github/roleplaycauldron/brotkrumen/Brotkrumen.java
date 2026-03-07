@@ -120,7 +120,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //        reg.register(event.getPlayer().getUniqueId(), visualiserOne);
 
         final BlockDisplayVisualizer visualiserTwo = new BlockDisplayVisualizer(this, loggerFactory, graphTwo,
-                event.getPlayer().getUniqueId(), VisualMode.PATH_FINDER, graphTwoPath);
+                event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
         reg.register(event.getPlayer().getUniqueId(), visualiserTwo);
     }
 
