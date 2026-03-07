@@ -16,7 +16,6 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -41,9 +40,7 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
 
     private static final float EDGE_THICKNESS = 0.15f;
 
-    private static final double EDGE_NODE_CLEARANCE = 0.35D;
-
-    private static final double MIN_EDGE_LENGTH = 1.0D;
+    private static final double EDGE_NODE_CLEARANCE = 0.8D;
 
     private static final float DISPLAY_HALF_EXTENT = DISPLAY_SCALE / 2.0f;
 
@@ -54,6 +51,8 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
     private static final int PATH_NODE_WINDOW_SIZE = 4;
 
     private static final int PATH_EDGE_WINDOW_SIZE = PATH_NODE_WINDOW_SIZE - 1;
+
+    private static final double PATH_NODE_ACTIVATION_RADIUS_SQ = 16.0D;
 
     private final WrappedLogger log;
 
@@ -94,6 +93,12 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
      */
     private final List<BlockDisplay> pathEdgePool = new ArrayList<>();
 
+    private final Map<BlockDisplay, UUID> poolDisplayTargets = new HashMap<>();
+
+    private final List<Node> path;
+
+    private int pathNodeIndex;
+
     /**
      * Constructs a new {@code BlockDisplayVisualiser} instance for visualizing graph
      * structures and their associated displays, tailored for a specific player and visual mode.
@@ -113,11 +118,37 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
      */
     public BlockDisplayVisualizer(final Brotkrumen plugin, final LoggerFactory loggerFactory,
                                   final Graph graph, final UUID ownerId, final VisualMode mode) {
+        this(plugin, loggerFactory, graph, ownerId, mode, List.of());
+    }
+
+    /**
+     * Constructs a new {@code BlockDisplayVisualiser} instance for visualizing graph
+     * structures and their associated displays, tailored for a specific player and visual mode.
+     * The constructor initializes the required components, processes the provided
+     * graph's edges, and prepares internal mappings of nodes and edges.
+     *
+     * @param plugin        The central plugin instance used to interface with the Minecraft
+     *                      server environment and access shared resources.
+     * @param loggerFactory A factory for creating loggers used for diagnostic and informational output.
+     *                      The logger is scoped to this class.
+     * @param graph         The graph instance whose nodes and edges are to be visualized.
+     *                      This graph serves as the primary source of data for visualization.
+     * @param ownerId       The UUID of the player who owns and interacts with the visualizer.
+     *                      Used to customize the visualization experience for the specific player.
+     * @param mode          The visual mode specifying the type and context of visualization.
+     *                      This can determine how visuals appear or are managed for this instance.
+     * @param path          An optional list of nodes representing the path to follow.
+     */
+    public BlockDisplayVisualizer(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                  final Graph graph, final UUID ownerId, final VisualMode mode,
+                                  final List<Node> path) {
         super(loggerFactory, graph);
         this.log = loggerFactory.create(BlockDisplayVisualizer.class);
         this.plugin = plugin;
         this.ownerId = ownerId;
         this.mode = mode;
+        this.path = path;
+        this.pathNodeIndex = 0;
 
         for (final Edge edge : graph.getEdges()) {
             edgesByNodes.computeIfAbsent(edge.source(), k -> new HashMap<>()).put(edge.target(), edge);
@@ -225,16 +256,42 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
     }
 
     private void updatePathFinderDisplays(final Player player) {
-        final List<Node> nearestNodes = nearestNodesFor(player, PATH_NODE_WINDOW_SIZE);
-        final List<Edge> visibleEdges = edgesBetweenNeighbours(nearestNodes);
+        final List<Node> allNodes = path != null ? path : new ArrayList<>(graph.getNodes());
+        if (allNodes.isEmpty()) {
+            return;
+        }
 
-        updatePooledDisplays(pathNodePool, nearestNodes, PATH_NODE_WINDOW_SIZE,
+        final Location loc = player.getLocation();
+        final double locX = loc.getX();
+        final double locY = loc.getY();
+        final double locZ = loc.getZ();
+
+        final int startIdx = Math.max(0, pathNodeIndex - 1);
+        final int endIdx = Math.min(allNodes.size() - 1, pathNodeIndex + PATH_NODE_WINDOW_SIZE - 1);
+
+        for (int i = endIdx; i >= startIdx; i--) {
+            if (nodeDistanceSquared(locX, locY, locZ, allNodes.get(i)) < PATH_NODE_ACTIVATION_RADIUS_SQ) {
+                pathNodeIndex = i;
+                break;
+            }
+        }
+
+        final List<Node> displayNodes = new ArrayList<>();
+        for (int i = pathNodeIndex; i < Math.min(allNodes.size(), pathNodeIndex + PATH_NODE_WINDOW_SIZE); i++) {
+            displayNodes.add(allNodes.get(i));
+        }
+
+        final List<Edge> visibleEdges = edgesBetweenNeighbours(displayNodes);
+
+        updatePooledDisplays(pathNodePool, displayNodes, PATH_NODE_WINDOW_SIZE,
                 (display, node) -> display.teleport(node.toCenterLocation()),
-                () -> spawnNodeDisplay(player.getLocation(), Material.COAL_BLOCK), player);
+                () -> spawnNodeDisplay(player.getLocation(), Material.COAL_BLOCK), player,
+                Node::graphId);
 
         updatePooledDisplays(pathEdgePool, visibleEdges, PATH_EDGE_WINDOW_SIZE,
                 this::updateEdgeDisplayTransformation,
-                () -> spawnPathEdgePlaceholder(player.getLocation()), player);
+                () -> spawnPathEdgePlaceholder(player.getLocation()), player,
+                Edge::edgeId);
     }
 
     /**
@@ -243,24 +300,26 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
      * the specified maximum size, and manages their visibility and updates using the provided updater
      * and spawner functions.
      *
-     * @param <T>     The type of the target objects used to update the {@code BlockDisplay} instances.
-     * @param pool    The list of pooled {@code BlockDisplay} objects to be updated. Displays are added
-     *                to this pool as needed to maintain the desired size.
-     * @param targets The list of target objects to be synchronized with the {@code BlockDisplay} pool.
-     *                These targets provide data for updating each valid display.
-     * @param maxSize The maximum size of the display pool. Ensures the pool contains at least this
-     *                many {@code BlockDisplay} objects by spawning new displays when necessary.
-     * @param updater A {@code BiConsumer} responsible for applying updates from a target object
-     *                to a {@code BlockDisplay}. This function customizes how displays are configured
-     *                based on target data.
-     * @param spawner A {@code Supplier} used to create new {@code BlockDisplay} objects when the pool
-     *                requires additional displays to meet the {@code maxSize}.
-     * @param player  The player for whom the visibility of the {@code BlockDisplay} objects is managed.
-     *                Displays are shown or hidden based on their relevance to this player.
+     * @param <T>         The type of the target objects used to update the {@code BlockDisplay} instances.
+     * @param pool        The list of pooled {@code BlockDisplay} objects to be updated. Displays are added
+     *                    to this pool as needed to maintain the desired size.
+     * @param targets     The list of target objects to be synchronized with the {@code BlockDisplay} pool.
+     *                    These targets provide data for updating each valid display.
+     * @param maxSize     The maximum size of the display pool. Ensures the pool contains at least this
+     *                    many {@code BlockDisplay} objects by spawning new displays when necessary.
+     * @param updater     A {@code BiConsumer} responsible for applying updates from a target object
+     *                    to a {@code BlockDisplay}. This function customizes how displays are configured
+     *                    based on target data.
+     * @param spawner     A {@code Supplier} used to create new {@code BlockDisplay} objects when the pool
+     *                    requires additional displays to meet the {@code maxSize}.
+     * @param player      The player for whom the visibility of the {@code BlockDisplay} objects is managed.
+     *                    Displays are shown or hidden based on their relevance to this player.
+     * @param idExtractor A {@code Function} to extract a unique {@code UUID} for each target.
      */
     private <T> void updatePooledDisplays(final List<BlockDisplay> pool, final List<T> targets, final int maxSize,
                                           final BiConsumer<BlockDisplay, T> updater,
-                                          final Supplier<BlockDisplay> spawner, final Player player) {
+                                          final Supplier<BlockDisplay> spawner, final Player player,
+                                          final Function<T, UUID> idExtractor) {
         while (pool.size() < maxSize) {
             final BlockDisplay display = spawner.get();
             if (display == null) {
@@ -276,27 +335,23 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
             }
 
             if (i < targets.size()) {
-                updater.accept(display, targets.get(i));
-                player.showEntity(plugin, display);
+                final T target = targets.get(i);
+                final UUID targetId = idExtractor.apply(target);
+                final UUID lastId = poolDisplayTargets.get(display);
+
+                if (lastId == null || !lastId.equals(targetId)) {
+                    player.hideEntity(plugin, display);
+                    updater.accept(display, target);
+                    player.showEntity(plugin, display);
+                    poolDisplayTargets.put(display, targetId);
+                } else {
+                    player.showEntity(plugin, display);
+                }
             } else {
                 player.hideEntity(plugin, display);
+                poolDisplayTargets.remove(display);
             }
         }
-    }
-
-    private List<Node> nearestNodesFor(final Player player, final int limit) {
-        final Location loc = player.getLocation();
-        final World world = loc.getWorld();
-        if (world == null) {
-            return List.of();
-        }
-
-        final UUID worldId = world.getUID();
-        return graph.getNodes().stream()
-                .filter(node -> node.worldId().equals(worldId))
-                .sorted(Comparator.comparingDouble(node -> nodeDistanceSquared(loc.getX(), loc.getY(), loc.getZ(), node)))
-                .limit(limit)
-                .toList();
     }
 
     private List<Edge> edgesBetweenNeighbours(final List<Node> nodesInOrder) {
@@ -341,7 +396,7 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
         }
 
         return world.spawn(location, BlockDisplay.class, entity -> {
-            entity.setBlock(Material.WHITE_STAINED_GLASS_PANE.createBlockData());
+            entity.setBlock(Material.WHITE_STAINED_GLASS.createBlockData());
             entity.setPersistent(false);
             entity.setVisibleByDefault(false);
             entity.setTransformation(new Transformation(
@@ -384,12 +439,7 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
             return;
         }
 
-        final float maxLength = distance - (2.0f * (float) EDGE_NODE_CLEARANCE);
-        if (maxLength <= 0.0f) {
-            return;
-        }
-
-        final float displayLength = Math.max((float) MIN_EDGE_LENGTH, Math.min(maxLength, distance));
+        final float displayLength = Math.max(0.0f, distance - (2.0f * (float) EDGE_NODE_CLEARANCE));
         final float startOffset = (distance - displayLength) / 2.0f;
         direction.normalize();
 
@@ -415,11 +465,13 @@ public class BlockDisplayVisualizer extends GraphVisualizer {
         activeEdgeDisplays.clear();
         pathNodePool.clear();
         pathEdgePool.clear();
+        poolDisplayTargets.clear();
     }
 
     private void removeDisplay(final BlockDisplay display) {
         if (display != null && display.isValid()) {
             display.remove();
         }
+        poolDisplayTargets.remove(display);
     }
 }
