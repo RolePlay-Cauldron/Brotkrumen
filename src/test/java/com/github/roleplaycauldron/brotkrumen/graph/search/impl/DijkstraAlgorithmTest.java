@@ -44,13 +44,13 @@ class DijkstraAlgorithmTest {
     void setUp() {
         graph = new Graph("Test");
 
-        graph.addNode(new Node(uuidOne, 0, 0, 0));
-        graph.addNode(new Node(uuidTwo, 35, 15, 0));
-        graph.addNode(new Node(uuidThree, 65, 5, 0));
-        graph.addNode(new Node(uuidFour, 60, -20, 0));
-        graph.addNode(new Node(uuidFive, 35, -5, 0));
-        graph.addNode(new Node(uuidSix, 5, -25, 0));
-        graph.addNode(new Node(uuidSeven, 90, -5, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0, null));
+        graph.addNode(new Node(uuidTwo, 35, 15, 0, null));
+        graph.addNode(new Node(uuidThree, 65, 5, 0, null));
+        graph.addNode(new Node(uuidFour, 60, -20, 0, null));
+        graph.addNode(new Node(uuidFive, 35, -5, 0, null));
+        graph.addNode(new Node(uuidSix, 5, -25, 0, null));
+        graph.addNode(new Node(uuidSeven, 90, -5, 0, null));
 
         graph.addUndirectedEdge(uuidOne, uuidTwo, 40, Set.of(EdgeFlag.BLOCKED));
         graph.addUndirectedEdge(uuidOne, uuidSix, 40);

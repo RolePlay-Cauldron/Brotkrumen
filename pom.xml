@@ -11,17 +11,18 @@
     <java.api.version>21</java.api.version>
     <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.groupId.refactored>com.github.roleplaycauldron</project.groupId.refactored>
   </properties>
 
   <name>Brotkrumen</name>
-  <groupId>brotkrumen</groupId>
+  <groupId>com.github.roleplay-cauldron</groupId>
   <artifactId>brotkrumen</artifactId>
   <version>${revision}${changelist}</version>
   <description>A waypoint system using graph theory</description>
 
   <organization>
     <name>RolePlay-Cauldron</name>
-<!--        <url>HierEineUrlBitte</url>-->
+    <!--        <url>HierEineUrlBitte</url>-->
   </organization>
 
   <repositories>
@@ -29,10 +30,29 @@
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
+    <repository>
+      <id>mvn.velyn.me-github</id>
+      <url>https://mvn.velyn.me/github</url>
+    </repository>
+    <repository>
+      <id>Maven Central</id>
+      <url>https://repo1.maven.org/maven2/</url>
+    </repository>
   </repositories>
 
   <dependencies>
-        <!-- from papermc-repo -->
+    <dependency>
+      <groupId>com.github.roleplay-cauldron</groupId>
+      <artifactId>spellbook-core</artifactId>
+      <version>0.0.6-alpha</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.github.roleplay-cauldron</groupId>
+      <artifactId>spellbook-database</artifactId>
+      <version>0.0.6-alpha</version>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
@@ -45,7 +65,14 @@
         </exclusion>
       </exclusions>
     </dependency>
-        <!-- only dependencies from maven central that are no MC Plugins-->
+    <!-- only dependencies from maven central that are MC related things-->
+    <dependency>
+      <groupId>com.elmakers.mine.bukkit</groupId>
+      <artifactId>EffectLib</artifactId>
+      <version>10.3</version>
+      <scope>compile</scope>
+    </dependency>
+    <!-- only dependencies from maven central that are no MC Plugins-->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
@@ -184,12 +211,14 @@
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <shadedArtifactAttached>true</shadedArtifactAttached>
-              <minimizeJar>true</minimizeJar>
+              <minimizeJar>false</minimizeJar>
               <artifactSet>
                 <includes>
                   <include>org.apache.commons</include>
                   <include>com.google.guava</include>
                   <include>commons-io</include>
+                  <include>com.github.roleplay-cauldron</include>
+                  <include>com.elmakers.mine.bukkit</include>
                 </includes>
               </artifactSet>
               <filters>
@@ -199,15 +228,34 @@
                     <exclude>META-INF/**</exclude>
                   </excludes>
                 </filter>
+                <filter>
+                  <artifact>com.github.roleplaycauldron</artifact>
+                  <includes>
+                    <include>com/github/roleplaycauldron/**</include>
+                  </includes>
+                </filter>
               </filters>
               <relocations>
                 <relocation>
+                  <pattern>com.github.roleplaycauldron.spellbook</pattern>
+                  <shadedPattern>
+                    ${project.groupId.refactored}.${project.artifactId}.dependencies.com.github.roleplay-cauldron.spellbook
+                  </shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.elmakers.mine.bukkit</pattern>
+                  <shadedPattern>
+                    ${project.groupId.refactored}.${project.artifactId}.dependencies.com.elmakers.mine.bukkit
+                  </shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>com.google.common</pattern>
-                  <shadedPattern>${project.groupId}.${project.artifactId}.dependencies.com.google.common</shadedPattern>
+                  <shadedPattern>${project.groupId.refactored}.${project.artifactId}.dependencies.com.google.common
+                  </shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.commons</pattern>
-                  <shadedPattern>${project.groupId}.${project.artifactId}.dependencies.org.apache.commons
+                  <shadedPattern>${project.groupId.refactored}.${project.artifactId}.dependencies.org.apache.commons
                   </shadedPattern>
                 </relocation>
               </relocations>

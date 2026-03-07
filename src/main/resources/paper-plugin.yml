@@ -1,5 +1,5 @@
 name: ${project.name}
-main: ${project.groupId}.${project.artifactId}.${project.name}
+main: ${project.groupId.refactored}.${project.artifactId}.${project.name}
 version: ${brotkrumen.version}
 api-version: '${minecraft.api.version}'
 description: ${project.description}

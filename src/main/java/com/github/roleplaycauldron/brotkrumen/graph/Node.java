@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.graph;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
 import java.util.UUID;
@@ -12,9 +13,10 @@ import java.util.UUID;
  * @param x       the x coordinate of the node
  * @param y       the y coordinate of the node
  * @param z       the z coordinate of the node
+ * @param worldId the {@link UUID} of the world the node is in
  */
 @SuppressWarnings("PMD.ShortVariable")
-public record Node(int dbId, UUID graphId, int x, int y, int z) {
+public record Node(int dbId, UUID graphId, double x, double y, double z, UUID worldId) {
 
     /**
      * A constructor using the x, y and z coordinates.
@@ -23,9 +25,10 @@ public record Node(int dbId, UUID graphId, int x, int y, int z) {
      * @param x       the x coordinate of the node
      * @param y       the y coordinate of the node
      * @param z       the z coordinate of the node
+     * @param worldId the {@link UUID} of the world the node is in
      */
-    public Node(final UUID graphId, final int x, final int y, final int z) {
-        this(-1, graphId, x, y, z);
+    public Node(final UUID graphId, final double x, final double y, final double z, final UUID worldId) {
+        this(-1, graphId, x, y, z, worldId);
     }
 
     /**
@@ -36,7 +39,7 @@ public record Node(int dbId, UUID graphId, int x, int y, int z) {
      * @param loc     the {@link Location} of the node
      */
     public Node(final int dbId, final UUID graphId, final Location loc) {
-        this(dbId, graphId, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+        this(dbId, graphId, loc.getX(), loc.getY(), loc.getZ(), loc.getWorld().getUID());
     }
 
     /**
@@ -47,5 +50,14 @@ public record Node(int dbId, UUID graphId, int x, int y, int z) {
      */
     public Node(final UUID graphId, final Location loc) {
         this(-1, graphId, loc);
+    }
+
+    /**
+     * Converts this node position to the center location of the represented block.
+     *
+     * @return the centered {@link Location}
+     */
+    public Location toCenterLocation() {
+        return new Location(Bukkit.getWorld(worldId), x, y, z).toCenterLocation();
     }
 }
