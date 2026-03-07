@@ -80,7 +80,7 @@ public class Graph {
 
         final Node genNode;
         if (node.graphId() == null) {
-            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z());
+            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z(), node.worldId());
         } else {
             genNode = node;
         }
@@ -124,6 +124,15 @@ public class Graph {
      */
     public Collection<Node> getNodes() {
         return nodes.values();
+    }
+
+    /**
+     * Get all edges in the graph.
+     *
+     * @return a {@link Collection} of all {@link Edge}s in the graph
+     */
+    public Collection<Edge> getEdges() {
+        return edgesById.values();
     }
 
     /**

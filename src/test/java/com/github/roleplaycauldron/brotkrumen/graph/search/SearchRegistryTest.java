@@ -30,10 +30,9 @@ class SearchRegistryTest {
         registry.register(algo2);
 
         final Graph graph = new Graph("Test");
-        graph.addNode(new Node(uuidOne, 0, 0, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0, null));
 
         final TeleportRules rules = TeleportRules.disableTeleports();
-
         final PathAlgorithm selected = registry.select(graph, rules);
 
         assertSame(algo2, selected, "The algorithm should be the same");

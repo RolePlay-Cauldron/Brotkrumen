@@ -26,8 +26,8 @@ class PathFinderTest {
         final SearchRegistry registry = mock(SearchRegistry.class);
 
         final Graph graph = new Graph("Test");
-        graph.addNode(new Node(uuidOne, 0, 0, 0));
-        graph.addNode(new Node(uuidTwo, 0, 0, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0, null));
+        graph.addNode(new Node(uuidTwo, 0, 0, 0, null));
         graph.addDirectedEdge(uuidOne, uuidTwo, 1.0);
 
         final TeleportRules rules = TeleportRules.disableTeleports();
@@ -51,8 +51,8 @@ class PathFinderTest {
         final SearchRegistry registry = mock(SearchRegistry.class);
 
         final Graph graph = new Graph("Test");
-        graph.addNode(new Node(uuidOne, 0, 0, 0));
-        graph.addNode(new Node(uuidTwo, 0, 0, 0));
+        graph.addNode(new Node(uuidOne, 0, 0, 0, null));
+        graph.addNode(new Node(uuidTwo, 0, 0, 0, null));
         graph.addDirectedEdge(uuidOne, uuidTwo, 1.0);
 
         final TeleportRules rules = TeleportRules.disableTeleports();
