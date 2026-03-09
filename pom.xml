@@ -74,6 +74,12 @@
     </dependency>
     <!-- only dependencies from maven central that are no MC Plugins-->
     <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>7.0.2</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>33.5.0-jre</version>
@@ -219,6 +225,7 @@
                   <include>commons-io</include>
                   <include>com.github.roleplay-cauldron</include>
                   <include>com.elmakers.mine.bukkit</include>
+                  <include>com.zaxxer</include>
                 </includes>
               </artifactSet>
               <filters>
@@ -247,6 +254,10 @@
                   <shadedPattern>
                     ${project.groupId.refactored}.${project.artifactId}.dependencies.com.elmakers.mine.bukkit
                   </shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.zaxxer.hikari</pattern>
+                  <shadedPattern>${project.groupId}.dependencies.com.zaxxer.hikari</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google.common</pattern>
