@@ -12,6 +12,15 @@ package com.github.roleplaycauldron.brotkrumen.storage;
 public class StorageException extends RuntimeException {
 
     /**
+     * Constructs a new StorageException with the specified detail message.
+     *
+     * @param message the detail message to be included in the exception
+     */
+    public StorageException(final String message) {
+        super(message);
+    }
+
+    /**
      * Constructs a new StorageException with the specified detail message and cause.
      *
      * @param message the detail message to be included in the exception

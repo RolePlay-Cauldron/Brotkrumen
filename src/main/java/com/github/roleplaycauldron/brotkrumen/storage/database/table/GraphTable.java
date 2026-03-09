@@ -1,8 +1,8 @@
 package com.github.roleplaycauldron.brotkrumen.storage.database.table;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.storage.database.provider.BrotkrumenConnectionProvider;
 
-import java.sql.Connection;
 import java.util.Optional;
 import java.util.Set;
 
@@ -10,36 +10,32 @@ public class GraphTable {
 
     private final String tableName;
 
-    public GraphTable(final String tableName) {
+    private final EdgeTable edgeTable;
+
+    private final NodeTable nodeTable;
+
+    public GraphTable(final String tableName, final EdgeTable edgeTable, final NodeTable nodeTable) {
         this.tableName = tableName;
+        this.edgeTable = edgeTable;
+        this.nodeTable = nodeTable;
     }
 
-    /* default */
-    boolean hasAnyData(final Connection con) {
-        // ToDo
-        return false;
-    }
-
-    /* default */
-    Optional<Integer> findIdByName(final Connection con, final String name) {
+    public Optional<Graph> findByName(final BrotkrumenConnectionProvider conProvider, final String name) {
         // ToDo
         return Optional.empty();
     }
 
-    /* default */
-    String findNameById(final Connection con, final String name) {
+    public Optional<Graph> findById(final BrotkrumenConnectionProvider conProvider, final int name) {
         // ToDo
-        return "";
+        return Optional.empty();
     }
 
-    /* default */
-    Set<Graph> getAllGraphs(final Connection con) {
+    public Set<Graph> getAllGraphs(final BrotkrumenConnectionProvider conProvider) {
         // ToDo
         return Set.of();
     }
 
-    /* default */
-    void deleteById(final Connection con, final int id) {
+    public void deleteById(final BrotkrumenConnectionProvider conProvider, final int id) {
         // ToDo
     }
 
@@ -48,23 +44,22 @@ public class GraphTable {
      * (i.e., its graph ID is null), it will insert a new record. Otherwise, it updates
      * the existing record corresponding to the graph ID.
      *
-     * @param con   the database connection to be used for saving the graph
-     * @param graph the graph object to be saved, containing graph details and an optional graph ID
+     * @param conProvider the database connection to be used for saving the graph
+     * @param graph       the graph object to be saved, containing graph details and an optional graph ID
      */
-    /* default */
-    void saveGraph(final Connection con, final Graph graph) {
+    public void saveGraph(final BrotkrumenConnectionProvider conProvider, final Graph graph) {
         if (graph.getGraphId() <= 0) {
-            createGraph(con, graph);
+            createGraph(conProvider, graph);
         } else {
-            updateGraph(con, graph);
+            updateGraph(conProvider, graph);
         }
     }
 
-    private void updateGraph(final Connection con, final Graph graph) {
-
+    private void updateGraph(final BrotkrumenConnectionProvider conProvider, final Graph graph) {
+        // ToDo
     }
 
-    private void createGraph(final Connection con, final Graph graph) {
-
+    private void createGraph(final BrotkrumenConnectionProvider conProvider, final Graph graph) {
+        // ToDo
     }
 }

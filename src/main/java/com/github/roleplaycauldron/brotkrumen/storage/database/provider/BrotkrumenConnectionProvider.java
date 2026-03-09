@@ -1,9 +1,8 @@
-package com.github.roleplaycauldron.brotkrumen.storage.database;
+package com.github.roleplaycauldron.brotkrumen.storage.database.provider;
 
 import com.github.roleplaycauldron.spellbook.database.ConnectionProvider;
 
 import java.io.Closeable;
-import java.sql.Connection;
 
 public interface BrotkrumenConnectionProvider extends Closeable, ConnectionProvider {
 
@@ -11,14 +10,6 @@ public interface BrotkrumenConnectionProvider extends Closeable, ConnectionProvi
      * Opens the underlying connection pool.
      */
     void open();
-
-    /**
-     * Gets a database connection.
-     *
-     * @return an open connection
-     */
-    @Override
-    Connection getConnection();
 
     /**
      * Returns whether the provider is closed.

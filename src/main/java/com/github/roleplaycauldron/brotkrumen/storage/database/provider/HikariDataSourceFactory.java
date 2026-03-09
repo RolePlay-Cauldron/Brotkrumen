@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.database;
+package com.github.roleplaycauldron.brotkrumen.storage.database.provider;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.zaxxer.hikari.HikariConfig;
@@ -26,16 +26,17 @@ public class HikariDataSourceFactory {
      *
      * @param configSection the configuration section containing necessary properties such as
      *                      user credentials, pool size, and timing configurations
-     * @param jdbcUrl       the JDBC URL to connect to the database
-     * @param poolName      the name of the connection pool to be created
+     * @param startJdbcUrl  the JDBC URL to connect to the database
      * @return a fully configured {@link HikariDataSource} instance
      */
     /* default */
     static HikariDataSource create(final ConfigurationSection configSection,
-                                   final String jdbcUrl,
-                                   final String poolName) {
+                                   final String startJdbcUrl) {
         final HikariConfig databaseConfig = new HikariConfig();
 
+        final String jdbcUrl = startJdbcUrl + configSection.getString("host") + ":"
+                + configSection.getString("port") + "/"
+                + configSection.getString("database");
         databaseConfig.setJdbcUrl(jdbcUrl);
 
         final String username = configSection.getString("user");
@@ -47,7 +48,7 @@ public class HikariDataSourceFactory {
             databaseConfig.setPassword(password);
         }
 
-        databaseConfig.setPoolName(poolName);
+        databaseConfig.setPoolName("Brotkrumen-ConnectionPool");
 
         final int maximumPoolSize = configSection.getInt("maximumPoolSize");
         databaseConfig.setMaximumPoolSize(maximumPoolSize);

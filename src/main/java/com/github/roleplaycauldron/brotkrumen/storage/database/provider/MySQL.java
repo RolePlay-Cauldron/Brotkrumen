@@ -1,9 +1,10 @@
-package com.github.roleplaycauldron.brotkrumen.storage.database;
+package com.github.roleplaycauldron.brotkrumen.storage.database.provider;
 
 import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
+import com.github.roleplaycauldron.brotkrumen.storage.database.Engine;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.zaxxer.hikari.HikariDataSource;
-import org.bukkit.configuration.Configuration;
+import org.bukkit.configuration.ConfigurationSection;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -12,17 +13,20 @@ public class MySQL implements BrotkrumenConnectionProvider {
 
     private static final String DEFAULT_DB_SECTION = "database";
 
-    private final Configuration config;
+    private final ConfigurationSection configSection;
 
     private final WrappedLogger log;
+
+    private final Engine engine;
 
     private final String driverClassName;
 
     private HikariDataSource hikari;
 
-    public MySQL(final Configuration config, final WrappedLogger log, final String driverClassName) {
-        this.config = config;
+    public MySQL(final ConfigurationSection configSection, final WrappedLogger log, final Engine engine, final String driverClassName) {
+        this.configSection = configSection;
         this.log = log;
+        this.engine = engine;
         this.driverClassName = driverClassName;
     }
 
@@ -36,7 +40,8 @@ public class MySQL implements BrotkrumenConnectionProvider {
         }
         if (isClosed()) {
             log.info("Connecting to database...");
-            this.hikari = HikariDataSourceFactory.create(config.getConfigurationSection(DEFAULT_DB_SECTION), "", "");
+            final String jdbcUrl = "jdbc:" + engine.name().toLowerCase() + "://";
+            this.hikari = HikariDataSourceFactory.create(configSection.getConfigurationSection(DEFAULT_DB_SECTION), jdbcUrl);
 
             if (!hikari.isClosed()) {
                 log.info("Successfully connected to the server!");

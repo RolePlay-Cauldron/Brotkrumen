@@ -8,6 +8,9 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.PathAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
+import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
@@ -17,6 +20,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.plugin.ServicePriority;
+import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumSet;
@@ -40,6 +45,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private SearchRegistry searchRegistry;
 
+    private GraphServiceImpl graphService;
+
     /**
      * Default constructor.
      */
@@ -49,10 +56,18 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        new CoordinatesCommand(this);
         loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
-        log.info("brotkrumen.Brotkrumen enabled");
+
+        final Storage storage = new Storage(loggerFactory, getConfig());
+        storage.initialize();
+
+        graphService = new GraphServiceImpl(log, storage);
+        final ServicesManager servicesManager = getServer().getServicesManager();
+        servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
+
+        new CoordinatesCommand(this);
+        log.info("Brotkrumen enabled");
 
         searchRegistry = new SearchRegistry();
         searchRegistry.register(new AStarAlgorithm());
