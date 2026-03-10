@@ -8,6 +8,7 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Locale;
 
 /**
  * Provides a MySQL-based implementation of the BrotkrumenConnectionProvider interface for managing database connections.
@@ -52,7 +53,7 @@ public class MySQL implements BrotkrumenConnectionProvider {
         }
         if (isClosed()) {
             log.info("Connecting to database...");
-            final String jdbcUrl = "jdbc:" + engine.name().toLowerCase() + "://";
+            final String jdbcUrl = "jdbc:" + engine.name().toLowerCase(Locale.ROOT) + "://";
             this.hikari = HikariDataSourceFactory.create(configSection, jdbcUrl);
 
             if (!hikari.isClosed()) {

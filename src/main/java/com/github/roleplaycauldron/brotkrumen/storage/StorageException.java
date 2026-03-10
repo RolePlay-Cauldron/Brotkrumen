@@ -1,5 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.storage;
 
+import java.io.Serial;
+
 /**
  * Represents an exception that occurs during storage-related operations.
  * <p>
@@ -10,6 +12,9 @@ package com.github.roleplaycauldron.brotkrumen.storage;
  * exceptions that propagate runtime errors.
  */
 public class StorageException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = -5099275603651221283L;
 
     /**
      * Constructs a new StorageException with the specified detail message.

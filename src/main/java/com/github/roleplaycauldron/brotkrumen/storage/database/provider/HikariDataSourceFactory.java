@@ -15,7 +15,7 @@ import org.bukkit.configuration.ConfigurationSection;
  * The factory uses the HikariCP connection pooling library, which is
  * designed to optimize JDBC connection pool performance and management.
  */
-public class HikariDataSourceFactory {
+public final class HikariDataSourceFactory {
 
     private HikariDataSourceFactory() {
     }

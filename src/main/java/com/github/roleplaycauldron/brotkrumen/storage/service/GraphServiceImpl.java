@@ -5,29 +5,33 @@ import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.EdgeTable;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.GraphTable;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.NodeTable;
-import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * Implementation of the {@code GraphService} interface for managing graph-related operations.
+ * This service interacts with the underlying storage infrastructure to perform CRUD operations
+ * on graph entities.
+ */
 public class GraphServiceImpl implements GraphService {
-
-    private final WrappedLogger log;
 
     private final Storage storage;
 
     private final GraphTable graphTable;
 
-    private final EdgeTable edgeTable;
-
-    private final NodeTable nodeTable;
-
-    public GraphServiceImpl(final WrappedLogger log, final Storage storage) {
-        this.log = log;
+    /**
+     * Constructs a new instance of {@link GraphServiceImpl} with the specified storage.
+     * Initializes the internal tables required for interacting with the underlying graph data.
+     *
+     * @param storage the storage implementation used to persist and retrieve graph-related data.
+     *                This is expected to provide access to the database provider and table prefix.
+     */
+    public GraphServiceImpl(final Storage storage) {
         this.storage = storage;
 
-        this.edgeTable = new EdgeTable(storage.getTablePrefix() + "_edge");
-        this.nodeTable = new NodeTable(storage.getTablePrefix() + "_node");
+        final EdgeTable edgeTable = new EdgeTable(storage.getTablePrefix() + "_edge");
+        final NodeTable nodeTable = new NodeTable(storage.getTablePrefix() + "_node");
         this.graphTable = new GraphTable(storage.getTablePrefix() + "_graph", edgeTable, nodeTable);
     }
 

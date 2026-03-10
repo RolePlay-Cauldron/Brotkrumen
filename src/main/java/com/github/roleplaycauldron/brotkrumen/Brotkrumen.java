@@ -64,7 +64,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage = new Storage(loggerFactory, getConfig(), getDataFolder());
         storage.initialize();
 
-        graphService = new GraphServiceImpl(log, storage);
+        graphService = new GraphServiceImpl(storage);
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
 
