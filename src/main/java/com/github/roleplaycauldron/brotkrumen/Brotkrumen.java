@@ -47,6 +47,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private GraphServiceImpl graphService;
 
+    private Storage storage;
+
     /**
      * Default constructor.
      */
@@ -59,7 +61,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
 
-        final Storage storage = new Storage(loggerFactory, getConfig());
+        storage = new Storage(loggerFactory, getConfig(), getDataFolder());
         storage.initialize();
 
         graphService = new GraphServiceImpl(log, storage);
@@ -126,6 +128,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         reg.stopVisibilityUpdates();
+
+        storage.shutdown();
     }
 
     @EventHandler

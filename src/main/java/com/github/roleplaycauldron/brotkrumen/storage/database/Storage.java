@@ -12,7 +12,9 @@ import com.github.roleplaycauldron.spellbook.database.updater.DefaultVersionRepo
 import com.github.roleplaycauldron.spellbook.database.updater.builder.VersionBuilder;
 import org.bukkit.configuration.ConfigurationSection;
 
+import java.io.File;
 import java.io.IOException;
+import java.sql.SQLInput;
 import java.util.List;
 
 /**
@@ -20,7 +22,7 @@ import java.util.List;
  * a database connection for storage purposes. It supports different database engines and handles
  * table creation, database migration, and connection management.
  * <p>
- * The class utilizes configuration settings to determine the database engine, table prefixes, and
+ * The class uses configuration settings to determine the database engine, table prefixes, and
  * other connection parameters. Logging functionality is integrated via the provided logger factory.
  * <p>
  * Key responsibilities of this class include:
@@ -39,6 +41,8 @@ public class Storage {
 
     private final String tablePrefix;
 
+    private final File dataFolder;
+
     private BrotkrumenConnectionProvider provider;
 
     /**
@@ -48,24 +52,22 @@ public class Storage {
      * @param loggerFactory the {@link LoggerFactory} used to create loggers for the storage system
      * @param configSection the {@link ConfigurationSection} containing the configuration values,
      *                      including the table prefix for database operations
+     * @param dataFolder    the root folder for the plugin's data files
      */
-    public Storage(final LoggerFactory loggerFactory, final ConfigurationSection configSection) {
+    public Storage(final LoggerFactory loggerFactory, final ConfigurationSection configSection, final File dataFolder) {
         this.loggerFactory = loggerFactory;
         this.log = loggerFactory.create(Storage.class);
         this.configSection = configSection;
         this.tablePrefix = configSection.getString("tablePrefix");
+        this.dataFolder = dataFolder;
     }
 
     /**
      * Initializes the storage system by opening the database connection and performing necessary
      * setup operations such as creating tables and applying database updates. If the connection
      * provider is already open, a log message will indicate that the database is already connected.
-     *
-     * @param firstStartup a flag indicating whether this is the first time the storage system
-     *                     is being initialized. If {@code true}, additional setup tasks such as
-     *                     executing initial database migrations will be performed.
      */
-    public void initialize(final boolean firstStartup) {
+    public void initialize() {
         final String engineString = configSection.getString("engine");
         if (engineString == null || engineString.isBlank()) {
             throw new IllegalArgumentException("Database engine configuration is missing");
@@ -98,7 +100,7 @@ public class Storage {
                     provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "com.mysql.cj.jdbc.Driver");
             case MARIADB ->
                     provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "org.mariadb.jdbc.Driver");
-            case SQLITE -> provider = new SQLite();
+            case SQLITE -> provider = new SQLite(loggerFactory.create(SQLInput.class), dataFolder.getPath());
         }
 
         if (provider == null) {

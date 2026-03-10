@@ -9,9 +9,13 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+/**
+ * Provides a MySQL-based implementation of the BrotkrumenConnectionProvider interface for managing database connections.
+ * Responsible for opening, closing, and retrieving database connections using HikariCP as the connection pooling library.
+ * This class supports multiple database engines (e.g., MySQL, MariaDB) and allows for configurable database connection
+ * settings through a provided configuration section.
+ */
 public class MySQL implements BrotkrumenConnectionProvider {
-
-    private static final String DEFAULT_DB_SECTION = "database";
 
     private final ConfigurationSection configSection;
 
@@ -23,6 +27,14 @@ public class MySQL implements BrotkrumenConnectionProvider {
 
     private HikariDataSource hikari;
 
+    /**
+     * Constructs a new MySQL database connection provider.
+     *
+     * @param configSection   the configuration section containing the database settings
+     * @param log             the logger instance used for logging operations
+     * @param engine          the database engine (e.g., MYSQL, MARIADB)
+     * @param driverClassName the fully qualified class name of the JDBC driver
+     */
     public MySQL(final ConfigurationSection configSection, final WrappedLogger log, final Engine engine, final String driverClassName) {
         this.configSection = configSection;
         this.log = log;
@@ -41,7 +53,7 @@ public class MySQL implements BrotkrumenConnectionProvider {
         if (isClosed()) {
             log.info("Connecting to database...");
             final String jdbcUrl = "jdbc:" + engine.name().toLowerCase() + "://";
-            this.hikari = HikariDataSourceFactory.create(configSection.getConfigurationSection(DEFAULT_DB_SECTION), jdbcUrl);
+            this.hikari = HikariDataSourceFactory.create(configSection, jdbcUrl);
 
             if (!hikari.isClosed()) {
                 log.info("Successfully connected to the server!");
