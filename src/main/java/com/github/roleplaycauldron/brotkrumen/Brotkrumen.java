@@ -68,12 +68,12 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final Node nodeF = graphOne.addNode(new Node(null, 115, 71, -125, getServer().getWorld("world").getUID()));
         final Node nodeG = graphOne.addNode(new Node(null, 130, 72, -120, getServer().getWorld("world").getUID()));
 
-        graphOne.addUndirectedEdge(nodeA.graphId(), nodeC.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphOne.addUndirectedEdge(nodeC.graphId(), nodeE.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphOne.addUndirectedEdge(nodeE.graphId(), nodeG.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphOne.addUndirectedEdge(nodeE.graphId(), nodeD.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphOne.addUndirectedEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphOne.addUndirectedEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeA.graphId(), nodeC.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeC.graphId(), nodeE.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeE.graphId(), nodeG.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeE.graphId(), nodeD.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
         this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
         reg.startVisibilityUpdates();
