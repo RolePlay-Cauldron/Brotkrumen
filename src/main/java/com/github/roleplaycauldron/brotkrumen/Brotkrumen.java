@@ -15,10 +15,14 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.EffectLibConfig;
+import com.github.roleplaycauldron.brotkrumen.visual.ParticleVisualiser;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import org.bukkit.configuration.ConfigurationSection;
+import de.slikey.effectlib.EffectManager;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -143,7 +147,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphTwo.addUndirectedEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
         final PathAlgorithm pathAlgo = searchRegistry.select(graphTwo, TeleportRules.disableTeleports());
-        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), Set.of(node2J.graphId()), null, TeleportRules.disableTeleports());
+        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), node2J.graphId(), null, TeleportRules.disableTeleports());
 //        graphTwoPath = List.of(node2A, node2B, node2C, node2D, node2E, node2F, node2G, node2H, node2I, node2J);
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -166,13 +170,14 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @EventHandler
     public void playerJoin(final PlayerJoinEvent event) {
-//        final BlockDisplayVisualizer visualiserOne = new BlockDisplayVisualizer(this, loggerFactory, graphOne,
-//                event.getPlayer().getUniqueId(), VisualMode.EDIT);
-//        reg.register(event.getPlayer().getUniqueId(), visualiserOne);
+        final ConfigurationSection section = getConfig().getConfigurationSection("NodeEffect");
+        final EffectLibConfig effectConfig = new EffectLibConfig(section.getString("class"), section);
+        final ParticleVisualiser particleVisualiser = new ParticleVisualiser(this, loggerFactory, graphTwo,
+                new EffectManager(this), effectConfig, event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
 
-        final BlockDisplayVisualizer visualiserTwo = new BlockDisplayVisualizer(this, loggerFactory, graphTwo,
-                event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
-        reg.register(event.getPlayer().getUniqueId(), visualiserTwo);
+//        final BlockDisplayVisualizer visualiserTwo = new BlockDisplayVisualizer(this, loggerFactory, graphTwo,
+//                event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
+        reg.register(event.getPlayer().getUniqueId(), particleVisualiser);
     }
 
     @EventHandler

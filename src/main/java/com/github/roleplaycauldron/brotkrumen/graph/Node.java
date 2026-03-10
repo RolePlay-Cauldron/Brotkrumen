@@ -69,4 +69,13 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
     public Location toCenterLocation() {
         return new Location(Bukkit.getWorld(worldId), x, y, z).toCenterLocation();
     }
+
+    /**
+     * Converts the nodes position-values to a {@link Location}.
+     *
+     * @return the {@link Location}
+     */
+    public Location toLocation() {
+        return new Location(Bukkit.getWorld(worldId), x, y, z);
+    }
 }

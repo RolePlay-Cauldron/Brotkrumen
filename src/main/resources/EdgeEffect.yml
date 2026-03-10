@@ -1,0 +1,11 @@
+EdgeEffect:
+  interval: 100
+  class: ABC
+  iterations: 20
+  particle: crit_magic
+  helixes: 3
+  circles: 1
+  grow: 0.1
+  radius: 0.5
+  pitch: -60
+  yaw: 90

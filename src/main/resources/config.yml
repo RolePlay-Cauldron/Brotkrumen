@@ -64,3 +64,28 @@ data:
 
     # Controls the maximum number of ms that the plugin will wait for a connection from the pool before timing out.
     connectionTimeout: 5000 # 5 seconds
+
+
+NodeEffect:
+  interval: 100
+  class: VortexEffect
+  iterations: 20
+  particle: crit_magic
+  helixes: 3
+  circles: 1
+  grow: 0.1
+  radius: 0.5
+  pitch: -60
+  yaw: 90
+
+EdgeEffect:
+  interval: 100
+  class: VortexEffect
+  iterations: 20
+  particle: crit_magic
+  helixes: 3
+  circles: 1
+  grow: 0.1
+  radius: 0.5
+  pitch: -60
+  yaw: 90
