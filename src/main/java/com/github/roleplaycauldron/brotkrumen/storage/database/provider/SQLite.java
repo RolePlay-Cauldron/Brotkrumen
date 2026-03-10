@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class SQLite implements BrotkrumenConnectionProvider {
 
-    private static final String DEFAULT_DATABASE_NAME = "brotkrumen.db";
+    private static final String DEFAULT_DATABASE_NAME = "/brotkrumen.db";
 
     private final WrappedLogger log;
 

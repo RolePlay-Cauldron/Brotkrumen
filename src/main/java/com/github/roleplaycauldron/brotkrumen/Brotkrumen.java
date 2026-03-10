@@ -62,6 +62,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
 
+        saveDefaultConfig();
+
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
             log.error("Could not start the plugin because the data configuration is missing. Please check your config.yml file for errors.");

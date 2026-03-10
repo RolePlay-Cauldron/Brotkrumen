@@ -44,13 +44,13 @@
     <dependency>
       <groupId>com.github.roleplay-cauldron</groupId>
       <artifactId>spellbook-core</artifactId>
-      <version>0.0.7-alpha</version>
+      <version>0.0.8-alpha</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.github.roleplay-cauldron</groupId>
       <artifactId>spellbook-database</artifactId>
-      <version>0.0.7-alpha</version>
+      <version>0.0.8-alpha</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -78,6 +78,11 @@
       <artifactId>HikariCP</artifactId>
       <version>7.0.2</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <version>3.5.2</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -217,7 +222,7 @@
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <shadedArtifactAttached>true</shadedArtifactAttached>
-              <minimizeJar>false</minimizeJar>
+              <minimizeJar>true</minimizeJar>
               <artifactSet>
                 <includes>
                   <include>org.apache.commons</include>
@@ -226,6 +231,7 @@
                   <include>com.github.roleplay-cauldron</include>
                   <include>com.elmakers.mine.bukkit</include>
                   <include>com.zaxxer</include>
+                  <include>org.mariadb.jdbc</include>
                 </includes>
               </artifactSet>
               <filters>
@@ -241,6 +247,12 @@
                     <include>com/github/roleplaycauldron/**</include>
                   </includes>
                 </filter>
+                <filter>
+                  <artifact>org.mariadb.jdbc</artifact>
+                  <includes>
+                    <include>org/mariadb/jdbc/**</include>
+                  </includes>
+                </filter>
               </filters>
               <relocations>
                 <relocation>
@@ -250,14 +262,19 @@
                   </shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>com.elmakers.mine.bukkit</pattern>
-                  <shadedPattern>
-                    ${project.groupId.refactored}.${project.artifactId}.dependencies.com.elmakers.mine.bukkit
+                  <pattern>de.slikey</pattern>
+                  <shadedPattern>${project.groupId.refactored}.${project.artifactId}.dependencies.de.slikey
                   </shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.zaxxer.hikari</pattern>
-                  <shadedPattern>${project.groupId}.dependencies.com.zaxxer.hikari</shadedPattern>
+                  <shadedPattern>${project.groupId.refactored}.${project.artifactId}.dependencies.com.zaxxer.hikari
+                  </shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.mariadb.jdbc</pattern>
+                  <shadedPattern>${project.groupId.refactored}.${project.artifactId}.dependencies.org.mariadb.jdbc
+                  </shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google.common</pattern>

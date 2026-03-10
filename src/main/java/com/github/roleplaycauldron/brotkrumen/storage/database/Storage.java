@@ -1,6 +1,9 @@
 package com.github.roleplaycauldron.brotkrumen.storage.database;
 
 import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
+import com.github.roleplaycauldron.brotkrumen.storage.database.migrations.MariaDBMigration;
+import com.github.roleplaycauldron.brotkrumen.storage.database.migrations.MySQLMigration;
+import com.github.roleplaycauldron.brotkrumen.storage.database.migrations.SQLiteMigration;
 import com.github.roleplaycauldron.brotkrumen.storage.database.provider.BrotkrumenConnectionProvider;
 import com.github.roleplaycauldron.brotkrumen.storage.database.provider.MySQL;
 import com.github.roleplaycauldron.brotkrumen.storage.database.provider.SQLite;
@@ -9,7 +12,6 @@ import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.database.updater.DatabaseUpdater;
 import com.github.roleplaycauldron.spellbook.database.updater.DatabaseVersion;
 import com.github.roleplaycauldron.spellbook.database.updater.DefaultVersionRepository;
-import com.github.roleplaycauldron.spellbook.database.updater.builder.VersionBuilder;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
@@ -80,9 +82,9 @@ public class Storage {
             final DatabaseUpdater updater = DatabaseUpdater.builder()
                     .logger(loggerFactory.create(DatabaseUpdater.class))
                     .connectionProvider(provider)
-                    .versionRepository(new DefaultVersionRepository(getDatabaseMigrationVersionList()))
+                    .versionRepository(new DefaultVersionRepository(getDatabaseMigrationVersionList(engine)))
                     .versionTable(tablePrefix + "_version",
-                            "SELECT MAX(version_no) AS latest_version FROM " + tablePrefix + "_version`;",
+                            "SELECT MAX(version_no) AS latest_version FROM `" + tablePrefix + "_version`;",
                             "INSERT INTO `" + tablePrefix + "_version` (`version_no`) VALUES (?);")
                     .build();
 
@@ -148,64 +150,11 @@ public class Storage {
         return tablePrefix;
     }
 
-    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-    private List<DatabaseVersion> getDatabaseMigrationVersionList() {
-        return new VersionBuilder(1, null)
-                .addFirstStartupQuery(
-                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_graph` ("
-                                + "`id` INT NOT NULL AUTO_INCREMENT, "
-                                + "`name` VARCHAR(255) NOT NULL, "
-                                + "PRIMARY KEY (`id`)"
-                                + ")"
-                )
-                .addFirstStartupQuery(
-                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_node` ("
-                                + "`id` INT NOT NULL AUTO_INCREMENT, "
-                                + "`graph_id` INT NOT NULL, "
-                                + "`node_id` CHAR(36) NOT NULL, "
-                                + "`x` DOUBLE NOT NULL, "
-                                + "`y` DOUBLE NOT NULL, "
-                                + "`z` DOUBLE NOT NULL, "
-                                + "`world_id` CHAR(36) NOT NULL, "
-                                + "PRIMARY KEY (`id`), "
-                                + "UNIQUE KEY `uk_" + tablePrefix + "_node_node_id` (`node_id`), "
-                                + "KEY `idx_" + tablePrefix + "_node_graph_id` (`graph_id`), "
-                                + "CONSTRAINT `fk_" + tablePrefix + "_node_graph` "
-                                + "FOREIGN KEY (`graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) "
-                                + "ON DELETE CASCADE"
-                                + ")"
-                )
-                .addFirstStartupQuery(
-                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_edge` ("
-                                + "`id` INT NOT NULL AUTO_INCREMENT, "
-                                + "`graph_id` INT NOT NULL, "
-                                + "`edge_id` CHAR(36) NOT NULL, "
-                                + "`source_node_id` CHAR(36) NOT NULL, "
-                                + "`target_node_id` CHAR(36) NOT NULL, "
-                                + "`cost` DOUBLE NOT NULL, "
-                                + "`flags` TEXT NOT NULL, "
-                                + "PRIMARY KEY (`id`), "
-                                + "UNIQUE KEY `uk_" + tablePrefix + "_edge_edge_id` (`edge_id`), "
-                                + "KEY `idx_" + tablePrefix + "_edge_graph_id` (`graph_id`), "
-                                + "KEY `idx_" + tablePrefix + "_edge_source_node_id` (`source_node_id`), "
-                                + "KEY `idx_" + tablePrefix + "_edge_target_node_id` (`target_node_id`), "
-                                + "CONSTRAINT `fk_" + tablePrefix + "_edge_graph` "
-                                + "FOREIGN KEY (`graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) "
-                                + "ON DELETE CASCADE, "
-                                + "CONSTRAINT `fk_" + tablePrefix + "_edge_source_node` "
-                                + "FOREIGN KEY (`source_node_id`) REFERENCES `" + tablePrefix + "_node` (`node_id`) "
-                                + "ON DELETE CASCADE, "
-                                + "CONSTRAINT `fk_" + tablePrefix + "_edge_target_node` "
-                                + "FOREIGN KEY (`target_node_id`) REFERENCES `" + tablePrefix + "_node` (`node_id`) "
-                                + "ON DELETE CASCADE"
-                                + ")"
-                )
-                .addFirstStartupQuery(
-                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_version` ("
-                                + " `version_no` INTEGER NOT NULL,"
-                                + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
-                                + ")"
-                )
-                .finishVersion().finish();
+    private List<DatabaseVersion> getDatabaseMigrationVersionList(final Engine engine) {
+        return switch (engine) {
+            case MYSQL -> MySQLMigration.build(tablePrefix);
+            case MARIADB -> MariaDBMigration.build(tablePrefix);
+            case SQLITE -> SQLiteMigration.build(tablePrefix);
+        };
     }
 }
