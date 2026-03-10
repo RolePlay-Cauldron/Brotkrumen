@@ -39,6 +39,7 @@ public class AStarAlgorithm extends AbstractShortestPath {
 
     @Override
     protected void initializeStart(final Graph graph, final UUID start, final UUID goal, final Map<UUID, Double> gScore) {
+        fScores.clear();
         fScores.put(start, heuristic(graph, start, goal));
     }
 

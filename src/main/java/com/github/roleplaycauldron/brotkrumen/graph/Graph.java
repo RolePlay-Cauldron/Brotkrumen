@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 /**
  * The class representing a graph. It includes the creation of Edges between nodes.
  */
+@SuppressWarnings({"PMD.TooManyMethods"})
 public class Graph {
     private final int graphId;
 
@@ -94,17 +95,29 @@ public class Graph {
     }
 
     /**
-     * Remove a node from the graph.
+     * Remove a node from the graph including all edges connected to it.
      *
      * @param node the node to remove
      */
     public void removeNode(final Node node) {
         if (node.graphId() == null || !nodes.containsKey(node.graphId())) {
-            throw new IllegalArgumentException("Cannot remove node with invalid id: " + node.graphId());
+            throw new IllegalArgumentException("Cannot remove node with invalid graphId: " + node.graphId());
         }
-        nodes.remove(node.graphId());
-        adj.remove(node.graphId());
-        edgesById.values().removeIf(edge -> edge.source().equals(node.graphId()) || edge.target().equals(node.graphId()));
+
+        final UUID graphId = node.graphId();
+        final Set<UUID> toRemove = edgesById.values().stream()
+                .filter(edge -> edge.source().equals(graphId) || edge.target().equals(graphId))
+                .map(Edge::edgeId)
+                .collect(Collectors.toSet());
+
+        toRemove.forEach(edgesById::remove);
+
+        for (final List<Edge> edges : adj.values()) {
+            edges.removeIf(e -> toRemove.contains(e.edgeId()));
+        }
+
+        adj.remove(graphId);
+        nodes.remove(graphId);
     }
 
     /**
@@ -136,23 +149,34 @@ public class Graph {
     }
 
     /**
-     * Add a new edge to the graph based on the flags.
+     * Adds a new edge to the graph, either directed or undirected, based on the provided flags.
      *
-     * @param source the source node
-     * @param target the target node
+     * @param source the {@link UUID} of the source node
+     * @param target the {@link UUID} of the target node
      * @param cost   the cost of the edge
-     * @param flags  the flags of the edge
-     * @return the created {@link Edge}
+     * @param flags  the {@link Set} of {@link EdgeFlag}s that determine the characteristics of the edge;
+     *               it must contain at least one flag and should specifically indicate whether the edge
+     *               is directed or undirected
+     * @return a {@link List} containing the created {@link Edge}(s); for directed edges, the list contains a single
+     * edge, while for undirected edges, the list contains two edges
+     * @throws IllegalArgumentException if the provided flags are null, empty, or do not clearly indicate
+     *                                  whether the edge is directed or undirected
      */
     public List<Edge> addEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
         if (flags == null || flags.isEmpty()) {
             throw new IllegalArgumentException("You need to specify at least one flag per Edge");
         }
-        final EdgeFlag flag = flags.iterator().next();
-        return switch (flag) {
-            case BLOCKED, DIRECTED, TELEPORT_GLOBAL -> List.of(addDirectedEdge(source, target, cost, flags));
-            case UNDIRECTED, TELEPORT -> addUndirectedEdge(source, target, cost, flags);
-        };
+
+        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.TELEPORT_GLOBAL);
+        final boolean undirected = flags.contains(EdgeFlag.UNDIRECTED) || flags.contains(EdgeFlag.TELEPORT);
+
+        if (directed == undirected) {
+            throw new IllegalArgumentException("To many flags that match both or neither, directed and undirected edges");
+        }
+
+        return directed
+                ? List.of(addDirectedEdge(source, target, cost, flags))
+                : addUndirectedEdge(source, target, cost, flags);
     }
 
     /**
@@ -164,7 +188,7 @@ public class Graph {
      * @return the created {@link Edge}
      */
     public Edge addDirectedEdge(final UUID source, final UUID target, final double cost) {
-        return addDirectedEdge(source, target, cost, EnumSet.noneOf(EdgeFlag.class));
+        return addDirectedEdge(source, target, cost, EnumSet.of(EdgeFlag.DIRECTED));
     }
 
     /**
@@ -179,7 +203,9 @@ public class Graph {
     public Edge addDirectedEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
         requireNode(source);
         requireNode(target);
-        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, flags);
+        final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
+        editableFlags.add(EdgeFlag.DIRECTED);
+        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, editableFlags);
         edgesById.put(edge.edgeId(), edge);
         adj.computeIfAbsent(source, k -> new ArrayList<>()).add(edge);
 
@@ -195,8 +221,8 @@ public class Graph {
      * @return a {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost) {
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost);
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost);
+        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, Set.of(EdgeFlag.DIRECTED));
+        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, Set.of(EdgeFlag.DIRECTED));
 
         return List.of(edgeOne, edgeTwo);
     }
@@ -211,8 +237,13 @@ public class Graph {
      * @return A {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost, final Set<EdgeFlag> flags) {
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, flags);
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, flags);
+        final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
+        if (editableFlags.contains(EdgeFlag.UNDIRECTED)) {
+            editableFlags.remove(EdgeFlag.UNDIRECTED);
+            editableFlags.add(EdgeFlag.DIRECTED);
+        }
+        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, editableFlags);
+        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, editableFlags);
 
         return List.of(edgeOne, edgeTwo);
     }
@@ -226,6 +257,13 @@ public class Graph {
         edgesById.remove(edge.edgeId());
         adj.get(edge.source()).remove(edge);
         adj.get(edge.target()).remove(edge);
+    }
+
+    private Set<EdgeFlag> getEditableFlags(final Set<EdgeFlag> flags) {
+        if (flags == null || flags.isEmpty()) {
+            throw new IllegalArgumentException("Flags cannot be null or empty.");
+        }
+        return EnumSet.copyOf(flags);
     }
 
     /**
