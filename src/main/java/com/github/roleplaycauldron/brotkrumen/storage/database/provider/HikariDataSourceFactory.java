@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.storage.database.provider;
 
+import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -50,19 +51,24 @@ public final class HikariDataSourceFactory {
 
         databaseConfig.setPoolName("Brotkrumen-ConnectionPool");
 
-        final int maximumPoolSize = configSection.getInt("maximumPoolSize");
+        final ConfigurationSection poolConfig = configSection.getConfigurationSection("poolSettings");
+        if (poolConfig == null) {
+            throw new StorageException("Database pool configuration is missing");
+        }
+
+        final int maximumPoolSize = poolConfig.getInt("maximumPoolSize");
         databaseConfig.setMaximumPoolSize(maximumPoolSize);
 
-        final int minimumIdle = configSection.getInt("minimumIdle");
+        final int minimumIdle = poolConfig.getInt("minimumIdle");
         databaseConfig.setMinimumIdle(minimumIdle);
 
-        final int maxLifetime = configSection.getInt("maximumLifetime");
+        final int maxLifetime = poolConfig.getInt("maximumLifetime");
         databaseConfig.setMaxLifetime(maxLifetime);
 
-        final int keepAliveTime = configSection.getInt("keepAliveTime");
+        final int keepAliveTime = poolConfig.getInt("keepAliveTime");
         databaseConfig.setKeepaliveTime(keepAliveTime);
 
-        final int connectionTimeout = configSection.getInt("connectionTimeout");
+        final int connectionTimeout = poolConfig.getInt("connectionTimeout");
         databaseConfig.setConnectionTimeout(connectionTimeout);
 
         final ThreadFactoryBuilder builder = new ThreadFactoryBuilder();

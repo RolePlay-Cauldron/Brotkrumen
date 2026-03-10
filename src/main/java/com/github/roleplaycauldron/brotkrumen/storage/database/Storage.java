@@ -49,15 +49,15 @@ public class Storage {
      * Constructs a new {@code Storage} instance with the specified logger factory and configuration section.
      * Initializes internal fields such as the logger and table prefix based on the provided configuration.
      *
-     * @param loggerFactory the {@link LoggerFactory} used to create loggers for the storage system
-     * @param configSection the {@link ConfigurationSection} containing the configuration values,
-     *                      including the table prefix for database operations
-     * @param dataFolder    the root folder for the plugin's data files
+     * @param loggerFactory        the {@link LoggerFactory} used to create loggers for the storage system
+     * @param configurationSection the {@link ConfigurationSection} containing the configuration values,
+     *                             including the table prefix for database operations
+     * @param dataFolder           the root folder for the plugin's data files
      */
-    public Storage(final LoggerFactory loggerFactory, final ConfigurationSection configSection, final File dataFolder) {
+    public Storage(final LoggerFactory loggerFactory, final ConfigurationSection configurationSection, final File dataFolder) {
         this.loggerFactory = loggerFactory;
         this.log = loggerFactory.create(Storage.class);
-        this.configSection = configSection;
+        this.configSection = configurationSection;
         this.tablePrefix = configSection.getString("tablePrefix");
         this.dataFolder = dataFolder;
     }
@@ -68,7 +68,7 @@ public class Storage {
      * provider is already open, a log message will indicate that the database is already connected.
      */
     public void initialize() {
-        final String engineString = configSection.getString("engine");
+        final String engineString = configSection.getString("storageMethod");
         if (engineString == null || engineString.isBlank()) {
             throw new IllegalArgumentException("Database engine configuration is missing");
         }

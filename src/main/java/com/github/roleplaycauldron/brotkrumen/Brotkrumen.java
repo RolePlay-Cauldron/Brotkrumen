@@ -16,6 +16,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -61,7 +62,13 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
 
-        storage = new Storage(loggerFactory, getConfig(), getDataFolder());
+        final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
+        if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
+            log.error("Could not start the plugin because the data configuration is missing. Please check your config.yml file for errors.");
+            return;
+        }
+
+        storage = new Storage(loggerFactory, databaseSection, getDataFolder());
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
