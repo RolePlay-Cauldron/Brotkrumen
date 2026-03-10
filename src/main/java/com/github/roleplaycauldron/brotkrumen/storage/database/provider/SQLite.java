@@ -7,7 +7,21 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * Provides a connection to an SQLite database implementation of the {@link BrotkrumenConnectionProvider}.
+ * This class is responsible for managing the lifecycle of an SQLite database connection, including
+ * opening, closing, and retrieving connections safely.
+ *
+ * <p>Instances of this class are designed to ensure thread-safe access to the database connection
+ * using a {@link ReadWriteLock}. A write lock is used to safely open and close the connection, while
+ * a read lock is employed for operations that require an active connection.
+ *
+ * <p>The SQLite database file path and logging instance are specified at construction time. If the
+ * database directory does not exist, it will be created.
+ */
 public class SQLite implements BrotkrumenConnectionProvider {
 
     private static final String DEFAULT_DATABASE_NAME = "brotkrumen.db";
@@ -15,6 +29,8 @@ public class SQLite implements BrotkrumenConnectionProvider {
     private final WrappedLogger log;
 
     private final String databasePath;
+
+    private final ReadWriteLock stateLock;
 
     private boolean isOpen;
 
@@ -26,65 +42,85 @@ public class SQLite implements BrotkrumenConnectionProvider {
      */
     public SQLite(final WrappedLogger log, final String databasePath) {
         this.log = log;
-        this.databasePath = databasePath;
-
+        this.databasePath = databasePath + DEFAULT_DATABASE_NAME;
+        this.stateLock = new ReentrantReadWriteLock();
         this.isOpen = false;
     }
 
     @Override
     public void open() {
-        if (isOpen) {
-            log.error("The SQLite connection is already open!");
-            return;
-        }
-
+        stateLock.writeLock().lock();
         try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (final ClassNotFoundException e) {
-            log.error("SQLite JDBC Driver was not loaded!", e);
-            return;
-        }
+            if (isOpen) {
+                log.error("The SQLite connection is already open!");
+                return;
+            }
 
-        final File databaseFile = new File(databasePath);
-        final File parent = databaseFile.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            log.error("Could not create SQLite database directory: " + parent.getAbsolutePath());
-            return;
-        }
+            try {
+                Class.forName("org.sqlite.JDBC");
+            } catch (final ClassNotFoundException e) {
+                log.error("SQLite JDBC Driver was not loaded!", e);
+                return;
+            }
 
-        try (Connection ignored = DriverManager.getConnection("jdbc:sqlite:" + databasePath)) {
-            this.isOpen = true;
-            log.info("Connected to SQLite database at " + databasePath);
-        } catch (final SQLException ex) {
-            log.error("Could not connect to the SQLite database!", ex);
+            final File databaseFile = new File(databasePath);
+            final File parent = databaseFile.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                log.error("Could not create SQLite database directory: " + parent.getAbsolutePath());
+                return;
+            }
+
+            try (Connection ignored = DriverManager.getConnection("jdbc:sqlite:" + databasePath)) {
+                this.isOpen = true;
+                log.info("Connected to SQLite database at " + databasePath);
+            } catch (final SQLException ex) {
+                log.error("Could not connect to the SQLite database!", ex);
+            }
+        } finally {
+            stateLock.writeLock().unlock();
         }
     }
 
     @Override
     public Connection getConnection() {
-        if (!isOpen) {
-            throw new StorageException("The SQLite connection is not open!");
-        }
-        final Connection con;
+        stateLock.readLock().lock();
         try {
-            con = DriverManager.getConnection("jdbc:sqlite:" + databasePath);
-        } catch (final SQLException e) {
-            throw new StorageException("Failed to get database connection", e);
+            if (!isOpen) {
+                throw new StorageException("The SQLite connection is not open!");
+            }
+
+            try {
+                return DriverManager.getConnection("jdbc:sqlite:" + databasePath);
+            } catch (final SQLException e) {
+                throw new StorageException("Failed to get database connection", e);
+            }
+        } finally {
+            stateLock.readLock().unlock();
         }
-        return con;
     }
 
     @Override
     public boolean isClosed() {
-        return !isOpen;
+        stateLock.readLock().lock();
+        try {
+            return !isOpen;
+        } finally {
+            stateLock.readLock().unlock();
+        }
     }
 
     @Override
     public void close() {
-        if (!isOpen) {
-            log.error("Could not disconnect from the SQLite database, as it already was closed.");
-            return;
+        stateLock.writeLock().lock();
+        try {
+            if (!isOpen) {
+                log.error("Could not disconnect from the SQLite database, as it already was closed.");
+                return;
+            }
+
+            this.isOpen = false;
+        } finally {
+            stateLock.writeLock().unlock();
         }
-        this.isOpen = false;
     }
 }
