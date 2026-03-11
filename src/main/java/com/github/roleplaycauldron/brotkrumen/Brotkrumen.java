@@ -21,6 +21,18 @@ import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
+import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
+import com.github.roleplaycauldron.spellbook.effect.executor.RunningEffect;
+import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
+import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.MovingPointShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.SpiralHelixShape;
+import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
+import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 import de.slikey.effectlib.EffectManager;
 import org.bukkit.configuration.ConfigurationSection;
@@ -33,17 +45,24 @@ import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Starting point of the plugin.
  */
 @SuppressWarnings("PMD")
 public class Brotkrumen extends JavaPlugin implements Listener {
+
+    private final Map<UUID, List<RunningEffect>> activeEffects = new ConcurrentHashMap<>();
 
     private VisualizerRegistry reg;
 
@@ -66,6 +85,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private Map<Integer, Graph> graphMap;
 
     private List<GraphNetwork> graphNetworks;
+
+    private EffectExecutor executor;
 
     /**
      * Default constructor.
@@ -151,6 +172,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //        graphTwoPath = List.of(node2A, node2B, node2C, node2D, node2E, node2F, node2G, node2H, node2I, node2J);
 
         getServer().getPluginManager().registerEvents(this, this);
+
+        this.executor = new EffectExecutor(this);
     }
 
     private void loadGraphs() {
@@ -170,18 +193,60 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @EventHandler
     public void playerJoin(final PlayerJoinEvent event) {
-        final ConfigurationSection section = getConfig().getConfigurationSection("NodeEffect");
-        final EffectLibConfig effectConfig = new EffectLibConfig(section.getString("class"), section);
-        final ParticleVisualiser particleVisualiser = new ParticleVisualiser(this, loggerFactory, graphTwo,
-                new EffectManager(this), effectConfig, event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
+//        final ConfigurationSection nodeSection = getConfig().getConfigurationSection("NodeEffect");
+//        final EffectLibConfig nodeConfig = new EffectLibConfig(nodeSection.getString("class"), nodeSection);
+//        final ConfigurationSection edgeSection = getConfig().getConfigurationSection("EdgeEffect");
+//        final EffectLibConfig edgeConfig = new EffectLibConfig(edgeSection.getString("class"), edgeSection);
+//
+//        final ParticleVisualizer particleVisualizer = new ParticleVisualizer(this, loggerFactory, graphTwo,
+//                new EffectManager(this), nodeConfig, edgeConfig, event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
+//
+//        reg.register(event.getPlayer().getUniqueId(), particleVisualizer);
+        final Location joinLocation = event.getPlayer().getLocation();
+        final UUID uuid = event.getPlayer().getUniqueId();
 
-//        final BlockDisplayVisualizer visualiserTwo = new BlockDisplayVisualizer(this, loggerFactory, graphTwo,
-//                event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
-        reg.register(event.getPlayer().getUniqueId(), particleVisualiser);
+        // 1. Effekt: Eine Helix aus Flammen, die zum Ziel "schaut"
+        final EffectInstance sphereShape = EffectBuilder.create()
+                .shape(new CubeShape(3f, 20))
+                .particle(Particle.FLAME)
+                .build();
+
+        // 2. Effekt: Eine vertikale Linie aus Herzchen
+        final EffectInstance lineEffect = EffectBuilder.create()
+                .shape(new MovingPointShape(2f, 0.2f, 4, false))
+                .particle(Particle.FLAME)
+                .build();
+
+        final EffectInstance helixEffect = EffectBuilder.create()
+                .shape(new SpiralHelixShape(2, 30, 4, 10, 3, 0.2f, true))
+                .lookAtTarget()
+                .particle(Particle.FLAME)
+                .build();
+
+        final Location targetLocation = joinLocation.clone().add(20, 1, 20);
+        // Konfiguration für die permanente Ausführung
+        final EffectExecutionConfig config = EffectExecutionConfig.builder()
+                .originAnchor(new FixedAnchor(joinLocation))
+                .targetAnchor(new FixedAnchor(targetLocation))
+                .viewerSource(new FixedViewerSource(Collections.singletonList(event.getPlayer())))
+                .periodTicks(2) // Alle 2 Ticks ausführen (10x pro Sekunde)
+                .maxRuns(-1)    // Permanent ausführen
+                .build();
+
+        final RunningEffect runningSphere = executor.start(sphereShape, config);
+        final RunningEffect runningLine = executor.start(lineEffect, config);
+        final RunningEffect runningHelix = executor.start(helixEffect, config);
+
+        activeEffects.put(uuid, new ArrayList<>(List.of(runningHelix, runningSphere, runningLine)));
     }
 
     @EventHandler
     public void playerQuit(final PlayerQuitEvent event) {
-        reg.unregister(event.getPlayer().getUniqueId());
+//        reg.unregister(event.getPlayer().getUniqueId());
+
+        final List<RunningEffect> effects = activeEffects.remove(event.getPlayer().getUniqueId());
+        if (effects != null) {
+            effects.forEach(RunningEffect::cancel);
+        }
     }
 }
