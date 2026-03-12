@@ -8,15 +8,21 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.PathAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
+import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.plugin.ServicePriority;
+import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumSet;
@@ -40,6 +46,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private SearchRegistry searchRegistry;
 
+    private GraphServiceImpl graphService;
+
+    private Storage storage;
+
     /**
      * Default constructor.
      */
@@ -49,10 +59,26 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        new CoordinatesCommand(this);
         loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
-        log.info("brotkrumen.Brotkrumen enabled");
+
+        saveDefaultConfig();
+
+        final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
+        if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
+            log.error("Could not start the plugin because the data configuration is missing. Please check your config.yml file for errors.");
+            return;
+        }
+
+        storage = new Storage(loggerFactory, databaseSection, getDataFolder());
+        storage.initialize();
+
+        graphService = new GraphServiceImpl(storage);
+        final ServicesManager servicesManager = getServer().getServicesManager();
+        servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
+
+        new CoordinatesCommand(this);
+        log.info("Brotkrumen enabled");
 
         searchRegistry = new SearchRegistry();
         searchRegistry.register(new AStarAlgorithm());
@@ -111,6 +137,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         reg.stopVisibilityUpdates();
+
+        storage.shutdown();
     }
 
     @EventHandler
