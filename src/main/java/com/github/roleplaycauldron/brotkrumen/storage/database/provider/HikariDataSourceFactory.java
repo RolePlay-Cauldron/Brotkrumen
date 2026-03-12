@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.storage.database.provider;
 
 import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
+import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -31,19 +32,25 @@ public final class HikariDataSourceFactory {
      * @return a fully configured {@link HikariDataSource} instance
      */
     /* default */
-    static HikariDataSource create(final ConfigurationSection configSection,
+    static HikariDataSource create(final WrappedLogger log, final ConfigurationSection configSection,
                                    final String startJdbcUrl) {
         final HikariConfig databaseConfig = new HikariConfig();
 
-        final String jdbcUrl = startJdbcUrl + configSection.getString("host") + ":"
-                + configSection.getString("port") + "/"
-                + configSection.getString("database");
+        final String jdbcUrl = String.format("%s%s:%s/%s",
+                startJdbcUrl,
+                configSection.getString("host"),
+                configSection.getString("port"),
+                configSection.getString("database"));
+
         databaseConfig.setJdbcUrl(jdbcUrl);
 
         final String username = configSection.getString("user");
-        if (username != null) {
-            databaseConfig.setUsername(username);
+        if (username == null || username.isBlank()) {
+            log.error("The database username is missing. Please check your config.yml.");
+            throw new StorageException("The database username is missing");
         }
+        databaseConfig.setUsername(username);
+
         final String password = configSection.getString("password");
         if (password != null) {
             databaseConfig.setPassword(password);
@@ -51,24 +58,25 @@ public final class HikariDataSourceFactory {
 
         databaseConfig.setPoolName("Brotkrumen-ConnectionPool");
 
-        final ConfigurationSection poolConfig = configSection.getConfigurationSection("poolSettings");
+        ConfigurationSection poolConfig = configSection.getConfigurationSection("poolSettings");
         if (poolConfig == null) {
-            throw new StorageException("Database pool configuration is missing");
+            poolConfig = configSection;
+            log.error("The database pool configuration is missing. Please check your config.yml or regenerate it. Using default values");
         }
 
-        final int maximumPoolSize = poolConfig.getInt("maximumPoolSize");
+        final int maximumPoolSize = poolConfig.getInt("maximumPoolSize", 10);
         databaseConfig.setMaximumPoolSize(maximumPoolSize);
 
-        final int minimumIdle = poolConfig.getInt("minimumIdle");
+        final int minimumIdle = poolConfig.getInt("minimumIdle", 10);
         databaseConfig.setMinimumIdle(minimumIdle);
 
-        final int maxLifetime = poolConfig.getInt("maximumLifetime");
+        final int maxLifetime = poolConfig.getInt("maximumLifetime", 1_800_000);
         databaseConfig.setMaxLifetime(maxLifetime);
 
-        final int keepAliveTime = poolConfig.getInt("keepAliveTime");
+        final int keepAliveTime = poolConfig.getInt("keepAliveTime", 0);
         databaseConfig.setKeepaliveTime(keepAliveTime);
 
-        final int connectionTimeout = poolConfig.getInt("connectionTimeout");
+        final int connectionTimeout = poolConfig.getInt("connectionTimeout", 5_000);
         databaseConfig.setConnectionTimeout(connectionTimeout);
 
         final ThreadFactoryBuilder builder = new ThreadFactoryBuilder();

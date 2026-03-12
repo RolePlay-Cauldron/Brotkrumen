@@ -54,7 +54,7 @@ public class MySQL implements BrotkrumenConnectionProvider {
         if (isClosed()) {
             log.info("Connecting to database...");
             final String jdbcUrl = "jdbc:" + engine.name().toLowerCase(Locale.ROOT) + "://";
-            this.hikari = HikariDataSourceFactory.create(configSection, jdbcUrl);
+            this.hikari = HikariDataSourceFactory.create(log, configSection, jdbcUrl);
 
             if (!hikari.isClosed()) {
                 log.info("Successfully connected to the server!");
