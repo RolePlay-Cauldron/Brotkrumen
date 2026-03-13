@@ -1,5 +1,8 @@
 package com.github.roleplaycauldron.brotkrumen;
 
+import com.github.roleplaycauldron.brotkrumen.editor.EditorCommand;
+import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
+import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
@@ -24,6 +27,7 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
+import org.bukkit.command.CommandMap;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
@@ -70,6 +74,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private PathResult pathResult;
 
+    private EditorService editorService;
+
     /**
      * Default constructor.
      */
@@ -99,7 +105,6 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
         servicesManager.register(GraphNetworkService.class, graphNetworkService, this, ServicePriority.Normal);
 
-        new CoordinatesCommand(this);
         log.info("Brotkrumen enabled");
 
         createVisualizerTestGraphs();
@@ -161,6 +166,13 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphTwo.addEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
         createVisualizerTestNetwork(nodeG, node2A, nodeC, node2D, nodeB, node2E);
+        this.editorService = new EditorService(reg, this, loggerFactory);
+        new CoordinatesCommand(this);
+        final CommandMap commandMap = getServer().getCommandMap();
+        commandMap.register("bkeditor", new EditorCommand(editorService, graphService));
+
+        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
     }
 
     private void createVisualizerTestNetwork(final Node graphOneExit, final Node graphTwoEntry,
@@ -288,5 +300,9 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                 .blockDisplayGraphDesign(graphOne.getGraphId(), BlockDisplayDesignSet.emberPreset())
                 .blockDisplayGraphDesign(graphTwo.getGraphId(), BlockDisplayDesignSet.prismPreset())
                 .build();
+    }
+
+    public GraphService getGraphService() {
+        return graphService;
     }
 }
