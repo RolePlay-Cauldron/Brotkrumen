@@ -61,6 +61,9 @@ public class GraphServiceImpl implements GraphService {
 
     @Override
     public GraphNetwork loadGraphNetwork() {
+        // ToDo Es kann mehrere Netzwerke geben, und zwar wenn Graphen nicht miteinander verbunden sind oder in
+        //  unterschiedlichen Welten chillen. Das muss unbedingt geprüft werden und auch zurückgegeben werden!
+        // ToDo maybe eigenen Service dafür aufmachen?
         final GraphNetwork network = new GraphNetwork();
         final Set<Graph> graphs = getAllGraphs();
 
@@ -77,6 +80,8 @@ public class GraphServiceImpl implements GraphService {
 
     @Override
     public void saveInterGraphEdges(final GraphNetwork network) {
+        // ToDo eigenen Service machen und die Graph-Netzwerke abspeichern.
+
         final Set<InterGraphEdge> dbEdges = interGraphEdgeTable.getAllEdges(storage.getProvider());
         final Map<UUID, InterGraphEdge> dbById = dbEdges.stream()
                 .collect(Collectors.toMap(InterGraphEdge::edgeId, edge -> edge));

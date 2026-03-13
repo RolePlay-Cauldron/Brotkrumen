@@ -192,6 +192,15 @@ public class GraphNetwork {
         return new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
     }
 
+    public boolean checkOrRemoveGraphConnections() {
+        // ToDo Prüfen ob die Graphen auch wirklich ne connection haben, ansonsten aus dem GraphNetwork entfernen
+        return false;
+    }
+
+    public void removeGraphFromNetwork(final int graphid) {
+        // ToDo inkl. Edges
+    }
+
     private void requireNode(final NodeRef nodeRef) {
         final Graph graph = graphsByDbId.get(nodeRef.graphDbId());
         if (graph == null) {
