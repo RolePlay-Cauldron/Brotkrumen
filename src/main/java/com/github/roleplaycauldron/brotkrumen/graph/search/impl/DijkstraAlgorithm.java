@@ -40,7 +40,7 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
     @Override
     protected void onExpandNode(final Graph graph, final UUID nodeId, final TeleportRules rules,
                                 final Predicate<Edge> filter, final Map<UUID, Double> gScore,
-                                final Map<UUID, UUID> parent, final Queue<UUID> open, final UUID goal) {
+                                final Map<UUID, UUID> parent, final Queue<UUID> open, final Set<UUID> goals) {
         if (!rules.isWarpingEnabled()) {
             return;
         }
@@ -56,7 +56,7 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
             if (!filter.test(virtualEdge)) {
                 continue;
             }
-            relax(nodeId, virtualEdge, graph, goal, gScore, parent, open);
+            relax(nodeId, virtualEdge, graph, goals, gScore, parent, open);
         }
     }
 }

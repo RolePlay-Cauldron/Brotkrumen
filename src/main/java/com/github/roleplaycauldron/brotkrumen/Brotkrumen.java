@@ -10,6 +10,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
@@ -31,6 +33,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Starting point of the plugin.
@@ -51,6 +54,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private SearchRegistry searchRegistry;
 
     private GraphServiceImpl graphService;
+
+    private GraphNetworkServiceImpl graphNetworkService;
 
     private Storage storage;
 
@@ -82,8 +87,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
+        graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
+        servicesManager.register(GraphNetworkService.class, graphNetworkService, this, ServicePriority.Normal);
 
         new CoordinatesCommand(this);
         log.info("Brotkrumen enabled");
@@ -136,7 +143,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphTwo.addUndirectedEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
         final PathAlgorithm pathAlgo = searchRegistry.select(graphTwo, TeleportRules.disableTeleports());
-        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), node2J.graphId(), null, TeleportRules.disableTeleports());
+        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), Set.of(node2J.graphId()), null, TeleportRules.disableTeleports());
 //        graphTwoPath = List.of(node2A, node2B, node2C, node2D, node2E, node2F, node2G, node2H, node2I, node2J);
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -147,7 +154,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphNetworks = new ArrayList<>();
 
         graphService.getAllGraphs().forEach(graph -> graphMap.put(graph.getGraphId(), graph));
-        graphNetworks.add(graphService.loadGraphNetwork());
+        graphNetworks.addAll(graphNetworkService.loadGraphNetworks());
     }
 
     @Override

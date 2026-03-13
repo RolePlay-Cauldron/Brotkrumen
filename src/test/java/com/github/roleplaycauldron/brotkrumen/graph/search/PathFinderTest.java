@@ -39,7 +39,7 @@ class PathFinderTest {
         when(registry.select(graph, rules)).thenReturn(algo);
 
         final List<Node> expected = List.of(graph.getNodeById(uuidOne), graph.getNodeById(uuidTwo));
-        when(algo.findPath(graph, uuidOne, uuidTwo, null, rules)).thenReturn(expected);
+        when(algo.findPath(graph, uuidOne, Set.of(uuidTwo), null, rules)).thenReturn(expected);
 
         final PathFinder finderWithRegistry = new PathFinder(registry);
         final PathFinder defaultFinder = new PathFinder();
@@ -62,14 +62,14 @@ class PathFinderTest {
 
         final TeleportRules rules = TeleportRules.disableTeleports();
         when(registry.select(graph, rules)).thenReturn(algo);
-        when(algo.findPath(graph, uuidOne, uuidTwo, null, rules))
+        when(algo.findPath(graph, uuidOne, Set.of(uuidTwo), null, rules))
                 .thenReturn(List.of(graph.getNodeById(uuidOne), graph.getNodeById(uuidTwo)));
 
         new PathFinder(registry).findPath(graph, uuidOne, uuidTwo, null, rules);
 
         final InOrder inOrder = inOrder(registry, algo);
         inOrder.verify(registry).select(graph, rules);
-        inOrder.verify(algo).findPath(graph, uuidOne, uuidTwo, null, rules);
+        inOrder.verify(algo).findPath(graph, uuidOne, Set.of(uuidTwo), null, rules);
     }
 
     @Test

@@ -1,7 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.storage.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
-import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 
 import java.util.Optional;
 import java.util.Set;
@@ -53,19 +52,4 @@ public interface GraphService {
      * @param graphId the unique identifier of the graph to be deleted
      */
     void deleteGraph(int graphId);
-
-    /**
-     * Loads all graphs and inter-graph connections into a single network model.
-     *
-     * @return fully populated graph network
-     */
-    GraphNetwork loadGraphNetwork();
-
-    /**
-     * Persists all inter-graph edges for the provided network.
-     * Graphs must already be persisted.
-     *
-     * @param network network containing inter-graph edges to persist
-     */
-    void saveInterGraphEdges(GraphNetwork network);
 }

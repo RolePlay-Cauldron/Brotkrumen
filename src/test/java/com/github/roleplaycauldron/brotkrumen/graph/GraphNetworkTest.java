@@ -33,12 +33,12 @@ class GraphNetworkTest {
         final GraphNetwork network = new GraphNetwork();
         network.addGraph(graphOne);
         network.addGraph(graphTwo);
-        network.addInterGraphEdge(new InterGraphEdge(UUID.randomUUID(),
-                new NodeRef(1, nodeOneB),
-                new NodeRef(2, nodeTwoA),
-                3.5,
-                Set.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED),
-                true));
+
+        assertTrue(network.hasGraph(1));
+        assertEquals(graphOne, network.getGraph(1));
+        assertEquals(2, network.getGraphs().size());
+
+        network.addDirectedInterGraphEdge(new NodeRef(1, nodeOneB), new NodeRef(2, nodeTwoA), 3.5);
 
         final GraphNetwork.UnifiedGraph unifiedGraph = network.toUnifiedGraph();
 
@@ -98,5 +98,72 @@ class GraphNetworkTest {
 
         assertEquals(1, resolved.size(), "Node path should be resolved for visualizer usage");
         assertEquals(nodeOne, resolved.getFirst().graphId(), "Resolved node id should match");
+    }
+
+    @Test
+    void removesGraphAndEdges() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID nodeOne = UUID.randomUUID();
+        final UUID nodeTwo = UUID.randomUUID();
+        graphOne.addNode(new Node(nodeOne, 0, 0, 0, null));
+        graphTwo.addNode(new Node(nodeTwo, 10, 10, 10, null));
+
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addUndirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
+
+        assertEquals(2, network.getInterGraphEdges().size());
+
+        network.removeGraph(2);
+
+        assertFalse(network.hasGraph(2));
+        assertEquals(0, network.getInterGraphEdges().size(), "Edges to/from removed graph should be gone");
+    }
+
+    @Test
+    void removesSpecificInterGraphEdges() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID nodeOne = UUID.randomUUID();
+        final UUID nodeTwo = UUID.randomUUID();
+        graphOne.addNode(new Node(nodeOne, 0, 0, 0, null));
+        graphTwo.addNode(new Node(nodeTwo, 10, 10, 10, null));
+
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addDirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
+
+        assertEquals(1, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size());
+
+        network.removeInterGraphEdges(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo));
+        assertEquals(0, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size());
+    }
+
+    @Test
+    void cleansUpDisconnectedGraphs() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final Graph graphThree = new Graph(3, "Three");
+        final UUID nodeOne = UUID.randomUUID();
+        final UUID nodeTwo = UUID.randomUUID();
+        graphOne.addNode(new Node(nodeOne, 0, 0, 0, null));
+        graphTwo.addNode(new Node(nodeTwo, 10, 10, 10, null));
+        graphThree.addNode(new Node(UUID.randomUUID(), 20, 20, 20, null));
+
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addGraph(graphThree);
+
+        // Connect One and Two
+        network.addDirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 1.0);
+
+        assertFalse(network.removeDisconnectedGraphs(), "Should find and remove disconnected graph");
+        assertFalse(network.hasGraph(3), "Graph Three should have been removed");
+        assertTrue(network.hasGraph(1), "Graph One should remain");
+        assertTrue(network.hasGraph(2), "Graph Two should remain");
     }
 }

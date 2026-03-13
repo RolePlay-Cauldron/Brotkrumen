@@ -3,11 +3,11 @@ package com.github.roleplaycauldron.brotkrumen.graph.search.impl;
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
-import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -26,10 +26,7 @@ public class AStarAlgorithm extends AbstractShortestPath {
 
     @Override
     public boolean suitable(final Graph graph, final TeleportRules rules) {
-        if (rules == null || rules.isWarpingEnabled() || rules.isLocalTeleportEnabled()) {
-            return false;
-        }
-        return isEuclidHeuristicAdmissible(graph);
+        return rules != null && !rules.isWarpingEnabled() && !rules.isLocalTeleportEnabled();
     }
 
     @Override
@@ -38,37 +35,31 @@ public class AStarAlgorithm extends AbstractShortestPath {
     }
 
     @Override
-    protected void initializeStart(final Graph graph, final UUID start, final UUID goal, final Map<UUID, Double> gScore) {
+    protected void initializeStart(final Graph graph, final UUID start, final Set<UUID> goals, final Map<UUID, Double> gScore) {
         fScores.clear();
-        fScores.put(start, heuristic(graph, start, goal));
+        fScores.put(start, minHeuristic(graph, start, goals));
     }
 
     @Override
-    protected void afterRelax(final Graph graph, final UUID nodeId, final UUID goal, final double tentativeG,
+    protected void afterRelax(final Graph graph, final UUID nodeId, final Set<UUID> goals, final double tentativeG,
                               final Map<UUID, Double> gScore) {
-        final double fScore = tentativeG + heuristic(graph, nodeId, goal);
+        final double fScore = tentativeG + minHeuristic(graph, nodeId, goals);
         fScores.put(nodeId, fScore);
+    }
+
+    private double minHeuristic(final Graph graph, final UUID nodeId, final Set<UUID> goals) {
+        double min = Double.POSITIVE_INFINITY;
+        for (final UUID goal : goals) {
+            final double h = heuristic(graph, nodeId, goal);
+            if (h < min) {
+                min = h;
+            }
+        }
+        return min;
     }
 
     @Override
     protected double priorityScore(final UUID nodeId, final Map<UUID, Double> gScore) {
         return fScores.getOrDefault(nodeId, Double.POSITIVE_INFINITY);
-    }
-
-    @SuppressWarnings("PMD.ShortVariable")
-    private boolean isEuclidHeuristicAdmissible(final Graph graph) {
-        for (final Node nodeA : graph.getNodes()) {
-            for (final Edge edge : graph.neighbors(nodeA.graphId())) {
-                final Node nodeB = graph.getNodeById(edge.target());
-                final double dx = nodeA.x() - nodeB.x();
-                final double dy = nodeA.y() - nodeB.y();
-                final double dz = nodeA.z() - nodeB.z();
-                final double euclid = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (edge.cost() < euclid - 1e-9) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 }

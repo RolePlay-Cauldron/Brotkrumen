@@ -77,7 +77,7 @@ class AStarAlgorithmTest {
     @Test
     void testAStarPathFinding() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, uuidSeven, null, tpNotAllowed);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, Set.of(uuidSeven), null, tpNotAllowed);
 
         assertNotNull(pathNodes, "The path should not be null");
 
@@ -92,7 +92,7 @@ class AStarAlgorithmTest {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
         final Predicate<Edge> filterWithoutBlocked = edge -> !edge.flags().contains(EdgeFlag.BLOCKED);
 
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, uuidSeven, filterWithoutBlocked, tpNotAllowed);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, Set.of(uuidSeven), filterWithoutBlocked, tpNotAllowed);
 
         assertNotNull(pathNodes, "The path should not be null");
 

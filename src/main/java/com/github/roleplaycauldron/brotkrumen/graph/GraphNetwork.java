@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +19,8 @@ public class GraphNetwork {
     private final Map<Integer, Graph> graphsByDbId;
 
     private final Map<NodeRef, List<InterGraphEdge>> outgoingInterEdges;
+
+    private UnifiedGraph cachedUnifiedGraph;
 
     /**
      * Constructs a new instance of the GraphNetwork.
@@ -37,6 +40,69 @@ public class GraphNetwork {
             throw new IllegalArgumentException("Graph must have a persisted graph id for network usage.");
         }
         graphsByDbId.put(graph.getGraphId(), graph);
+        invalidateCache();
+    }
+
+    /**
+     * Checks if a graph with the given ID is part of the network.
+     *
+     * @param graphId the ID of the graph to check
+     * @return {@code true} if the graph is present, {@code false} otherwise
+     */
+    public boolean hasGraph(final int graphId) {
+        return graphsByDbId.containsKey(graphId);
+    }
+
+    /**
+     * Retrieves a graph by its ID from the network.
+     *
+     * @param graphId the ID of the graph to retrieve
+     * @return the {@link Graph} instance, or {@code null} if not found
+     */
+    public Graph getGraph(final int graphId) {
+        return graphsByDbId.get(graphId);
+    }
+
+    /**
+     * Returns an unmodifiable collection of all graphs currently in the network.
+     *
+     * @return collection of graphs
+     */
+    public Collection<Graph> getGraphs() {
+        return List.copyOf(graphsByDbId.values());
+    }
+
+    /**
+     * Adds a directed inter-graph edge.
+     *
+     * @param source the source node reference
+     * @param target the target node reference
+     * @param cost   the cost associated with traversing the edge
+     * @param flags  the edge flags specifying properties of the edge; if null or empty,
+     *               default inter-graph directed flags are used
+     * @return the created inter-graph edge
+     */
+    public InterGraphEdge addDirectedInterGraphEdge(final NodeRef source, final NodeRef target, final double cost,
+                                                    final Set<EdgeFlag> flags) {
+        final Set<EdgeFlag> normalizedFlags = flags == null || flags.isEmpty()
+                ? EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED)
+                : flags;
+
+        final InterGraphEdge edge = new InterGraphEdge(UUID.randomUUID(), source, target, cost, normalizedFlags, true);
+        addInterGraphEdge(edge);
+        return edge;
+    }
+
+    /**
+     * Adds a directed inter-graph edge with default flags.
+     *
+     * @param source the source node reference
+     * @param target the target node reference
+     * @param cost   the cost associated with traversing the edge
+     * @return the created inter-graph edge
+     */
+    public InterGraphEdge addDirectedInterGraphEdge(final NodeRef source, final NodeRef target, final double cost) {
+        return addDirectedInterGraphEdge(source, target, cost, null);
     }
 
     /**
@@ -54,6 +120,20 @@ public class GraphNetwork {
 
         final InterGraphEdge normalized = new InterGraphEdge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), flags, edge.enabled());
         outgoingInterEdges.computeIfAbsent(normalized.source(), key -> new ArrayList<>()).add(normalized);
+        invalidateCache();
+    }
+
+    /**
+     * Adds an undirected inter-graph edge between two nodes with default flags.
+     *
+     * @param nodeA the reference for the first node in the undirected edge
+     * @param nodeB the reference for the second node in the undirected edge
+     * @param cost  the cost associated with traversing the edge
+     * @return a list containing the two created inter-graph edges, one in each direction
+     */
+    public List<InterGraphEdge> addUndirectedInterGraphEdge(final NodeRef nodeA, final NodeRef nodeB,
+                                                            final double cost) {
+        return addUndirectedInterGraphEdge(nodeA, nodeB, cost, null);
     }
 
     /**
@@ -96,6 +176,16 @@ public class GraphNetwork {
      */
     public List<InterGraphEdge> getOutgoingInterEdges(final NodeRef source) {
         return outgoingInterEdges.getOrDefault(source, List.of());
+    }
+
+    /**
+     * Alias for {@link #getOutgoingInterEdges(NodeRef)}.
+     *
+     * @param source the reference to the source node
+     * @return a list of outgoing inter-graph edges
+     */
+    public List<InterGraphEdge> getInterGraphEdges(final NodeRef source) {
+        return getOutgoingInterEdges(source);
     }
 
     /**
@@ -156,6 +246,10 @@ public class GraphNetwork {
      * - mappings from original node references to unified node IDs
      */
     public UnifiedGraph toUnifiedGraph() {
+        if (cachedUnifiedGraph != null) {
+            return cachedUnifiedGraph;
+        }
+
         final Graph unified = new Graph("Unified graph network");
         final Map<NodeRef, UUID> unifiedIdByNodeRef = new HashMap<>();
         final Map<UUID, NodeRef> nodeRefByUnifiedId = new HashMap<>();
@@ -189,16 +283,107 @@ public class GraphNetwork {
             }
         }
 
-        return new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
+        final UnifiedGraph result = new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
+        this.cachedUnifiedGraph = result;
+        return result;
     }
 
-    public boolean checkOrRemoveGraphConnections() {
-        // ToDo Prüfen ob die Graphen auch wirklich ne connection haben, ansonsten aus dem GraphNetwork entfernen
-        return false;
+    private void invalidateCache() {
+        this.cachedUnifiedGraph = null;
     }
 
-    public void removeGraphFromNetwork(final int graphid) {
-        // ToDo inkl. Edges
+    /**
+     * Removes all outgoing inter-graph edges originating from the specified source node.
+     *
+     * @param source the source node reference
+     */
+    public void removeInterGraphEdges(final NodeRef source) {
+        if (outgoingInterEdges.remove(source) != null) {
+            invalidateCache();
+        }
+    }
+
+    /**
+     * Removes all inter-graph edges from a specific source node to a specific target node.
+     *
+     * @param source the source node reference
+     * @param target the target node reference
+     */
+    public void removeInterGraphEdges(final NodeRef source, final NodeRef target) {
+        final List<InterGraphEdge> edges = outgoingInterEdges.get(source);
+        if (edges != null) {
+            if (edges.removeIf(edge -> edge.target().equals(target))) {
+                if (edges.isEmpty()) {
+                    outgoingInterEdges.remove(source);
+                }
+                invalidateCache();
+            }
+        }
+    }
+
+    /**
+     * Checks whether the graphs in the network are connected to each other.
+     * This implementation currently checks if there is at least one inter-graph edge
+     * for each registered graph, or if it's the only graph in the network.
+     * <p>
+     * Disconnected graphs are automatically removed from the network.
+     *
+     * @return {@code true} if the network is likely connected, {@code false} otherwise.
+     */
+    public boolean removeDisconnectedGraphs() {
+        if (graphsByDbId.size() <= 1) {
+            return true;
+        }
+
+        final Set<Integer> connectedGraphs = new HashSet<>();
+        for (final List<InterGraphEdge> edges : outgoingInterEdges.values()) {
+            for (final InterGraphEdge edge : edges) {
+                connectedGraphs.add(edge.source().graphDbId());
+                connectedGraphs.add(edge.target().graphDbId());
+            }
+        }
+
+        final List<Integer> orphans = graphsByDbId.keySet().stream()
+                .filter(id -> !connectedGraphs.contains(id))
+                .toList();
+
+        for (final int orphanId : orphans) {
+            removeGraph(orphanId);
+        }
+
+        return orphans.isEmpty();
+    }
+
+    /**
+     * Removes a graph and all its associated inter-graph edges from the network.
+     *
+     * @param graphId the ID of the graph to remove
+     */
+    public void removeGraph(final int graphId) {
+        graphsByDbId.remove(graphId);
+        outgoingInterEdges.entrySet().removeIf(entry -> entry.getKey().graphDbId() == graphId);
+        for (final List<InterGraphEdge> edges : outgoingInterEdges.values()) {
+            edges.removeIf(edge -> edge.target().graphDbId() == graphId);
+        }
+        invalidateCache();
+    }
+
+    /**
+     * Finds all nodes in the target graph that are reachable from outside via inter-graph edges.
+     *
+     * @param targetGraphId the ID of the target graph
+     * @return a set of node references that are entry points to the graph
+     */
+    public Set<NodeRef> getGraphEntryPoints(final int targetGraphId) {
+        final Set<NodeRef> entryPoints = new HashSet<>();
+        for (final List<InterGraphEdge> edges : outgoingInterEdges.values()) {
+            for (final InterGraphEdge edge : edges) {
+                if (edge.enabled() && edge.target().graphDbId() == targetGraphId) {
+                    entryPoints.add(edge.target());
+                }
+            }
+        }
+        return entryPoints;
     }
 
     private void requireNode(final NodeRef nodeRef) {
