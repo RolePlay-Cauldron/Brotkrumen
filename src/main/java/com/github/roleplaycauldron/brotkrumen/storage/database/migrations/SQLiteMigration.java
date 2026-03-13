@@ -81,6 +81,29 @@ public final class SQLiteMigration {
                                 + "ON `" + tablePrefix + "_edge` (`target_node_id`)"
                 )
                 .addFirstStartupQuery(
+                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_inter_graph_edge` ("
+                                + "`id` INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                + "`edge_id` CHAR(36) NOT NULL UNIQUE, "
+                                + "`source_graph_id` INTEGER NOT NULL, "
+                                + "`source_node_id` CHAR(36) NOT NULL, "
+                                + "`target_graph_id` INTEGER NOT NULL, "
+                                + "`target_node_id` CHAR(36) NOT NULL, "
+                                + "`cost` DOUBLE NOT NULL, "
+                                + "`flags` TEXT NOT NULL, "
+                                + "`enabled` INTEGER NOT NULL DEFAULT 1, "
+                                + "FOREIGN KEY (`source_graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) ON DELETE CASCADE, "
+                                + "FOREIGN KEY (`target_graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) ON DELETE CASCADE"
+                                + ")"
+                )
+                .addFirstStartupQuery(
+                        "CREATE INDEX IF NOT EXISTS `idx_" + tablePrefix + "_inter_graph_edge_source_graph_id` "
+                                + "ON `" + tablePrefix + "_inter_graph_edge` (`source_graph_id`)"
+                )
+                .addFirstStartupQuery(
+                        "CREATE INDEX IF NOT EXISTS `idx_" + tablePrefix + "_inter_graph_edge_target_graph_id` "
+                                + "ON `" + tablePrefix + "_inter_graph_edge` (`target_graph_id`)"
+                )
+                .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_version` ("
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"

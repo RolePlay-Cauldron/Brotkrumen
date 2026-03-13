@@ -167,7 +167,7 @@ public class Graph {
             throw new IllegalArgumentException("You need to specify at least one flag per Edge");
         }
 
-        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.TELEPORT_GLOBAL);
+        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.TELEPORT_GLOBAL) || flags.contains(EdgeFlag.INTER_GRAPH);
         final boolean undirected = flags.contains(EdgeFlag.UNDIRECTED) || flags.contains(EdgeFlag.TELEPORT);
 
         if (directed == undirected) {

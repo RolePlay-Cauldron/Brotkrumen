@@ -2,7 +2,9 @@ package com.github.roleplaycauldron.brotkrumen.graph.search;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
@@ -46,8 +48,52 @@ public class PathFinder {
      * @param rules      the {@link TeleportRules} to use
      * @return the path as a {@link List} of {@link Node}s
      */
-    public List<Node> findPath(final Graph graph, final UUID start, final UUID goal, final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+    public List<Node> findPath(final Graph graph, final UUID start, final UUID goal,
+                               final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         final PathAlgorithm algo = registry.select(graph, rules);
         return algo.findPath(graph, start, goal, edgeFilter, rules);
+    }
+
+    /**
+     * Searches a path across multiple graphs using inter-graph edges.
+     *
+     * @param network    graph network containing local graphs and inter-graph edges
+     * @param start      start node reference
+     * @param goal       goal node reference
+     * @param edgeFilter edge filter
+     * @param rules      teleport rules
+     * @return path as node references, empty if no route exists
+     */
+    public List<NodeRef> findPath(final GraphNetwork network, final NodeRef start, final NodeRef goal,
+                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+        final GraphNetwork.UnifiedGraph unified = network.toUnifiedGraph();
+        final UUID unifiedStart = unified.unifiedIdByNodeRef().get(start);
+        final UUID unifiedGoal = unified.unifiedIdByNodeRef().get(goal);
+        if (unifiedStart == null || unifiedGoal == null) {
+            return List.of();
+        }
+
+        final List<Node> unifiedPath = findPath(unified.graph(), unifiedStart, unifiedGoal, edgeFilter, rules);
+        return unifiedPath.stream()
+                .map(Node::graphId)
+                .map(unified.nodeRefByUnifiedId()::get)
+                .toList();
+    }
+
+    /**
+     * Searches a path across multiple graphs and resolves the resulting references to concrete nodes.
+     * This method is convenient for visualizers that already work with {@link Node}.
+     *
+     * @param network    graph network containing local graphs and inter-graph edges
+     * @param start      start node reference
+     * @param goal       goal node reference
+     * @param edgeFilter edge filter
+     * @param rules      teleport rules
+     * @return path as concrete nodes, empty if no route exists or references cannot be resolved
+     */
+    public List<Node> findNodePath(final GraphNetwork network, final NodeRef start, final NodeRef goal,
+                                   final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+        final List<NodeRef> path = findPath(network, start, goal, edgeFilter, rules);
+        return network.resolvePath(path);
     }
 }

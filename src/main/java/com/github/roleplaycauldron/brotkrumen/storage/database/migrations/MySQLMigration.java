@@ -79,6 +79,27 @@ public final class MySQLMigration {
                                 + ")"
                 )
                 .addFirstStartupQuery(
+                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_inter_graph_edge` ("
+                                + "`id` INT NOT NULL AUTO_INCREMENT, "
+                                + "`edge_id` CHAR(36) NOT NULL, "
+                                + "`source_graph_id` INT NOT NULL, "
+                                + "`source_node_id` CHAR(36) NOT NULL, "
+                                + "`target_graph_id` INT NOT NULL, "
+                                + "`target_node_id` CHAR(36) NOT NULL, "
+                                + "`cost` DOUBLE NOT NULL, "
+                                + "`flags` TEXT NOT NULL, "
+                                + "`enabled` BOOLEAN NOT NULL DEFAULT TRUE, "
+                                + "PRIMARY KEY (`id`), "
+                                + "UNIQUE KEY `uk_" + tablePrefix + "_inter_graph_edge_edge_id` (`edge_id`), "
+                                + "KEY `idx_" + tablePrefix + "_inter_graph_edge_source_graph_id` (`source_graph_id`), "
+                                + "KEY `idx_" + tablePrefix + "_inter_graph_edge_target_graph_id` (`target_graph_id`), "
+                                + "CONSTRAINT `fk_" + tablePrefix + "_inter_graph_edge_source_graph` "
+                                + "FOREIGN KEY (`source_graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) ON DELETE CASCADE, "
+                                + "CONSTRAINT `fk_" + tablePrefix + "_inter_graph_edge_target_graph` "
+                                + "FOREIGN KEY (`target_graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) ON DELETE CASCADE"
+                                + ")"
+                )
+                .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_version` ("
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
