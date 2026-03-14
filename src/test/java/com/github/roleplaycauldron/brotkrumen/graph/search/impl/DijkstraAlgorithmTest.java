@@ -77,7 +77,7 @@ class DijkstraAlgorithmTest {
     void testDijkstraPathFinderWithLocalTeleport() {
         final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
         final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, uuidSeven, null, rules);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, Set.of(uuidSeven), null, rules);
 
         assertNotNull(pathNodes, "The path should not be null");
 
@@ -90,7 +90,7 @@ class DijkstraAlgorithmTest {
     void testDijkstraPathFinderWithGlobalTeleport() {
         final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
         final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, uuidOne, null, rules);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, Set.of(uuidOne), null, rules);
 
         assertNotNull(pathNodes, "The path should not be null");
 
@@ -106,7 +106,7 @@ class DijkstraAlgorithmTest {
         final Predicate<Edge> filterWithoutGlobalTeleport =
                 edge -> !edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL) && !edge.flags().contains(EdgeFlag.BLOCKED);
 
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, uuidOne, filterWithoutGlobalTeleport, rules);
+        final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, Set.of(uuidOne), filterWithoutGlobalTeleport, rules);
 
         assertNotNull(pathNodes, "The path should not be null");
 

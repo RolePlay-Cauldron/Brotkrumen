@@ -27,5 +27,10 @@ public enum EdgeFlag {
     /**
      * The edge is a global teleportation edge that can be used to teleport from any node.
      */
-    TELEPORT_GLOBAL
+    TELEPORT_GLOBAL,
+
+    /**
+     * The edge to connect two graphs.
+     */
+    INTER_GRAPH
 }
