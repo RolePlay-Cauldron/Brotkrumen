@@ -20,6 +20,9 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit test class for {@code GraphNetworkServiceImpl}.
+ */
 @ExtendWith(MockitoExtension.class)
 class GraphNetworkServiceImplTest {
 
@@ -44,39 +47,28 @@ class GraphNetworkServiceImplTest {
     }
 
     @Test
-    void partitionsGraphsIntoMultipleNetworks() {
-        // ... (rest of the test as before)
-    }
-
-    @Test
     void saveInterGraphEdgesDeletesOrphanedEdges() {
-        final Graph g1 = new Graph(1, "G1");
-        final Graph g2 = new Graph(2, "G2");
+        final Graph graph1 = new Graph(1, "G1");
+        final Graph graph2 = new Graph(2, "G2");
         final UUID n1Id = UUID.randomUUID();
         final UUID n2Id = UUID.randomUUID();
-        g1.addNode(new Node(n1Id, 0, 0, 0, null));
-        g2.addNode(new Node(n2Id, 0, 0, 0, null));
+        graph1.addNode(new Node(n1Id, 0, 0, 0, null));
+        graph2.addNode(new Node(n2Id, 0, 0, 0, null));
 
         final GraphNetwork network = new GraphNetwork();
-        network.addGraph(g1);
-        network.addGraph(g2);
+        network.addGraph(graph1);
+        network.addGraph(graph2);
 
         final UUID edgeId1 = UUID.randomUUID();
         final UUID edgeId2 = UUID.randomUUID();
         final InterGraphEdge edge1 = new InterGraphEdge(10, edgeId1, new NodeRef(1, n1Id), new NodeRef(2, n2Id), 1.0, Set.of(), true);
         final InterGraphEdge edge2 = new InterGraphEdge(11, edgeId2, new NodeRef(2, n2Id), new NodeRef(1, n1Id), 1.0, Set.of(), true);
-
-        // Network only has edge1
         network.addInterGraphEdge(edge1);
 
-        // Database has edge1 AND edge2 (orphaned)
         when(interGraphEdgeTable.getAllEdges(provider)).thenReturn(Set.of(edge1, edge2));
-
         service.saveInterGraphEdges(network);
 
-        // edge1 should be saved/updated
         verify(interGraphEdgeTable).saveEdge(eq(provider), argThat(e -> e.edgeId().equals(edgeId1)));
-        // edge2 should be deleted because it belongs to the network (G2->G1) but is not in the network object
         verify(interGraphEdgeTable).deleteById(provider, 11);
     }
 }

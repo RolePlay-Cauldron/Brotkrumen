@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class GraphNetworkTest {
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void buildsUnifiedGraphWithLocalAndInterGraphEdges() {
         final Graph graphOne = new Graph(1, "One");
         final UUID nodeOneA = UUID.fromString("3643fcf8-5776-4624-a597-e73f9f8c12d2");
@@ -34,9 +35,9 @@ class GraphNetworkTest {
         network.addGraph(graphOne);
         network.addGraph(graphTwo);
 
-        assertTrue(network.hasGraph(1));
-        assertEquals(graphOne, network.getGraph(1));
-        assertEquals(2, network.getGraphs().size());
+        assertTrue(network.hasGraph(1), "Graph One should exist");
+        assertEquals(graphOne, network.getGraph(1), "Graph One should be retrieved");
+        assertEquals(2, network.getGraphs().size(), "Both graphs should be present");
 
         network.addDirectedInterGraphEdge(new NodeRef(1, nodeOneB), new NodeRef(2, nodeTwoA), 3.5);
 
@@ -101,6 +102,7 @@ class GraphNetworkTest {
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void removesGraphAndEdges() {
         final Graph graphOne = new Graph(1, "One");
         final Graph graphTwo = new Graph(2, "Two");
@@ -114,11 +116,11 @@ class GraphNetworkTest {
         network.addGraph(graphTwo);
         network.addUndirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
 
-        assertEquals(2, network.getInterGraphEdges().size());
+        assertEquals(2, network.getInterGraphEdges().size(), "Edges to/from both graphs should exist");
 
         network.removeGraph(2);
 
-        assertFalse(network.hasGraph(2));
+        assertFalse(network.hasGraph(2), "Graph should have been removed");
         assertEquals(0, network.getInterGraphEdges().size(), "Edges to/from removed graph should be gone");
     }
 
@@ -136,13 +138,14 @@ class GraphNetworkTest {
         network.addGraph(graphTwo);
         network.addDirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
 
-        assertEquals(1, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size());
+        assertEquals(1, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size(), "Edge should exist");
 
         network.removeInterGraphEdges(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo));
-        assertEquals(0, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size());
+        assertEquals(0, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size(), "Edges should be removed");
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void cleansUpDisconnectedGraphs() {
         final Graph graphOne = new Graph(1, "One");
         final Graph graphTwo = new Graph(2, "Two");
@@ -158,7 +161,6 @@ class GraphNetworkTest {
         network.addGraph(graphTwo);
         network.addGraph(graphThree);
 
-        // Connect One and Two
         network.addDirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 1.0);
 
         assertFalse(network.removeDisconnectedGraphs(), "Should find and remove disconnected graph");

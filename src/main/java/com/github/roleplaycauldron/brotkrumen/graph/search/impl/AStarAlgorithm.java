@@ -50,9 +50,9 @@ public class AStarAlgorithm extends AbstractShortestPath {
     private double minHeuristic(final Graph graph, final UUID nodeId, final Set<UUID> goals) {
         double min = Double.POSITIVE_INFINITY;
         for (final UUID goal : goals) {
-            final double h = heuristic(graph, nodeId, goal);
-            if (h < min) {
-                min = h;
+            final double heuristic = heuristic(graph, nodeId, goal);
+            if (heuristic < min) {
+                min = heuristic;
             }
         }
         return min;

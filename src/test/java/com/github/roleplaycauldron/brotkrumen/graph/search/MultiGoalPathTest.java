@@ -15,6 +15,12 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * The MultiGoalPathTest class contains unit tests for verifying the behavior of pathfinding
+ * in a graph-based system. Tests focus on scenarios involving finding the shortest path
+ * to multiple goals, determining the shortest entry point into a target graph,
+ * and handling cases where the start node is already part of the target graph.
+ */
 class MultiGoalPathTest {
 
     @Test
@@ -37,11 +43,12 @@ class MultiGoalPathTest {
         final PathFinder pathFinder = new PathFinder();
         final List<Node> path = pathFinder.findPath(graph, start, Set.of(goal1, goal2), null, TeleportRules.disableTeleports());
 
-        assertEquals(2, path.size());
-        assertEquals(goal2, path.get(1).graphId());
+        assertEquals(2, path.size(), "Should find a path to both goals");
+        assertEquals(goal2, path.get(1).graphId(), "Should target goal2 as it is closer");
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void findsPathToTargetGraphViaShortestEntryPoint() {
         // Graph 1: Start -> EntryA (Cost 10), Start -> EntryB (Cost 5)
         // Graph 2: TargetGraph mit Nodes EntryA, EntryB
@@ -66,7 +73,6 @@ class MultiGoalPathTest {
         network.addGraph(graph1);
         network.addGraph(graph2);
 
-        // Inter-Graph Edges
         network.addInterGraphEdge(new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, exitA), new NodeRef(2, targetA), 1.0, Set.of(EdgeFlag.INTER_GRAPH), true));
         network.addInterGraphEdge(new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, exitB), new NodeRef(2, targetB), 1.0, Set.of(EdgeFlag.INTER_GRAPH), true));
 
@@ -74,7 +80,7 @@ class MultiGoalPathTest {
         final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, startNode), 2, null, TeleportRules.disableTeleports());
 
         assertFalse(path.isEmpty(), "Path should be found");
-        assertEquals(new NodeRef(2, targetB), path.get(path.size() - 1), "Should target targetB as it is closer");
+        assertEquals(new NodeRef(2, targetB), path.getLast(), "Should target targetB as it is closer");
         assertEquals(3, path.size(), "Path: Start -> exitB -> targetB");
     }
 
@@ -90,7 +96,7 @@ class MultiGoalPathTest {
         final PathFinder pathFinder = new PathFinder();
         final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, node), 1, null, TeleportRules.disableTeleports());
 
-        assertEquals(1, path.size());
-        assertEquals(new NodeRef(1, node), path.get(0));
+        assertEquals(1, path.size(), "Should return the start node if it is already in the target graph");
+        assertEquals(new NodeRef(1, node), path.getFirst(), "Should return the start node if it is already in the target graph");
     }
 }

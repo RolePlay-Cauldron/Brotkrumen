@@ -14,6 +14,7 @@ import java.util.UUID;
 /**
  * Aggregates multiple graphs plus inter-graph edges.
  */
+@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods"})
 public class GraphNetwork {
 
     private final Map<Integer, Graph> graphsByDbId;
@@ -311,13 +312,11 @@ public class GraphNetwork {
      */
     public void removeInterGraphEdges(final NodeRef source, final NodeRef target) {
         final List<InterGraphEdge> edges = outgoingInterEdges.get(source);
-        if (edges != null) {
-            if (edges.removeIf(edge -> edge.target().equals(target))) {
-                if (edges.isEmpty()) {
-                    outgoingInterEdges.remove(source);
-                }
-                invalidateCache();
+        if (edges != null && edges.removeIf(edge -> edge.target().equals(target))) {
+            if (edges.isEmpty()) {
+                outgoingInterEdges.remove(source);
             }
+            invalidateCache();
         }
     }
 
@@ -330,6 +329,7 @@ public class GraphNetwork {
      *
      * @return {@code true} if the network is likely connected, {@code false} otherwise.
      */
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     public boolean removeDisconnectedGraphs() {
         if (graphsByDbId.size() <= 1) {
             return true;

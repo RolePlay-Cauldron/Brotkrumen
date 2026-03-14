@@ -6,16 +6,17 @@ import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.InterGraphEdgeTable;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -55,61 +56,100 @@ public class GraphNetworkServiceImpl implements GraphNetworkService {
 
     @Override
     public Collection<GraphNetwork> loadGraphNetworks() {
-        final Set<Graph> allGraphs = graphService.getAllGraphs();
-        final Set<InterGraphEdge> allEdges = interGraphEdgeTable.getAllEdges(storage.getProvider());
+        final Set<Graph> graphs = graphService.getAllGraphs();
+        final Set<InterGraphEdge> edges = interGraphEdgeTable.getAllEdges(storage.getProvider());
 
-        final Map<Integer, Graph> graphMap = allGraphs.stream()
-                .collect(Collectors.toMap(Graph::getGraphId, g -> g));
+        final Map<Integer, Graph> graphById = graphs.stream()
+                .collect(Collectors.toMap(Graph::getGraphId, Function.identity()));
 
-        final Map<Integer, Set<Integer>> adj = new HashMap<>();
-        for (final int graphId : graphMap.keySet()) {
-            adj.put(graphId, new HashSet<>());
-        }
-
-        for (final InterGraphEdge edge : allEdges) {
-            final int source = edge.source().graphDbId();
-            final int target = edge.target().graphDbId();
-            if (adj.containsKey(source) && adj.containsKey(target)) {
-                adj.get(source).add(target);
-                adj.get(target).add(source);
-            }
-        }
+        final Map<Integer, Set<Integer>> adjacency = buildAdjacency(graphById.keySet(), edges);
 
         final List<GraphNetwork> networks = new ArrayList<>();
         final Set<Integer> visited = new HashSet<>();
 
-        for (final int startId : adj.keySet()) {
-            if (visited.add(startId)) {
-                final Set<Integer> component = new HashSet<>();
-                final Queue<Integer> queue = new LinkedList<>();
-                queue.add(startId);
-                component.add(startId);
-
-                while (!queue.isEmpty()) {
-                    final int currentId = queue.poll();
-                    for (final int neighborId : adj.get(currentId)) {
-                        if (visited.add(neighborId)) {
-                            queue.add(neighborId);
-                            component.add(neighborId);
-                        }
-                    }
-                }
-
-                final GraphNetwork network = new GraphNetwork();
-                for (final int id : component) {
-                    network.addGraph(graphMap.get(id));
-                }
-
-                for (final InterGraphEdge edge : allEdges) {
-                    if (component.contains(edge.source().graphDbId())) {
-                        network.addInterGraphEdge(edge);
-                    }
-                }
-                networks.add(network);
+        for (final Integer graphId : graphById.keySet()) {
+            if (visited.contains(graphId)) {
+                continue;
             }
+
+            final Set<Integer> component = collectComponent(graphId, adjacency, visited);
+            networks.add(buildNetwork(component, graphById, edges));
         }
 
         return networks;
+    }
+
+    private Map<Integer, Set<Integer>> buildAdjacency(
+            final Set<Integer> graphIds,
+            final Set<InterGraphEdge> edges
+    ) {
+        final Map<Integer, Set<Integer>> adjacency = new HashMap<>();
+
+        for (final Integer graphId : graphIds) {
+            adjacency.put(graphId, new HashSet<>());
+        }
+
+        for (final InterGraphEdge edge : edges) {
+            final int source = edge.source().graphDbId();
+            final int target = edge.target().graphDbId();
+
+            if (!adjacency.containsKey(source) || !adjacency.containsKey(target)) {
+                continue;
+            }
+
+            adjacency.get(source).add(target);
+            adjacency.get(target).add(source);
+        }
+
+        return adjacency;
+    }
+
+    private Set<Integer> collectComponent(
+            final Integer startId,
+            final Map<Integer, Set<Integer>> adjacency,
+            final Set<Integer> visited
+    ) {
+        final Set<Integer> component = new HashSet<>();
+        final Deque<Integer> stack = new ArrayDeque<>();
+
+        stack.push(startId);
+        visited.add(startId);
+
+        while (!stack.isEmpty()) {
+            final Integer current = stack.pop();
+            component.add(current);
+
+            for (final Integer neighbor : adjacency.get(current)) {
+                if (visited.add(neighbor)) {
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        return component;
+    }
+
+    private GraphNetwork buildNetwork(
+            final Set<Integer> component,
+            final Map<Integer, Graph> graphById,
+            final Set<InterGraphEdge> edges
+    ) {
+        final GraphNetwork network = new GraphNetwork();
+
+        for (final Integer graphId : component) {
+            network.addGraph(graphById.get(graphId));
+        }
+
+        for (final InterGraphEdge edge : edges) {
+            final int source = edge.source().graphDbId();
+            final int target = edge.target().graphDbId();
+
+            if (component.contains(source) && component.contains(target)) {
+                network.addInterGraphEdge(edge);
+            }
+        }
+
+        return network;
     }
 
     @Override
