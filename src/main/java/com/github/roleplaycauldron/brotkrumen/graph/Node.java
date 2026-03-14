@@ -53,6 +53,15 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
     }
 
     /**
+     * Creates a new {@link Node} instance using the specified {@link Location}.
+     *
+     * @param loc the {@link Location} that represents the position of the node
+     */
+    public Node(final Location loc) {
+        this(null, loc);
+    }
+
+    /**
      * Converts this node position to the center location of the represented block.
      *
      * @return the centered {@link Location}
