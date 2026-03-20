@@ -4,8 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
-import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
-import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
+import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import org.bukkit.Location;
@@ -42,7 +41,7 @@ public class EditorService {
         }
         final GraphCreationState state = new GraphCreationState(graphName, nodeDistance);
         this.playerEditors.put(playerId, state);
-        visualizerRegistry.register(playerId, new BlockDisplayVisualizer(plugin, loggerFactory, state.graph, playerId, VisualMode.EDIT));
+        visualizerRegistry.register(playerId, GraphVisualizerFactory.blockDisplayGraph(plugin, loggerFactory, state.graph, playerId));
         System.out.println("Started editing for " + playerId);
     }
 
@@ -99,7 +98,7 @@ public class EditorService {
         /**
          * Creates an internal Graph.
          *
-         * @param graphName       graph name
+         * @param graphName    graph name
          * @param nodeDistance
          */
         public GraphCreationState(final String graphName, final int nodeDistance) {
