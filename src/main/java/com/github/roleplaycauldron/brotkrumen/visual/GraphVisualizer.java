@@ -2,6 +2,9 @@ package com.github.roleplaycauldron.brotkrumen.visual;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.render.GraphRenderer;
+import com.github.roleplaycauldron.brotkrumen.visual.source.VisualGraphSource;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -16,7 +19,7 @@ import java.util.UUID;
  * and visibility updates for nodes and edges.
  */
 @SuppressWarnings("PMD.ShortVariable")
-public abstract class GraphVisualizer {
+public class GraphVisualizer {
 
     /**
      * The loggerFactory for this class.
@@ -28,6 +31,14 @@ public abstract class GraphVisualizer {
      */
     protected final Graph graph;
 
+    private final VisualGraphSource source;
+
+    private final GraphRenderer renderer;
+
+    private final GraphDesignResolver designs;
+
+    private long lastRenderedVersion = Long.MIN_VALUE;
+
     /**
      * Constructs a new instance of the {@code GraphVisualiser} class for managing
      * and visualizing a graph structure.
@@ -38,6 +49,26 @@ public abstract class GraphVisualizer {
     public GraphVisualizer(final LoggerFactory loggerFactory, final Graph graph) {
         this.loggerFactory = loggerFactory;
         this.graph = graph;
+        this.source = null;
+        this.renderer = null;
+        this.designs = null;
+    }
+
+    /**
+     * Constructs a new source-based visualizer.
+     *
+     * @param loggerFactory the factory to create loggers for this instance
+     * @param source        visual graph source
+     * @param renderer      renderer
+     * @param designs       design resolver
+     */
+    public GraphVisualizer(final LoggerFactory loggerFactory, final VisualGraphSource source,
+                           final GraphRenderer renderer, final GraphDesignResolver designs) {
+        this.loggerFactory = loggerFactory;
+        this.graph = null;
+        this.source = source;
+        this.renderer = renderer;
+        this.designs = designs;
     }
 
     /**
@@ -46,7 +77,19 @@ public abstract class GraphVisualizer {
      * Implementations should ensure a clean shutdown process, including stopping any ongoing tasks
      * or freeing resources such as memory or listeners.
      */
-    public abstract void shutdown();
+    public void shutdown() {
+        if (renderer != null) {
+            renderer.shutdown();
+        }
+    }
+
+    /**
+     * Reconciles the visualizer with the latest source snapshot.
+     */
+    public void refresh() {
+        lastRenderedVersion = Long.MIN_VALUE;
+        visibilityUpdate();
+    }
 
     /**
      * Updates the visibility state of the graph or its elements managed by this {@code GraphVisualiser} instance.
@@ -59,7 +102,17 @@ public abstract class GraphVisualizer {
      * performance degradation in cases where frequent visibility updates are required.
      */
     /* default */
-    abstract void visibilityUpdate();
+    void visibilityUpdate() {
+        if (source == null || renderer == null || designs == null) {
+            return;
+        }
+        if (source.version() == lastRenderedVersion) {
+            renderer.applyVisibilityOnly();
+            return;
+        }
+        renderer.apply(source.snapshot(), designs);
+        lastRenderedVersion = source.version();
+    }
 
     /**
      * Calculates the squared distance from a point to the center of a specified node.

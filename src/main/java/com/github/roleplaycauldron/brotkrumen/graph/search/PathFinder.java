@@ -50,10 +50,10 @@ public class PathFinder {
      * @param goal       the goal node id
      * @param edgeFilter the {@link Predicate} to filter the edges to consider
      * @param rules      the {@link TeleportRules} to use
-     * @return the path as a {@link List} of {@link Node}s
+     * @return the path as node references
      */
-    public List<Node> findPath(final Graph graph, final UUID start, final UUID goal,
-                               final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+    public List<NodeRef> findPath(final Graph graph, final UUID start, final UUID goal,
+                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         return findPath(graph, start, Set.of(goal), edgeFilter, rules);
     }
 
@@ -65,10 +65,17 @@ public class PathFinder {
      * @param goals      the goal node ids
      * @param edgeFilter the {@link Predicate} to filter the edges to consider
      * @param rules      the {@link TeleportRules} to use
-     * @return the path as a {@link List} of {@link Node}s
+     * @return the path as node references
      */
-    public List<Node> findPath(final Graph graph, final UUID start, final Set<UUID> goals,
-                               final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+    public List<NodeRef> findPath(final Graph graph, final UUID start, final Set<UUID> goals,
+                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+        return findLocalNodePath(graph, start, goals, edgeFilter, rules).stream()
+                .map(node -> new NodeRef(graph.getGraphId(), node.graphId()))
+                .toList();
+    }
+
+    private List<Node> findLocalNodePath(final Graph graph, final UUID start, final Set<UUID> goals,
+                                         final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         final PathAlgorithm algo = registry.select(graph, rules);
         return algo.findPath(graph, start, goals, edgeFilter, rules);
     }
@@ -96,7 +103,7 @@ public class PathFinder {
             return List.of();
         }
 
-        final List<Node> unifiedPath = findPath(unified.graph(), unifiedStart, unifiedGoals, edgeFilter, rules);
+        final List<Node> unifiedPath = findLocalNodePath(unified.graph(), unifiedStart, unifiedGoals, edgeFilter, rules);
         return unifiedPath.stream()
                 .map(Node::graphId)
                 .map(unified.nodeRefByUnifiedId()::get)
@@ -138,52 +145,4 @@ public class PathFinder {
         return findPath(network, start, entryPoints, edgeFilter, rules);
     }
 
-    /**
-     * Searches a path across multiple graphs and resolves the resulting references to concrete nodes.
-     *
-     * @param network    graph network
-     * @param start      start node reference
-     * @param goals      goal node references
-     * @param edgeFilter edge filter
-     * @param rules      teleport rules
-     * @return path as concrete nodes
-     */
-    public List<Node> findNodePath(final GraphNetwork network, final NodeRef start, final Collection<NodeRef> goals,
-                                   final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        final List<NodeRef> path = findPath(network, start, goals, edgeFilter, rules);
-        return network.resolvePath(path);
-    }
-
-    /**
-     * Searches a path across multiple graphs and resolves the resulting references to concrete nodes.
-     * This method is convenient for visualizers that already work with {@link Node}.
-     *
-     * @param network    graph network containing local graphs and inter-graph edges
-     * @param start      start node reference
-     * @param goal       goal node reference
-     * @param edgeFilter edge filter
-     * @param rules      teleport rules
-     * @return path as concrete nodes, empty if no route exists or references cannot be resolved
-     */
-    public List<Node> findNodePath(final GraphNetwork network, final NodeRef start, final NodeRef goal,
-                                   final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        final List<NodeRef> path = findPath(network, start, goal, edgeFilter, rules);
-        return network.resolvePath(path);
-    }
-
-    /**
-     * Searches a path to a target graph and resolves it to concrete nodes.
-     *
-     * @param network       graph network
-     * @param start         start node reference
-     * @param targetGraphId target graph ID
-     * @param edgeFilter    edge filter
-     * @param rules         teleport rules
-     * @return path as concrete nodes
-     */
-    public List<Node> findNodePath(final GraphNetwork network, final NodeRef start, final int targetGraphId,
-                                   final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        final List<NodeRef> path = findPath(network, start, targetGraphId, edgeFilter, rules);
-        return network.resolvePath(path);
-    }
 }

@@ -44,10 +44,11 @@ class PathFinderTest {
         final PathFinder finderWithRegistry = new PathFinder(registry);
         final PathFinder defaultFinder = new PathFinder();
 
-        final List<Node> resultOne = finderWithRegistry.findPath(graph, uuidOne, uuidTwo, null, rules);
-        final List<Node> resultTwo = defaultFinder.findPath(graph, uuidOne, uuidTwo, null, rules);
+        final List<NodeRef> resultOne = finderWithRegistry.findPath(graph, uuidOne, uuidTwo, null, rules);
+        final List<NodeRef> resultTwo = defaultFinder.findPath(graph, uuidOne, uuidTwo, null, rules);
 
-        assertEquals(List.of(expected, expected), List.of(resultOne, resultTwo), "The results should be the same");
+        final List<NodeRef> expectedRefs = List.of(new NodeRef(graph.getGraphId(), uuidOne), new NodeRef(graph.getGraphId(), uuidTwo));
+        assertEquals(List.of(expectedRefs, expectedRefs), List.of(resultOne, resultTwo), "The results should be the same");
     }
 
     @Test
@@ -98,12 +99,8 @@ class PathFinderTest {
 
         final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, g1A), new NodeRef(2, g2B), null,
                 TeleportRules.disableTeleports());
-        final List<Node> nodePath = pathFinder.findNodePath(network, new NodeRef(1, g1A), new NodeRef(2, g2B), null,
-                TeleportRules.disableTeleports());
 
         assertEquals(List.of(new NodeRef(1, g1A), new NodeRef(1, g1B), new NodeRef(2, g2A), new NodeRef(2, g2B)), path,
                 "Path should cross the inter-graph edge");
-        assertEquals(List.of(g1A, g1B, g2A, g2B), nodePath.stream().map(Node::graphId).toList(),
-                "Resolved node path should be usable by visualizers");
     }
 }

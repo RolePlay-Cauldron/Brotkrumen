@@ -41,10 +41,10 @@ class MultiGoalPathTest {
         graph.addDirectedEdge(start, goal2, 2.0, Set.of(EdgeFlag.DIRECTED));
 
         final PathFinder pathFinder = new PathFinder();
-        final List<Node> path = pathFinder.findPath(graph, start, Set.of(goal1, goal2), null, TeleportRules.disableTeleports());
+        final List<NodeRef> path = pathFinder.findPath(graph, start, Set.of(goal1, goal2), null, TeleportRules.disableTeleports());
 
         assertEquals(2, path.size(), "Should find a path to both goals");
-        assertEquals(goal2, path.get(1).graphId(), "Should target goal2 as it is closer");
+        assertEquals(new NodeRef(graph.getGraphId(), goal2), path.get(1), "Should target goal2 as it is closer");
     }
 
     @Test

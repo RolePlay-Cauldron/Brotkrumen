@@ -71,6 +71,25 @@ public class VisualizerRegistry {
     }
 
     /**
+     * Refreshes one active visualizer from its visual graph source.
+     *
+     * @param uuid viewer uuid
+     */
+    public void refresh(final UUID uuid) {
+        final GraphVisualizer visualiser = visualisers.get(uuid);
+        if (visualiser != null) {
+            visualiser.refresh();
+        }
+    }
+
+    /**
+     * Refreshes all active visualizers from their visual graph sources.
+     */
+    public void refreshAll() {
+        new HashMap<>(visualisers).values().forEach(GraphVisualizer::refresh);
+    }
+
+    /**
      * Starts the periodic updates for managing the visibility of registered visualizers.
      * <p>
      * This method schedules a repeating task using the Bukkit scheduler to periodically

@@ -23,12 +23,15 @@ public class GraphNetwork {
 
     private UnifiedGraph cachedUnifiedGraph;
 
+    private long modCount;
+
     /**
      * Constructs a new instance of the GraphNetwork.
      */
     public GraphNetwork() {
         this.graphsByDbId = new HashMap<>();
         this.outgoingInterEdges = new HashMap<>();
+        this.modCount = 0L;
     }
 
     /**
@@ -291,6 +294,7 @@ public class GraphNetwork {
 
     private void invalidateCache() {
         this.cachedUnifiedGraph = null;
+        modCount++;
     }
 
     /**
@@ -398,6 +402,15 @@ public class GraphNetwork {
 
     private UUID unifiedNodeId(final NodeRef nodeRef) {
         return UUID.nameUUIDFromBytes((nodeRef.graphDbId() + ":" + nodeRef.nodeId()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Gets the structural modification count of the network.
+     *
+     * @return modification count
+     */
+    public long getModCount() {
+        return modCount;
     }
 
     /**

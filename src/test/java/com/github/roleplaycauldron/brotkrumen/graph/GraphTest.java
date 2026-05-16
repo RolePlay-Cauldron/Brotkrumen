@@ -152,4 +152,34 @@ class GraphTest {
         graph.removeEdge(graph.getEdgeById(edges.getFirst().edgeId()));
         assertNull(graph.getEdgeById(edges.getFirst().edgeId()), "The edge should have been removed");
     }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void testDirectedEdgeRemovalDoesNotRequireTargetAdjacency() {
+        final Graph graph = new Graph("Test");
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4, null);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5, null);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+        final Edge edge = graph.addDirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
+
+        assertDoesNotThrow(() -> graph.removeEdge(edge), "Directed edge removal should not require target adjacency");
+        assertNull(graph.getEdgeById(edge.edgeId()), "Directed edge should be removed from id index");
+        assertTrue(graph.neighbors(nodeOne.graphId()).isEmpty(), "Directed edge should be removed from source adjacency");
+    }
+
+    @Test
+    void testNodeRemovalCleansIncomingEdges() {
+        final Graph graph = new Graph("Test");
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4, null);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5, null);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+        final Edge edge = graph.addDirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
+
+        graph.removeNode(nodeTwo);
+
+        assertNull(graph.getEdgeById(edge.edgeId()), "Incoming edge should be removed from id index");
+        assertTrue(graph.neighbors(nodeOne.graphId()).isEmpty(), "Incoming edge should be removed from source adjacency");
+    }
 }
