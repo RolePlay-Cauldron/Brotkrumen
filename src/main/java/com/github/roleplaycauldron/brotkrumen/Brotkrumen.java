@@ -14,10 +14,6 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
-import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
-import com.github.roleplaycauldron.brotkrumen.visual.EffectLibConfig;
-import com.github.roleplaycauldron.brotkrumen.visual.ParticleVisualiser;
-import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
@@ -34,8 +30,6 @@ import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
-import de.slikey.effectlib.EffectManager;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -45,14 +39,12 @@ import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -168,7 +160,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphTwo.addUndirectedEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
         final PathAlgorithm pathAlgo = searchRegistry.select(graphTwo, TeleportRules.disableTeleports());
-        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), node2J.graphId(), null, TeleportRules.disableTeleports());
+        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), Set.of(node2J.graphId()), null, TeleportRules.disableTeleports());
 //        graphTwoPath = List.of(node2A, node2B, node2C, node2D, node2E, node2F, node2G, node2H, node2I, node2J);
 
         getServer().getPluginManager().registerEvents(this, this);
