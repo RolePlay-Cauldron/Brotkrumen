@@ -2,6 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.visual.render;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.design.EdgeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.design.NodeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
@@ -53,7 +54,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
     protected BlockDisplay updateEdge(final BlockDisplay handle, final VisualEdge edge,
                                       final VisualGraphSnapshot snapshot, final EdgeDesign design,
                                       final Player player) {
-        final Map<com.github.roleplaycauldron.brotkrumen.graph.NodeRef, VisualNode> nodes = snapshot.nodesByRef();
+        final Map<NodeRef, VisualNode> nodes = snapshot.nodesByRef();
         final VisualNode source = nodes.get(edge.source());
         final VisualNode target = nodes.get(edge.target());
         if (source == null || target == null) {

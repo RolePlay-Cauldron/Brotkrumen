@@ -64,3 +64,17 @@ data:
 
     # Controls the maximum number of ms that the plugin will wait for a connection from the pool before timing out.
     connectionTimeout: 5000 # 5 seconds
+
+################
+#  Visualizer  #
+################
+
+visualizer:
+
+  # Controls the base distance, in blocks, used to decide which graph nodes and edges are visible to a viewer.
+  # Larger values can increase the number of active rendered elements.
+  viewDistance: 16.0
+
+  # Extends the base view distance, in blocks, so graph elements stay active beyond the immediate view range.
+  # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
+  spawnDistanceBuffer: 16.0

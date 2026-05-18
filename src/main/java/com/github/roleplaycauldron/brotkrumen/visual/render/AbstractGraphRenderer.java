@@ -25,25 +25,70 @@ import java.util.UUID;
  * @param <N> node handle type
  * @param <E> edge handle type
  */
-@SuppressWarnings({"PMD.TooManyMethods", "PMD.CommentRequired", "PMD.ShortVariable"})
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.ShortVariable"})
 public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
-    private static final double VIEW_DISTANCE = 16.0D;
+    /**
+     * Configuration path for the base distance used to decide visible graph elements.
+     */
+    private static final String VIEW_DISTANCE_CONFIG = "visualizer.viewDistance";
 
-    private static final double SPAWN_DISTANCE_BUFFER = 16.0D;
+    /**
+     * Configuration path for the additional distance that keeps rendered graph elements active.
+     */
+    private static final String SPAWN_DISTANCE_BUFFER_CONFIG = "visualizer.spawnDistanceBuffer";
 
+    /**
+     * Default base view distance used when no configuration value is available.
+     */
+    private static final double DEFAULT_VIEW_DISTANCE = 16.0D;
+
+    /**
+     * Default spawn distance buffer used when no configuration value is available.
+     */
+    private static final double DEFAULT_SPAWN_DISTANCE_BUFFER = 16.0D;
+
+    /**
+     * Minimum accepted configured distance.
+     */
+    private static final double MINIMUM_DISTANCE = 0.0D;
+
+    /**
+     * Plugin instance used to access Bukkit state and configuration.
+     */
     protected final Brotkrumen plugin;
 
+    /**
+     * Unique id of the viewer this renderer reconciles for.
+     */
     protected final UUID viewerId;
 
+    /**
+     * Currently active rendered node handles keyed by stable visual node id.
+     */
     private final Map<VisualNodeId, N> activeNodes = new HashMap<>();
 
+    /**
+     * Currently active rendered edge handles keyed by stable visual edge id.
+     */
     private final Map<VisualEdgeId, E> activeEdges = new HashMap<>();
 
+    /**
+     * Last applied snapshot used when only viewer visibility needs to be updated.
+     */
     private VisualGraphSnapshot lastSnapshot;
 
+    /**
+     * Last design resolver used with the cached snapshot.
+     */
     private GraphDesignResolver lastDesigns;
 
+    /**
+     * Creates a renderer for one viewer.
+     *
+     * @param plugin   plugin used to access server state and configuration
+     * @param viewerId viewer id
+     */
     protected AbstractGraphRenderer(final Brotkrumen plugin, final UUID viewerId) {
         this.plugin = plugin;
         this.viewerId = viewerId;
@@ -103,12 +148,41 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         activeEdges.clear();
     }
 
+    /**
+     * Creates or updates the rendered representation of a visible node.
+     *
+     * @param handle existing renderer-specific node handle, or {@code null} when none exists yet
+     * @param node   visual node to render
+     * @param design resolved node design
+     * @param player viewer that should see the rendered node
+     * @return active node handle to keep for future reconciliation
+     */
     protected abstract N updateNode(N handle, VisualNode node, NodeDesign design, Player player);
 
+    /**
+     * Creates or updates the rendered representation of a visible edge.
+     *
+     * @param handle   existing renderer-specific edge handle, or {@code null} when none exists yet
+     * @param edge     visual edge to render
+     * @param snapshot source snapshot containing endpoint nodes
+     * @param design   resolved edge design
+     * @param player   viewer that should see the rendered edge
+     * @return active edge handle to keep for future reconciliation
+     */
     protected abstract E updateEdge(E handle, VisualEdge edge, VisualGraphSnapshot snapshot, EdgeDesign design, Player player);
 
+    /**
+     * Removes a previously active node handle from the renderer.
+     *
+     * @param handle renderer-specific node handle
+     */
     protected abstract void removeNode(N handle);
 
+    /**
+     * Removes a previously active edge handle from the renderer.
+     *
+     * @param handle renderer-specific edge handle
+     */
     protected abstract void removeEdge(E handle);
 
     private Set<VisualNodeId> visibleNodeIds(final VisualGraphSnapshot snapshot, final Location location) {
@@ -151,7 +225,19 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     }
 
     private double spawnRadiusSquared() {
-        final double radius = VIEW_DISTANCE + SPAWN_DISTANCE_BUFFER;
+        final double radius = configDistance(VIEW_DISTANCE_CONFIG, DEFAULT_VIEW_DISTANCE)
+                + configDistance(SPAWN_DISTANCE_BUFFER_CONFIG, DEFAULT_SPAWN_DISTANCE_BUFFER);
         return radius * radius;
+    }
+
+    private double configDistance(final String path, final double defaultValue) {
+        if (plugin == null) {
+            return defaultValue;
+        }
+        final double configured = plugin.getConfig().getDouble(path, defaultValue);
+        if (configured < MINIMUM_DISTANCE) {
+            return defaultValue;
+        }
+        return configured;
     }
 }

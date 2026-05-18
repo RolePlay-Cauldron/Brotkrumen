@@ -67,7 +67,7 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
      * @return the centered {@link Location}
      */
     public Location toCenterLocation() {
-        return new Location(Bukkit.getWorld(worldId), x, y, z).toCenterLocation();
+        return toLocation().toCenterLocation();
     }
 
     /**
