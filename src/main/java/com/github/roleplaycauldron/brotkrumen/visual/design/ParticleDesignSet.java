@@ -1,0 +1,131 @@
+package com.github.roleplaycauldron.brotkrumen.visual.design;
+
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
+import org.bukkit.Particle;
+
+import java.util.EnumMap;
+import java.util.Map;
+
+/**
+ * Role-keyed particle designs for one graph or network.
+ *
+ * @param nodeDesigns particle node designs by role
+ * @param edgeDesigns particle edge designs by role
+ */
+public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesigns,
+                                Map<VisualEdgeRole, ParticleEdgeDesign> edgeDesigns) {
+
+    /**
+     * Creates the default particle design set.
+     *
+     * @return default particle design set
+     */
+    public static ParticleDesignSet defaults() {
+        return cubePreset();
+    }
+
+    /**
+     * Creates a default cube-shaped particle design set.
+     *
+     * @return cube particle preset
+     */
+    public static ParticleDesignSet cubePreset() {
+        return new ParticleDesignSet(
+                nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.4f),
+                        ParticleNodeDesign.cube(Particle.PORTAL, 0.55f)),
+                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.15f),
+                        ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
+                        ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
+                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.15f))
+        );
+    }
+
+    /**
+     * Creates a default sphere-shaped particle design set.
+     *
+     * @return sphere particle preset
+     */
+    public static ParticleDesignSet spherePreset() {
+        return new ParticleDesignSet(
+                nodeDesignMap(ParticleNodeDesign.sphere(Particle.END_ROD, 0.35f),
+                        ParticleNodeDesign.sphere(Particle.PORTAL, 0.45f)),
+                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.15f),
+                        ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
+                        ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f))
+        );
+    }
+
+    /**
+     * Creates a warm particle preset.
+     *
+     * @return warm particle preset
+     */
+    public static ParticleDesignSet emberPreset() {
+        return new ParticleDesignSet(
+                nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.45f),
+                        ParticleNodeDesign.sphere(Particle.LAVA, 0.55f)),
+                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.16f),
+                        ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
+                        ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
+                        ParticleEdgeDesign.movingPoint(Particle.LAVA, 0.18f))
+        );
+    }
+
+    /**
+     * Creates a cool particle preset.
+     *
+     * @return cool particle preset
+     */
+    public static ParticleDesignSet prismPreset() {
+        return new ParticleDesignSet(
+                nodeDesignMap(ParticleNodeDesign.cube(Particle.END_ROD, 0.45f),
+                        ParticleNodeDesign.sphere(Particle.PORTAL, 0.55f)),
+                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.16f),
+                        ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
+                        ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f))
+        );
+    }
+
+    private static Map<VisualNodeRole, ParticleNodeDesign> nodeDesignMap(final ParticleNodeDesign defaultNode,
+                                                                         final ParticleNodeDesign teleportNode) {
+        final Map<VisualNodeRole, ParticleNodeDesign> result = new EnumMap<>(VisualNodeRole.class);
+        result.put(VisualNodeRole.DEFAULT, defaultNode);
+        result.put(VisualNodeRole.TELEPORT_ENDPOINT, teleportNode);
+        return result;
+    }
+
+    private static Map<VisualEdgeRole, ParticleEdgeDesign> edgeDesignMap(final ParticleEdgeDesign localEdge,
+                                                                         final ParticleEdgeDesign teleportEdge,
+                                                                         final ParticleEdgeDesign globalTeleportEdge,
+                                                                         final ParticleEdgeDesign interGraphEdge) {
+        final Map<VisualEdgeRole, ParticleEdgeDesign> result = new EnumMap<>(VisualEdgeRole.class);
+        result.put(VisualEdgeRole.DEFAULT_LOCAL, localEdge);
+        result.put(VisualEdgeRole.TELEPORT, teleportEdge);
+        result.put(VisualEdgeRole.GLOBAL_TELEPORT, globalTeleportEdge);
+        result.put(VisualEdgeRole.INTER_GRAPH, interGraphEdge);
+        return result;
+    }
+
+    /**
+     * Resolves a particle node design by role.
+     *
+     * @param role visual node role
+     * @return matching design or default node design
+     */
+    public ParticleNodeDesign nodeDesign(final VisualNodeRole role) {
+        return nodeDesigns.getOrDefault(role, nodeDesigns.get(VisualNodeRole.DEFAULT));
+    }
+
+    /**
+     * Resolves a particle edge design by role.
+     *
+     * @param role visual edge role
+     * @return matching design or default local edge design
+     */
+    public ParticleEdgeDesign edgeDesign(final VisualEdgeRole role) {
+        return edgeDesigns.getOrDefault(role, edgeDesigns.get(VisualEdgeRole.DEFAULT_LOCAL));
+    }
+}

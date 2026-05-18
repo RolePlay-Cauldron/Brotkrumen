@@ -1,21 +1,20 @@
 package com.github.roleplaycauldron.brotkrumen.visual.render;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
-import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
-import com.github.roleplaycauldron.brotkrumen.visual.design.EdgeDesign;
-import com.github.roleplaycauldron.brotkrumen.visual.design.NodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeEffectContext;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeEffectContext;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
-import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
 import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import com.github.roleplaycauldron.spellbook.effect.executor.RunningEffect;
 import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
-import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
-import com.github.roleplaycauldron.spellbook.effect.shape.MovingPointShape;
 import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -46,16 +45,17 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
     }
 
     @Override
-    protected RunningEffect updateNode(final RunningEffect handle, final VisualNode node, final NodeDesign design,
+    protected RunningEffect updateNode(final RunningEffect handle, final VisualNode node,
+                                       final GraphDesignResolver designs,
                                        final Player player) {
         cancel(handle);
-        final EffectInstance effect = buildNodeEffect(design);
+        final EffectInstance effect = buildNodeEffect(designs.resolveParticleNode(node), node);
         return executor.start(effect, executionConfig(node.node().toCenterLocation(), node.node().toCenterLocation(), player));
     }
 
     @Override
     protected RunningEffect updateEdge(final RunningEffect handle, final VisualEdge edge,
-                                       final VisualGraphSnapshot snapshot, final EdgeDesign design,
+                                       final VisualGraphSnapshot snapshot, final GraphDesignResolver designs,
                                        final Player player) {
         final Map<NodeRef, VisualNode> nodes = snapshot.nodesByRef();
         final VisualNode source = nodes.get(edge.source());
@@ -65,7 +65,7 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
         }
 
         cancel(handle);
-        final EffectInstance effect = buildEdgeEffect(design, source.node(), target.node());
+        final EffectInstance effect = buildEdgeEffect(designs.resolveParticleEdge(edge), edge, source, target);
         return executor.start(effect, executionConfig(source.node().toCenterLocation(), target.node().toCenterLocation(), player));
     }
 
@@ -79,22 +79,13 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
         cancel(handle);
     }
 
-    /* default */ EffectInstance buildNodeEffect(final NodeDesign design) {
-        return EffectBuilder.create()
-                .shape(new CubeShape(design.scale(), 12))
-                .particle(design.particle())
-                .build();
+    /* default */ EffectInstance buildNodeEffect(final ParticleNodeDesign design, final VisualNode node) {
+        return design.effectFactory().create(new ParticleNodeEffectContext(node));
     }
 
-    /* default */ EffectInstance buildEdgeEffect(final EdgeDesign design, final Node source, final Node target) {
-        final double deltaX = source.x() - target.x();
-        final double deltaY = source.y() - target.y();
-        final double deltaZ = source.z() - target.z();
-        final float distance = (float) Math.max(0.1D, Math.sqrt((deltaX * deltaX) + (deltaY * deltaY) + (deltaZ * deltaZ)));
-        return EffectBuilder.create()
-                .shape(new MovingPointShape(distance, Math.max(0.05f, design.thickness()), 8, false))
-                .particle(design.particle())
-                .build();
+    /* default */ EffectInstance buildEdgeEffect(final ParticleEdgeDesign design, final VisualEdge edge,
+                                                 final VisualNode source, final VisualNode target) {
+        return design.effectFactory().create(new ParticleEdgeEffectContext(edge, source, target));
     }
 
     private EffectExecutionConfig executionConfig(final Location origin, final Location target, final Player player) {

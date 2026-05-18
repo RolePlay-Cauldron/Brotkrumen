@@ -2,9 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.visual.render;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
-import com.github.roleplaycauldron.brotkrumen.visual.design.EdgeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
-import com.github.roleplaycauldron.brotkrumen.visual.design.NodeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
@@ -104,7 +102,7 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         this.lastSnapshot = snapshot;
         this.lastDesigns = designs;
         final Set<VisualNodeId> visibleNodeIds = visibleNodeIds(snapshot, player.getLocation());
-        final Set<VisualEdgeId> visibleEdgeIds = visibleEdgeIds(snapshot, visibleNodeIds);
+        final Set<VisualEdgeId> visibleEdgeIds = visibleEdgeIds(snapshot, visibleNodeIds, designs);
 
         activeNodes.entrySet().removeIf(entry -> {
             if (!visibleNodeIds.contains(entry.getKey())) {
@@ -123,12 +121,12 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
         for (final VisualNode node : snapshot.nodes()) {
             if (visibleNodeIds.contains(node.id())) {
-                activeNodes.compute(node.id(), (id, handle) -> updateNode(handle, node, designs.resolveNode(node), player));
+                activeNodes.compute(node.id(), (id, handle) -> updateNode(handle, node, designs, player));
             }
         }
         for (final VisualEdge edge : snapshot.edges()) {
             if (visibleEdgeIds.contains(edge.id())) {
-                activeEdges.compute(edge.id(), (id, handle) -> updateEdge(handle, edge, snapshot, designs.resolveEdge(edge), player));
+                activeEdges.compute(edge.id(), (id, handle) -> updateEdge(handle, edge, snapshot, designs, player));
             }
         }
     }
@@ -153,11 +151,11 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
      *
      * @param handle existing renderer-specific node handle, or {@code null} when none exists yet
      * @param node   visual node to render
-     * @param design resolved node design
+     * @param designs resolver for renderer-specific designs
      * @param player viewer that should see the rendered node
      * @return active node handle to keep for future reconciliation
      */
-    protected abstract N updateNode(N handle, VisualNode node, NodeDesign design, Player player);
+    protected abstract N updateNode(N handle, VisualNode node, GraphDesignResolver designs, Player player);
 
     /**
      * Creates or updates the rendered representation of a visible edge.
@@ -165,11 +163,12 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
      * @param handle   existing renderer-specific edge handle, or {@code null} when none exists yet
      * @param edge     visual edge to render
      * @param snapshot source snapshot containing endpoint nodes
-     * @param design   resolved edge design
+     * @param designs  resolver for renderer-specific designs
      * @param player   viewer that should see the rendered edge
      * @return active edge handle to keep for future reconciliation
      */
-    protected abstract E updateEdge(E handle, VisualEdge edge, VisualGraphSnapshot snapshot, EdgeDesign design, Player player);
+    protected abstract E updateEdge(E handle, VisualEdge edge, VisualGraphSnapshot snapshot,
+                                    GraphDesignResolver designs, Player player);
 
     /**
      * Removes a previously active node handle from the renderer.
@@ -200,7 +199,8 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         return result;
     }
 
-    private Set<VisualEdgeId> visibleEdgeIds(final VisualGraphSnapshot snapshot, final Set<VisualNodeId> visibleNodeIds) {
+    private Set<VisualEdgeId> visibleEdgeIds(final VisualGraphSnapshot snapshot, final Set<VisualNodeId> visibleNodeIds,
+                                             final GraphDesignResolver designs) {
         final Set<NodeRef> visibleRefs = new HashSet<>();
         for (final VisualNode node : snapshot.nodes()) {
             if (visibleNodeIds.contains(node.id())) {
@@ -210,6 +210,9 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
         final Set<VisualEdgeId> result = new HashSet<>();
         for (final VisualEdge edge : snapshot.edges()) {
+            if (designs.resolveEdgeRenderStrategy(edge) == EdgeRenderStrategy.ENDPOINTS_ONLY) {
+                continue;
+            }
             if (visibleRefs.contains(edge.source()) && visibleRefs.contains(edge.target())) {
                 result.add(edge.id());
             }

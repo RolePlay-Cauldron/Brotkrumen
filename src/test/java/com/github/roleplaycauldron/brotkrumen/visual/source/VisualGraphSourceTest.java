@@ -9,8 +9,10 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import org.bukkit.Location;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.junit.jupiter.api.Test;
@@ -89,6 +91,53 @@ class VisualGraphSourceTest {
         graph.addNode(new Node(UUID.randomUUID(), 0, 0, 0, null));
 
         assertNotEquals(before, source.version(), "Graph source version should change after mutation");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void singleGraphSourceDerivesTeleportRoles() {
+        final Graph graph = new Graph(1, "Teleport Roles");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.TELEPORT));
+        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.TELEPORT_GLOBAL));
+
+        final VisualGraphSnapshot snapshot = new SingleGraphVisualSource(graph).snapshot();
+
+        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.TELEPORT),
+                "Local teleport edge should get teleport role");
+        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.GLOBAL_TELEPORT),
+                "Global teleport edge should get global teleport role");
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
+                .anyMatch(node -> node.ref().nodeId().equals(first)), "Local teleport source should be an endpoint");
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
+                .anyMatch(node -> node.ref().nodeId().equals(second)), "Local teleport target should be an endpoint");
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
+                .anyMatch(node -> node.ref().nodeId().equals(third)), "Global teleport target should be an endpoint");
+    }
+
+    @Test
+    void pathSourcesPreserveVisualRoles() {
+        final Graph graph = new Graph(1, "Path Teleport Roles");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.TELEPORT));
+
+        final PathVisualGraphSource source = new PathVisualGraphSource(new SingleGraphVisualSource(graph),
+                List.of(new NodeRef(1, first), new NodeRef(1, second)));
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertTrue(snapshot.nodes().stream().allMatch(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT),
+                "Path source should keep node roles from delegate");
+        assertTrue(snapshot.edges().stream().allMatch(edge -> edge.role() == VisualEdgeRole.TELEPORT),
+                "Path source should keep edge roles from delegate");
     }
 
     @Test

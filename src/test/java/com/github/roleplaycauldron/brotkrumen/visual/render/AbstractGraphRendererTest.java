@@ -3,12 +3,13 @@ package com.github.roleplaycauldron.brotkrumen.visual.render;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
-import com.github.roleplaycauldron.brotkrumen.visual.design.EdgeDesign;
-import com.github.roleplaycauldron.brotkrumen.visual.design.NodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
@@ -88,6 +89,35 @@ class AbstractGraphRendererTest {
         assertEquals(0, renderer.edgeUpdates, "Edge should be hidden when one endpoint is outside the configured radius");
     }
 
+    @Test
+    void endpointOnlyTeleportEdgesSkipEdgeRendering() {
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final RendererHarness renderer = new RendererHarness(plugin(new YamlConfiguration(), worldId, viewerId), viewerId);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 1, 2, VisualEdgeRole.TELEPORT);
+
+        renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
+
+        assertEquals(2, renderer.nodeUpdates, "Teleport endpoints should still render as nodes");
+        assertEquals(0, renderer.edgeUpdates, "Endpoint-only teleport edge should not render a full edge");
+    }
+
+    @Test
+    void fullEdgeStrategyRendersTeleportEdges() {
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final RendererHarness renderer = new RendererHarness(plugin(new YamlConfiguration(), worldId, viewerId), viewerId);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 1, 2, VisualEdgeRole.TELEPORT);
+        final ProfileGraphDesignResolver resolver = new ProfileGraphDesignResolver(GraphNetworkDesignProfile.builder()
+                .edgeRenderStrategy(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.FULL_EDGE)
+                .build());
+
+        renderer.apply(snapshot, resolver);
+
+        assertEquals(2, renderer.nodeUpdates, "Teleport endpoints should render as nodes");
+        assertEquals(1, renderer.edgeUpdates, "Full-edge strategy should render the teleport edge");
+    }
+
     private Brotkrumen plugin(final YamlConfiguration config, final UUID worldId, final UUID viewerId) {
         final Brotkrumen plugin = mock(Brotkrumen.class);
         final Server server = mock(Server.class);
@@ -105,6 +135,11 @@ class AbstractGraphRendererTest {
     }
 
     private VisualGraphSnapshot snapshot(final UUID worldId, final int visibleX, final int hiddenX) {
+        return snapshot(worldId, visibleX, hiddenX, VisualEdgeRole.DEFAULT_LOCAL);
+    }
+
+    private VisualGraphSnapshot snapshot(final UUID worldId, final int visibleX, final int hiddenX,
+                                         final VisualEdgeRole edgeRole) {
         final UUID firstNodeId = UUID.randomUUID();
         final UUID secondNodeId = UUID.randomUUID();
         final VisualNode first = visualNode(worldId, firstNodeId, visibleX);
@@ -115,7 +150,8 @@ class AbstractGraphRendererTest {
                 new NodeRef(1, secondNodeId),
                 VisualEdgeKind.LOCAL,
                 1.0D,
-                Set.of()
+                Set.of(),
+                edgeRole
         );
         return new VisualGraphSnapshot(List.of(first, second), List.of(edge), 1L);
     }
@@ -136,7 +172,7 @@ class AbstractGraphRendererTest {
         }
 
         @Override
-        protected Object updateNode(final Object handle, final VisualNode node, final NodeDesign design,
+        protected Object updateNode(final Object handle, final VisualNode node, final GraphDesignResolver designs,
                                     final Player player) {
             nodeUpdates++;
             return new Object();
@@ -144,7 +180,7 @@ class AbstractGraphRendererTest {
 
         @Override
         protected Object updateEdge(final Object handle, final VisualEdge edge, final VisualGraphSnapshot snapshot,
-                                    final EdgeDesign design, final Player player) {
+                                    final GraphDesignResolver designs, final Player player) {
             edgeUpdates++;
             return new Object();
         }

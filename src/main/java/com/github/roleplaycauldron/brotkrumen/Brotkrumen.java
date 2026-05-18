@@ -5,8 +5,6 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
-import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
-import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
@@ -15,7 +13,9 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
@@ -30,7 +30,6 @@ import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumSet;
-import java.util.List;
 
 /**
  * Starting point of the plugin.
@@ -52,13 +51,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private EffectExecutor executor;
 
-    private Node node2A;
-
-    private Node node2J;
-
-    private List<NodeRef> path;
-
-    private Node nodeD;
+    private GraphNetworkDesignProfile visualizerTestProfile;
 
     /**
      * Default constructor.
@@ -108,7 +101,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final Node nodeA = graphOne.addNode(new Node(null, 130, 71, -110, getServer().getWorld("world").getUID()));
         final Node nodeB = graphOne.addNode(new Node(null, 140, 78, -125, getServer().getWorld("world").getUID()));
         final Node nodeC = graphOne.addNode(new Node(null, 135, 72, -105, getServer().getWorld("world").getUID()));
-        nodeD = graphOne.addNode(new Node(null, 120, 73, -110, getServer().getWorld("world").getUID()));
+        final Node nodeD = graphOne.addNode(new Node(null, 120, 73, -110, getServer().getWorld("world").getUID()));
         final Node nodeE = graphOne.addNode(new Node(null, 125, 72, -115, getServer().getWorld("world").getUID()));
         final Node nodeF = graphOne.addNode(new Node(null, 115, 71, -125, getServer().getWorld("world").getUID()));
         final Node nodeG = graphOne.addNode(new Node(null, 130, 72, -120, getServer().getWorld("world").getUID()));
@@ -122,7 +115,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         graphTwo = new Graph(2, "Test Graph pathfinder");
 
-        node2A = graphTwo.addNode(new Node(null, 118, 71, -129, getServer().getWorld("world").getUID()));
+        final Node node2A = graphTwo.addNode(new Node(null, 118, 71, -129, getServer().getWorld("world").getUID()));
         final Node node2B = graphTwo.addNode(new Node(null, 124, 72, -139, getServer().getWorld("world").getUID()));
         final Node node2C = graphTwo.addNode(new Node(null, 130, 73, -149, getServer().getWorld("world").getUID()));
         final Node node2D = graphTwo.addNode(new Node(null, 126, 71, -156, getServer().getWorld("world").getUID()));
@@ -131,7 +124,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final Node node2G = graphTwo.addNode(new Node(null, 108, 70, -150, getServer().getWorld("world").getUID()));
         final Node node2H = graphTwo.addNode(new Node(null, 102, 69, -152, getServer().getWorld("world").getUID()));
         final Node node2I = graphTwo.addNode(new Node(null, 99, 69, -165, getServer().getWorld("world").getUID()));
-        node2J = graphTwo.addNode(new Node(null, 98, 68, -171, getServer().getWorld("world").getUID()));
+        final Node node2J = graphTwo.addNode(new Node(null, 98, 68, -171, getServer().getWorld("world").getUID()));
 
         graphTwo.addEdge(node2A.graphId(), node2B.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphTwo.addEdge(node2B.graphId(), node2C.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
@@ -156,15 +149,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                 1.0D,
                 EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.UNDIRECTED)
         );
-
-        final PathFinder pathfinder = new PathFinder();
-        path = pathfinder.findPath(
-                visualizerTestNetwork,
-                new NodeRef(graphOne.getGraphId(), nodeD.graphId()),
-                new NodeRef(graphTwo.getGraphId(), node2J.graphId()),
-                null,
-                TeleportRules.disableTeleports()
-        );
+        visualizerTestProfile = sampleNetworkDesignProfile();
     }
 
     @Override
@@ -206,15 +191,23 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                GraphNetworkDesignProfile.defaults()
 //        );
 
-        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+        final GraphVisualizer visualizer = GraphVisualizerFactory.particleNetwork(
                 this,
                 loggerFactory,
                 visualizerTestNetwork,
-                path,
                 player.getUniqueId(),
                 executor,
-                GraphNetworkDesignProfile.defaults()
+                visualizerTestProfile
         );
         reg.register(player.getUniqueId(), visualizer);
+    }
+
+    private GraphNetworkDesignProfile sampleNetworkDesignProfile() {
+        return GraphNetworkDesignProfile.builder()
+                .particleGraphDesign(graphOne.getGraphId(), ParticleDesignSet.emberPreset())
+                .particleGraphDesign(graphTwo.getGraphId(), ParticleDesignSet.prismPreset())
+                .blockDisplayGraphDesign(graphOne.getGraphId(), BlockDisplayDesignSet.emberPreset())
+                .blockDisplayGraphDesign(graphTwo.getGraphId(), BlockDisplayDesignSet.prismPreset())
+                .build();
     }
 }

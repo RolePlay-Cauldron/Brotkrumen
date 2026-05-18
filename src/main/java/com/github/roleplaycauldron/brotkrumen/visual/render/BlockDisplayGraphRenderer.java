@@ -3,8 +3,9 @@ package com.github.roleplaycauldron.brotkrumen.visual.render;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
-import com.github.roleplaycauldron.brotkrumen.visual.design.EdgeDesign;
-import com.github.roleplaycauldron.brotkrumen.visual.design.NodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockEdgeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockNodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
@@ -35,8 +36,10 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
     }
 
     @Override
-    protected BlockDisplay updateNode(final BlockDisplay handle, final VisualNode node, final NodeDesign design,
+    protected BlockDisplay updateNode(final BlockDisplay handle, final VisualNode node,
+                                      final GraphDesignResolver designs,
                                       final Player player) {
+        final BlockNodeDesign design = designs.resolveBlockNode(node);
         BlockDisplay display = handle;
         if (display == null || !display.isValid()) {
             display = spawnNodeDisplay(node.node().toCenterLocation(), design);
@@ -52,7 +55,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
 
     @Override
     protected BlockDisplay updateEdge(final BlockDisplay handle, final VisualEdge edge,
-                                      final VisualGraphSnapshot snapshot, final EdgeDesign design,
+                                      final VisualGraphSnapshot snapshot, final GraphDesignResolver designs,
                                       final Player player) {
         final Map<NodeRef, VisualNode> nodes = snapshot.nodesByRef();
         final VisualNode source = nodes.get(edge.source());
@@ -61,6 +64,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
             return handle;
         }
 
+        final BlockEdgeDesign design = designs.resolveBlockEdge(edge);
         BlockDisplay display = handle;
         if (display == null || !display.isValid()) {
             display = spawnEdgeDisplay(source.node().toCenterLocation(), design);
@@ -83,7 +87,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         removeDisplay(handle);
     }
 
-    private BlockDisplay spawnNodeDisplay(final Location location, final NodeDesign design) {
+    private BlockDisplay spawnNodeDisplay(final Location location, final BlockNodeDesign design) {
         final World world = location.getWorld();
         if (world == null) {
             return null;
@@ -106,7 +110,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         );
     }
 
-    private BlockDisplay spawnEdgeDisplay(final Location location, final EdgeDesign design) {
+    private BlockDisplay spawnEdgeDisplay(final Location location, final BlockEdgeDesign design) {
         final World world = location.getWorld();
         if (world == null) {
             return null;
@@ -121,7 +125,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
 
     @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     private void updateEdgeTransformation(final BlockDisplay display, final Node source, final Node target,
-                                          final EdgeDesign design) {
+                                          final BlockEdgeDesign design) {
         if (!source.worldId().equals(target.worldId())) {
             return;
         }
@@ -144,7 +148,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         display.setTransformation(edgeTransformation(design, rotation, displayLength));
     }
 
-    private Transformation edgeTransformation(final EdgeDesign design, final Quaternionf rotation, final float length) {
+    private Transformation edgeTransformation(final BlockEdgeDesign design, final Quaternionf rotation, final float length) {
         final float thickness = design.thickness();
         return new Transformation(
                 new Vector3f(-thickness / 2.0f, -thickness / 2.0f, 0.0f),

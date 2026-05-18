@@ -3,28 +3,45 @@ package com.github.roleplaycauldron.brotkrumen.visual.design;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
+import com.github.roleplaycauldron.brotkrumen.visual.render.EdgeRenderStrategy;
 
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Design profile for graph and graph-network visualization.
+ * Renderer-specific design profile for graph and graph-network visualization.
  */
-@SuppressWarnings({"PMD.DataClass", "PMD.ClassWithOnlyPrivateConstructorsShouldBeFinal", "PMD.AvoidFieldNameMatchingMethodName"})
+@SuppressWarnings({"PMD.DataClass", "PMD.ClassWithOnlyPrivateConstructorsShouldBeFinal",
+        "PMD.AvoidFieldNameMatchingMethodName", "PMD.CouplingBetweenObjects", "PMD.TooManyMethods"})
 public class GraphNetworkDesignProfile {
 
-    private final DesignSet defaultDesign;
+    private final ParticleDesignSet defaultParticleDesign;
 
-    private final DesignSet networkDesign;
+    private final ParticleDesignSet networkParticleDesign;
 
-    private final Map<Integer, DesignSet> graphDesigns;
+    private final BlockDisplayDesignSet defaultBlockDisplayDesign;
 
-    private final Map<VisualEdgeKind, EdgeDesign> edgeKindDesigns;
+    private final BlockDisplayDesignSet networkBlockDisplayDesign;
 
-    private final Map<NodeRef, NodeDesign> nodeOverrides;
+    private final Map<Integer, ParticleDesignSet> particleGraphDesigns;
 
-    private final Map<VisualEdgeId, EdgeDesign> edgeOverrides;
+    private final Map<Integer, BlockDisplayDesignSet> blockDisplayGraphDesigns;
+
+    private final Map<VisualEdgeKind, ParticleEdgeDesign> particleEdgeKindDesigns;
+
+    private final Map<NodeRef, ParticleNodeDesign> particleNodeOverrides;
+
+    private final Map<VisualEdgeId, ParticleEdgeDesign> particleEdgeOverrides;
+
+    private final Map<VisualEdgeKind, BlockEdgeDesign> blockDisplayEdgeKindDesigns;
+
+    private final Map<NodeRef, BlockNodeDesign> blockDisplayNodeOverrides;
+
+    private final Map<VisualEdgeId, BlockEdgeDesign> blockDisplayEdgeOverrides;
+
+    private final Map<VisualEdgeRole, EdgeRenderStrategy> edgeRenderStrategies;
 
     private final InterGraphEdgeDesignStrategy interGraphStrategy;
 
@@ -34,12 +51,19 @@ public class GraphNetworkDesignProfile {
      * @param builder builder
      */
     private GraphNetworkDesignProfile(final Builder builder) {
-        this.defaultDesign = builder.defaultDesign;
-        this.networkDesign = builder.networkDesign;
-        this.graphDesigns = Map.copyOf(builder.graphDesigns);
-        this.edgeKindDesigns = Map.copyOf(builder.edgeKindDesigns);
-        this.nodeOverrides = Map.copyOf(builder.nodeOverrides);
-        this.edgeOverrides = Map.copyOf(builder.edgeOverrides);
+        this.defaultParticleDesign = builder.defaultParticleDesign;
+        this.networkParticleDesign = builder.networkParticleDesign;
+        this.defaultBlockDisplayDesign = builder.defaultBlockDisplayDesign;
+        this.networkBlockDisplayDesign = builder.networkBlockDisplayDesign;
+        this.particleGraphDesigns = Map.copyOf(builder.particleGraphDesigns);
+        this.blockDisplayGraphDesigns = Map.copyOf(builder.blockDisplayGraphDesigns);
+        this.particleEdgeKindDesigns = Map.copyOf(builder.particleEdgeKindDesigns);
+        this.particleNodeOverrides = Map.copyOf(builder.particleNodeOverrides);
+        this.particleEdgeOverrides = Map.copyOf(builder.particleEdgeOverrides);
+        this.blockDisplayEdgeKindDesigns = Map.copyOf(builder.blockDisplayEdgeKindDesigns);
+        this.blockDisplayNodeOverrides = Map.copyOf(builder.blockDisplayNodeOverrides);
+        this.blockDisplayEdgeOverrides = Map.copyOf(builder.blockDisplayEdgeOverrides);
+        this.edgeRenderStrategies = Map.copyOf(builder.edgeRenderStrategies);
         this.interGraphStrategy = builder.interGraphStrategy;
     }
 
@@ -61,28 +85,56 @@ public class GraphNetworkDesignProfile {
         return builder().build();
     }
 
-    public DesignSet defaultDesign() {
-        return defaultDesign;
+    public ParticleDesignSet defaultParticleDesign() {
+        return defaultParticleDesign;
     }
 
-    public DesignSet networkDesign() {
-        return networkDesign;
+    public ParticleDesignSet networkParticleDesign() {
+        return networkParticleDesign;
     }
 
-    public Map<Integer, DesignSet> graphDesigns() {
-        return graphDesigns;
+    public BlockDisplayDesignSet defaultBlockDisplayDesign() {
+        return defaultBlockDisplayDesign;
     }
 
-    public Map<VisualEdgeKind, EdgeDesign> edgeKindDesigns() {
-        return edgeKindDesigns;
+    public BlockDisplayDesignSet networkBlockDisplayDesign() {
+        return networkBlockDisplayDesign;
     }
 
-    public Map<NodeRef, NodeDesign> nodeOverrides() {
-        return nodeOverrides;
+    public Map<Integer, ParticleDesignSet> particleGraphDesigns() {
+        return particleGraphDesigns;
     }
 
-    public Map<VisualEdgeId, EdgeDesign> edgeOverrides() {
-        return edgeOverrides;
+    public Map<Integer, BlockDisplayDesignSet> blockDisplayGraphDesigns() {
+        return blockDisplayGraphDesigns;
+    }
+
+    public Map<VisualEdgeKind, ParticleEdgeDesign> particleEdgeKindDesigns() {
+        return particleEdgeKindDesigns;
+    }
+
+    public Map<NodeRef, ParticleNodeDesign> particleNodeOverrides() {
+        return particleNodeOverrides;
+    }
+
+    public Map<VisualEdgeId, ParticleEdgeDesign> particleEdgeOverrides() {
+        return particleEdgeOverrides;
+    }
+
+    public Map<VisualEdgeKind, BlockEdgeDesign> blockDisplayEdgeKindDesigns() {
+        return blockDisplayEdgeKindDesigns;
+    }
+
+    public Map<NodeRef, BlockNodeDesign> blockDisplayNodeOverrides() {
+        return blockDisplayNodeOverrides;
+    }
+
+    public Map<VisualEdgeId, BlockEdgeDesign> blockDisplayEdgeOverrides() {
+        return blockDisplayEdgeOverrides;
+    }
+
+    public Map<VisualEdgeRole, EdgeRenderStrategy> edgeRenderStrategies() {
+        return edgeRenderStrategies;
     }
 
     public InterGraphEdgeDesignStrategy interGraphStrategy() {
@@ -90,52 +142,107 @@ public class GraphNetworkDesignProfile {
     }
 
     /**
-     * Builder for design profiles.
+     * Builder for renderer-specific design profiles.
      */
-    @SuppressWarnings({"PMD.CommentRequired", "PMD.AvoidFieldNameMatchingMethodName"})
+    @SuppressWarnings({"PMD.CommentRequired", "PMD.AvoidFieldNameMatchingMethodName", "PMD.TooManyMethods"})
     public static class Builder {
 
-        private final Map<Integer, DesignSet> graphDesigns = new HashMap<>();
+        private final Map<Integer, ParticleDesignSet> particleGraphDesigns = new HashMap<>();
 
-        private final Map<VisualEdgeKind, EdgeDesign> edgeKindDesigns = new EnumMap<>(VisualEdgeKind.class);
+        private final Map<Integer, BlockDisplayDesignSet> blockDisplayGraphDesigns = new HashMap<>();
 
-        private final Map<NodeRef, NodeDesign> nodeOverrides = new HashMap<>();
+        private final Map<VisualEdgeKind, ParticleEdgeDesign> particleEdgeKindDesigns =
+                new EnumMap<>(VisualEdgeKind.class);
 
-        private final Map<VisualEdgeId, EdgeDesign> edgeOverrides = new HashMap<>();
+        private final Map<NodeRef, ParticleNodeDesign> particleNodeOverrides = new HashMap<>();
 
-        private DesignSet defaultDesign = DesignSet.defaults();
+        private final Map<VisualEdgeId, ParticleEdgeDesign> particleEdgeOverrides = new HashMap<>();
 
-        private DesignSet networkDesign;
+        private final Map<VisualEdgeKind, BlockEdgeDesign> blockDisplayEdgeKindDesigns =
+                new EnumMap<>(VisualEdgeKind.class);
+
+        private final Map<NodeRef, BlockNodeDesign> blockDisplayNodeOverrides = new HashMap<>();
+
+        private final Map<VisualEdgeId, BlockEdgeDesign> blockDisplayEdgeOverrides = new HashMap<>();
+
+        private final Map<VisualEdgeRole, EdgeRenderStrategy> edgeRenderStrategies = defaultEdgeRenderStrategies();
+
+        private ParticleDesignSet defaultParticleDesign = ParticleDesignSet.defaults();
+
+        private ParticleDesignSet networkParticleDesign;
+
+        private BlockDisplayDesignSet defaultBlockDisplayDesign = BlockDisplayDesignSet.defaults();
+
+        private BlockDisplayDesignSet networkBlockDisplayDesign;
 
         private InterGraphEdgeDesignStrategy interGraphStrategy = InterGraphEdgeDesignStrategy.EXPLICIT_INTER_GRAPH;
 
-        public Builder defaultDesign(final DesignSet design) {
-            this.defaultDesign = design;
+        private static Map<VisualEdgeRole, EdgeRenderStrategy> defaultEdgeRenderStrategies() {
+            final Map<VisualEdgeRole, EdgeRenderStrategy> result = new EnumMap<>(VisualEdgeRole.class);
+            result.put(VisualEdgeRole.DEFAULT_LOCAL, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.INTER_GRAPH, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.ENDPOINTS_ONLY);
+            result.put(VisualEdgeRole.GLOBAL_TELEPORT, EdgeRenderStrategy.ENDPOINTS_ONLY);
+            return result;
+        }
+
+        public Builder particleDefaultDesign(final ParticleDesignSet design) {
+            this.defaultParticleDesign = design;
             return this;
         }
 
-        public Builder networkDesign(final DesignSet design) {
-            this.networkDesign = design;
+        public Builder particleNetworkDesign(final ParticleDesignSet design) {
+            this.networkParticleDesign = design;
             return this;
         }
 
-        public Builder graphDesign(final int graphId, final DesignSet design) {
-            this.graphDesigns.put(graphId, design);
+        public Builder particleGraphDesign(final int graphId, final ParticleDesignSet design) {
+            this.particleGraphDesigns.put(graphId, design);
             return this;
         }
 
-        public Builder edgeKindDesign(final VisualEdgeKind kind, final EdgeDesign design) {
-            this.edgeKindDesigns.put(kind, design);
+        public Builder blockDisplayDefaultDesign(final BlockDisplayDesignSet design) {
+            this.defaultBlockDisplayDesign = design;
             return this;
         }
 
-        public Builder nodeOverride(final NodeRef nodeRef, final NodeDesign design) {
-            this.nodeOverrides.put(nodeRef, design);
+        public Builder blockDisplayNetworkDesign(final BlockDisplayDesignSet design) {
+            this.networkBlockDisplayDesign = design;
             return this;
         }
 
-        public Builder edgeOverride(final VisualEdgeId edgeId, final EdgeDesign design) {
-            this.edgeOverrides.put(edgeId, design);
+        public Builder blockDisplayGraphDesign(final int graphId, final BlockDisplayDesignSet design) {
+            this.blockDisplayGraphDesigns.put(graphId, design);
+            return this;
+        }
+
+        public Builder particleEdgeKindDesign(final VisualEdgeKind kind, final ParticleEdgeDesign design) {
+            this.particleEdgeKindDesigns.put(kind, design);
+            return this;
+        }
+
+        public Builder particleNodeOverride(final NodeRef nodeRef, final ParticleNodeDesign design) {
+            this.particleNodeOverrides.put(nodeRef, design);
+            return this;
+        }
+
+        public Builder particleEdgeOverride(final VisualEdgeId edgeId, final ParticleEdgeDesign design) {
+            this.particleEdgeOverrides.put(edgeId, design);
+            return this;
+        }
+
+        public Builder blockDisplayEdgeKindDesign(final VisualEdgeKind kind, final BlockEdgeDesign design) {
+            this.blockDisplayEdgeKindDesigns.put(kind, design);
+            return this;
+        }
+
+        public Builder blockDisplayNodeOverride(final NodeRef nodeRef, final BlockNodeDesign design) {
+            this.blockDisplayNodeOverrides.put(nodeRef, design);
+            return this;
+        }
+
+        public Builder blockDisplayEdgeOverride(final VisualEdgeId edgeId, final BlockEdgeDesign design) {
+            this.blockDisplayEdgeOverrides.put(edgeId, design);
             return this;
         }
 
@@ -146,6 +253,11 @@ public class GraphNetworkDesignProfile {
 
         public GraphNetworkDesignProfile build() {
             return new GraphNetworkDesignProfile(this);
+        }
+
+        public Builder edgeRenderStrategy(final VisualEdgeRole role, final EdgeRenderStrategy strategy) {
+            this.edgeRenderStrategies.put(role, strategy);
+            return this;
         }
     }
 }

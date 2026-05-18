@@ -1,17 +1,23 @@
 package com.github.roleplaycauldron.brotkrumen.visual.source;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
+import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Visual source for one graph.
@@ -31,8 +37,9 @@ public class SingleGraphVisualSource implements VisualGraphSource {
 
     @Override
     public VisualGraphSnapshot snapshot() {
+        final Set<UUID> teleportEndpoints = teleportEndpoints();
         final List<VisualNode> nodes = graph.getNodes().stream()
-                .map(this::toVisualNode)
+                .map(node -> toVisualNode(node, teleportEndpoints))
                 .toList();
         final List<VisualEdge> edges = graph.getEdges().stream()
                 .map(this::toVisualEdge)
@@ -45,9 +52,12 @@ public class SingleGraphVisualSource implements VisualGraphSource {
         return graph.getModCount();
     }
 
-    private VisualNode toVisualNode(final Node node) {
+    private VisualNode toVisualNode(final Node node, final Set<UUID> teleportEndpoints) {
         final NodeRef ref = new NodeRef(graph.getGraphId(), node.graphId());
-        return new VisualNode(new VisualNodeId(ref), ref, node);
+        final VisualNodeRole role = teleportEndpoints.contains(node.graphId())
+                ? VisualNodeRole.TELEPORT_ENDPOINT
+                : VisualNodeRole.DEFAULT;
+        return new VisualNode(new VisualNodeId(ref), ref, node, role);
     }
 
     private VisualEdge toVisualEdge(final Edge edge) {
@@ -57,7 +67,31 @@ public class SingleGraphVisualSource implements VisualGraphSource {
                 new NodeRef(graph.getGraphId(), edge.target()),
                 VisualEdgeKind.LOCAL,
                 edge.cost(),
-                edge.flags()
+                edge.flags(),
+                edgeRole(edge.flags())
         );
+    }
+
+    private VisualEdgeRole edgeRole(final Set<EdgeFlag> flags) {
+        if (flags.contains(EdgeFlag.TELEPORT_GLOBAL)) {
+            return VisualEdgeRole.GLOBAL_TELEPORT;
+        }
+        if (flags.contains(EdgeFlag.TELEPORT)) {
+            return VisualEdgeRole.TELEPORT;
+        }
+        return VisualEdgeRole.DEFAULT_LOCAL;
+    }
+
+    private Set<UUID> teleportEndpoints() {
+        final Set<UUID> result = new HashSet<>();
+        for (final Edge edge : graph.getEdges()) {
+            if (edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL)) {
+                result.add(edge.target());
+            } else if (edge.flags().contains(EdgeFlag.TELEPORT)) {
+                result.add(edge.source());
+                result.add(edge.target());
+            }
+        }
+        return result;
     }
 }

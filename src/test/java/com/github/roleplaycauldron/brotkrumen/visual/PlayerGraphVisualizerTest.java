@@ -4,8 +4,10 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.render.GraphRenderer;
@@ -48,18 +50,24 @@ class PlayerGraphVisualizerTest {
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void factoriesCreateSingleGraphAndNetworkVisualizers() {
         final Graph graph = new Graph(1, "Factory");
         graph.addNode(new Node(UUID.randomUUID(), 0, 0, 0, null));
         final GraphNetwork network = new GraphNetwork();
         network.addGraph(graph);
+        final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.builder()
+                .particleGraphDesign(1, ParticleDesignSet.emberPreset())
+                .blockDisplayGraphDesign(1, BlockDisplayDesignSet.emberPreset())
+                .build();
 
         final GraphVisualizer graphVisualizer = GraphVisualizerFactory.blockDisplayGraph(null, null, graph, UUID.randomUUID());
-        final GraphVisualizer networkVisualizer = GraphVisualizerFactory.blockDisplayNetwork(null, null, network,
-                UUID.randomUUID(), GraphNetworkDesignProfile.defaults());
+        final GraphVisualizer networkVisualizer = GraphVisualizerFactory.blockDisplayNetwork(null, null, network, UUID.randomUUID(), profile);
+        final GraphVisualizer particleNetworkVisualizer = GraphVisualizerFactory.particleNetwork(null, null, network, UUID.randomUUID(), null, profile);
 
         assertNotNull(graphVisualizer, "Factory should create a single-graph visualizer");
         assertNotNull(networkVisualizer, "Factory should create a network visualizer");
+        assertNotNull(particleNetworkVisualizer, "Factory should create a preset particle network visualizer");
     }
 
     @Test
