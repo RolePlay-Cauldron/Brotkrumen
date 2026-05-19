@@ -5,6 +5,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
+import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 
 import java.util.Map;
 import java.util.Queue;
@@ -34,13 +36,17 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
         if (edge.flags().contains(EdgeFlag.BLOCKED)) {
             return false;
         }
+        if (edge.flags().contains(EdgeFlag.TELEPORT) && edge.flags().contains(EdgeFlag.INTER_GRAPH)) {
+            return rules.isInterGraphTeleportEnabled();
+        }
         return !edge.flags().contains(EdgeFlag.TELEPORT) || rules.isLocalTeleportEnabled();
     }
 
     @Override
     protected void onExpandNode(final Graph graph, final UUID nodeId, final TeleportRules rules,
                                 final Predicate<Edge> filter, final Map<UUID, Double> gScore,
-                                final Map<UUID, UUID> parent, final Queue<UUID> open, final Set<UUID> goals) {
+                                final Map<UUID, UUID> parent, final Map<UUID, PathSegment> segments,
+                                final Queue<UUID> open, final Set<UUID> goals) {
         if (!rules.isWarpingEnabled()) {
             return;
         }
@@ -52,11 +58,11 @@ public class DijkstraAlgorithm extends AbstractShortestPath {
             if (nodeId.equals(targetNodeId)) {
                 continue;
             }
-            final Edge virtualEdge = new Edge(null, nodeId, targetNodeId, warp.cost(), Set.of(EdgeFlag.TELEPORT, EdgeFlag.TELEPORT_GLOBAL));
+            final Edge virtualEdge = new Edge(null, nodeId, targetNodeId, warp.cost(), Set.of(EdgeFlag.TELEPORT));
             if (!filter.test(virtualEdge)) {
                 continue;
             }
-            relax(nodeId, virtualEdge, graph, goals, gScore, parent, open);
+            relax(nodeId, virtualEdge, graph, goals, gScore, parent, segments, open, TraversalKind.WARP, warp.key());
         }
     }
 }

@@ -4,22 +4,27 @@ import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
-import com.github.roleplaycauldron.brotkrumen.graph.search.PathAlgorithm;
-import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistry;
-import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
-import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
-import com.github.roleplaycauldron.brotkrumen.visual.BlockDisplayVisualizer;
-import com.github.roleplaycauldron.brotkrumen.visual.VisualMode;
+import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -28,12 +33,8 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Starting point of the plugin.
@@ -49,19 +50,15 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private Graph graphTwo;
 
-    private List<Node> graphTwoPath;
-
-    private SearchRegistry searchRegistry;
-
-    private GraphServiceImpl graphService;
-
-    private GraphNetworkServiceImpl graphNetworkService;
+    private GraphNetwork visualizerTestNetwork;
 
     private Storage storage;
 
-    private Map<Integer, Graph> graphMap;
+    private EffectExecutor executor;
 
-    private List<GraphNetwork> graphNetworks;
+    private GraphNetworkDesignProfile visualizerTestProfile;
+
+    private PathResult pathResult;
 
     /**
      * Default constructor.
@@ -86,8 +83,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage = new Storage(loggerFactory, databaseSection, getDataFolder());
         storage.initialize();
 
-        graphService = new GraphServiceImpl(storage);
-        graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
+        final GraphServiceImpl graphService = new GraphServiceImpl(storage);
+        final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
         servicesManager.register(GraphNetworkService.class, graphNetworkService, this, ServicePriority.Normal);
@@ -95,19 +92,29 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         new CoordinatesCommand(this);
         log.info("Brotkrumen enabled");
 
-        searchRegistry = new SearchRegistry();
-        searchRegistry.register(new AStarAlgorithm());
-        searchRegistry.register(new DijkstraAlgorithm());
+        createVisualizerTestGraphs();
 
-        graphOne = new Graph("Test graph editor");
+        this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
+        reg.startVisibilityUpdates();
+
+        this.executor = new EffectExecutor(this);
+
+        getServer().getPluginManager().registerEvents(this, this);
+    }
+
+    private void createVisualizerTestGraphs() {
+        graphOne = new Graph(1, "Test graph editor");
 
         final Node nodeA = graphOne.addNode(new Node(null, 130, 71, -110, getServer().getWorld("world").getUID()));
         final Node nodeB = graphOne.addNode(new Node(null, 140, 78, -125, getServer().getWorld("world").getUID()));
-        final Node nodeC = graphOne.addNode(new Node(null, 135, 72, -105, getServer().getWorld("world").getUID()));
+        final Node nodeC = graphOne.addNode(new Node(null, 135, 72, -105, getServer().getWorld("world").getUID(), EnumSet.of(NodeFlag.INTERGRAPH_TELEPORT)));
         final Node nodeD = graphOne.addNode(new Node(null, 120, 73, -110, getServer().getWorld("world").getUID()));
         final Node nodeE = graphOne.addNode(new Node(null, 125, 72, -115, getServer().getWorld("world").getUID()));
         final Node nodeF = graphOne.addNode(new Node(null, 115, 71, -125, getServer().getWorld("world").getUID()));
         final Node nodeG = graphOne.addNode(new Node(null, 130, 72, -120, getServer().getWorld("world").getUID()));
+        final Node nodeHTpG = graphOne.addNode(new Node(null, 127, 72, -101, getServer().getWorld("world").getUID(), EnumSet.of(NodeFlag.WARP)));
+        final Node nodeHTpL1 = graphOne.addNode(new Node(null, 139, 72, -100, getServer().getWorld("world").getUID(), EnumSet.of(NodeFlag.LOCAL_TELEPORT)));
+        final Node nodeHTpL2 = graphOne.addNode(new Node(null, 134, 72, -99, getServer().getWorld("world").getUID(), EnumSet.of(NodeFlag.LOCAL_TELEPORT)));
 
         graphOne.addEdge(nodeA.graphId(), nodeC.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeC.graphId(), nodeE.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
@@ -115,16 +122,17 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphOne.addEdge(nodeE.graphId(), nodeD.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeB.graphId(), nodeHTpG.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeHTpL1.graphId(), nodeHTpL2.graphId(), 1.0D, EnumSet.of(EdgeFlag.TELEPORT));
+        graphOne.addEdge(nodeHTpL2.graphId(), nodeHTpL1.graphId(), 1.0D, EnumSet.of(EdgeFlag.TELEPORT));
+        graphOne.addEdge(nodeC.graphId(), nodeHTpL1.graphId(), 1.0D, EnumSet.of(EdgeFlag.DIRECTED));
 
-        this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
-        reg.startVisibilityUpdates();
-
-        graphTwo = new Graph("Test Graph pathfinder");
+        graphTwo = new Graph(2, "Test Graph pathfinder");
 
         final Node node2A = graphTwo.addNode(new Node(null, 118, 71, -129, getServer().getWorld("world").getUID()));
         final Node node2B = graphTwo.addNode(new Node(null, 124, 72, -139, getServer().getWorld("world").getUID()));
         final Node node2C = graphTwo.addNode(new Node(null, 130, 73, -149, getServer().getWorld("world").getUID()));
-        final Node node2D = graphTwo.addNode(new Node(null, 126, 71, -156, getServer().getWorld("world").getUID()));
+        final Node node2D = graphTwo.addNode(new Node(null, 126, 71, -156, getServer().getWorld("world").getUID(), EnumSet.of(NodeFlag.INTERGRAPH_TELEPORT)));
         final Node node2E = graphTwo.addNode(new Node(null, 116, 71, -160, getServer().getWorld("world").getUID()));
         final Node node2F = graphTwo.addNode(new Node(null, 109, 71, -158, getServer().getWorld("world").getUID()));
         final Node node2G = graphTwo.addNode(new Node(null, 108, 70, -150, getServer().getWorld("world").getUID()));
@@ -132,51 +140,116 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final Node node2I = graphTwo.addNode(new Node(null, 99, 69, -165, getServer().getWorld("world").getUID()));
         final Node node2J = graphTwo.addNode(new Node(null, 98, 68, -171, getServer().getWorld("world").getUID()));
 
-        graphTwo.addUndirectedEdge(node2A.graphId(), node2B.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2B.graphId(), node2C.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2C.graphId(), node2D.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2D.graphId(), node2E.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2E.graphId(), node2F.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2F.graphId(), node2G.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2G.graphId(), node2H.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2H.graphId(), node2I.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
-        graphTwo.addUndirectedEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2A.graphId(), node2B.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2B.graphId(), node2C.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2C.graphId(), node2D.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2D.graphId(), node2E.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2E.graphId(), node2F.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2F.graphId(), node2G.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2G.graphId(), node2H.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2H.graphId(), node2I.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphTwo.addEdge(node2I.graphId(), node2J.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
 
-        final PathAlgorithm pathAlgo = searchRegistry.select(graphTwo, TeleportRules.disableTeleports());
-        graphTwoPath = pathAlgo.findPath(graphTwo, node2A.graphId(), Set.of(node2J.graphId()), null, TeleportRules.disableTeleports());
-//        graphTwoPath = List.of(node2A, node2B, node2C, node2D, node2E, node2F, node2G, node2H, node2I, node2J);
-
-        getServer().getPluginManager().registerEvents(this, this);
+        createVisualizerTestNetwork(nodeG, node2A, nodeC, node2D, nodeB, node2E);
     }
 
-    private void loadGraphs() {
-        graphMap = new HashMap<>();
-        graphNetworks = new ArrayList<>();
+    private void createVisualizerTestNetwork(final Node graphOneExit, final Node graphTwoEntry,
+                                             final Node tpNodeA, final Node tpNodeB,
+                                             final Node startPoint, final Node endPoint) {
+        visualizerTestNetwork = new GraphNetwork();
+        visualizerTestNetwork.addGraph(graphOne);
+        visualizerTestNetwork.addGraph(graphTwo);
+        visualizerTestNetwork.addUndirectedInterGraphEdge(
+                new NodeRef(graphOne.getGraphId(), graphOneExit.graphId()),
+                new NodeRef(graphTwo.getGraphId(), graphTwoEntry.graphId()),
+                1.0D,
+                EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.UNDIRECTED)
+        );
+        visualizerTestNetwork.addUndirectedInterGraphEdge(
+                new NodeRef(graphOne.getGraphId(), tpNodeA.graphId()),
+                new NodeRef(graphTwo.getGraphId(), tpNodeB.graphId()),
+                1.0D,
+                EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.TELEPORT, EdgeFlag.UNDIRECTED)
+        );
+        visualizerTestProfile = sampleNetworkDesignProfile();
 
-        graphService.getAllGraphs().forEach(graph -> graphMap.put(graph.getGraphId(), graph));
-        graphNetworks.addAll(graphNetworkService.loadGraphNetworks());
+        final TeleportRules rules = new TeleportRules(true, true,
+                true, Collections.emptySet());
+
+        final PathFinder finder = new PathFinder();
+        pathResult = finder.findPathResult(visualizerTestNetwork,
+                new NodeRef(graphOne.getGraphId(), startPoint.graphId()),
+                new NodeRef(graphTwo.getGraphId(), endPoint.graphId()),
+                null,
+                rules);
     }
 
     @Override
     public void onDisable() {
-        reg.stopVisibilityUpdates();
+        if (reg != null) {
+            reg.stopVisibilityUpdates();
+        }
 
-        storage.shutdown();
+        if (storage != null) {
+            storage.shutdown();
+        }
     }
 
     @EventHandler
     public void playerJoin(final PlayerJoinEvent event) {
-//        final BlockDisplayVisualizer visualiserOne = new BlockDisplayVisualizer(this, loggerFactory, graphOne,
-//                event.getPlayer().getUniqueId(), VisualMode.EDIT);
-//        reg.register(event.getPlayer().getUniqueId(), visualiserOne);
-
-        final BlockDisplayVisualizer visualiserTwo = new BlockDisplayVisualizer(this, loggerFactory, graphTwo,
-                event.getPlayer().getUniqueId(), VisualMode.EDIT, graphTwoPath);
-        reg.register(event.getPlayer().getUniqueId(), visualiserTwo);
+        registerVisualizerTest(event.getPlayer());
     }
 
     @EventHandler
     public void playerQuit(final PlayerQuitEvent event) {
         reg.unregister(event.getPlayer().getUniqueId());
+    }
+
+    private void registerVisualizerTest(final Player player) {
+        //        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGraph(
+//                this,
+//                loggerFactory,
+//                graphTwo,
+//                player.getUniqueId(),
+//                executor
+//        );
+
+//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleNetwork(
+//                this,
+//                loggerFactory,
+//                visualizerTestNetwork,
+//                player.getUniqueId(),
+//                executor,
+//                visualizerTestProfile
+//        );
+
+//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+//                this,
+//                loggerFactory,
+//                visualizerTestNetwork,
+//                pathResult,
+//                player.getUniqueId(),
+//                executor,
+//                visualizerTestProfile
+//        );
+
+        final GraphVisualizer visualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(
+                this,
+                loggerFactory,
+                visualizerTestNetwork,
+                pathResult,
+                player.getUniqueId(),
+                visualizerTestProfile
+        );
+        reg.register(player.getUniqueId(), visualizer);
+    }
+
+    private GraphNetworkDesignProfile sampleNetworkDesignProfile() {
+        return GraphNetworkDesignProfile.builder()
+                .particleGraphDesign(graphOne.getGraphId(), ParticleDesignSet.emberPreset())
+                .particleGraphDesign(graphTwo.getGraphId(), ParticleDesignSet.prismPreset())
+                .blockDisplayGraphDesign(graphOne.getGraphId(), BlockDisplayDesignSet.emberPreset())
+                .blockDisplayGraphDesign(graphTwo.getGraphId(), BlockDisplayDesignSet.prismPreset())
+                .build();
     }
 }

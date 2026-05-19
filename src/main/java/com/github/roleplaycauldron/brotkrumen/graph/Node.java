@@ -3,6 +3,8 @@ package com.github.roleplaycauldron.brotkrumen.graph;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -14,9 +16,25 @@ import java.util.UUID;
  * @param y       the y coordinate of the node
  * @param z       the z coordinate of the node
  * @param worldId the {@link UUID} of the world the node is in
+ * @param flags   persistent node capabilities
  */
 @SuppressWarnings("PMD.ShortVariable")
-public record Node(int dbId, UUID graphId, double x, double y, double z, UUID worldId) {
+public record Node(int dbId, UUID graphId, double x, double y, double z, UUID worldId, Set<NodeFlag> flags) {
+
+    /**
+     * A constructor using the x, y and z coordinates.
+     *
+     * @param dbId    the id of the node in the database. Use -1 or another constructor instead of using this
+     * @param graphId the {@link UUID} of the node
+     * @param x       the x coordinate of the node
+     * @param y       the y coordinate of the node
+     * @param z       the z coordinate of the node
+     * @param worldId the {@link UUID} of the world the node is in
+     */
+    public Node(final int dbId, final UUID graphId, final double x, final double y, final double z,
+                final UUID worldId) {
+        this(dbId, graphId, x, y, z, worldId, EnumSet.noneOf(NodeFlag.class));
+    }
 
     /**
      * A constructor using the x, y and z coordinates.
@@ -28,7 +46,22 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
      * @param worldId the {@link UUID} of the world the node is in
      */
     public Node(final UUID graphId, final double x, final double y, final double z, final UUID worldId) {
-        this(-1, graphId, x, y, z, worldId);
+        this(-1, graphId, x, y, z, worldId, EnumSet.noneOf(NodeFlag.class));
+    }
+
+    /**
+     * A constructor using the x, y and z coordinates.
+     *
+     * @param graphId the {@link UUID} of the node within the graph
+     * @param x       the x coordinate of the node
+     * @param y       the y coordinate of the node
+     * @param z       the z coordinate of the node
+     * @param worldId the {@link UUID} of the world the node is in
+     * @param flags   persistent node capabilities
+     */
+    public Node(final UUID graphId, final double x, final double y, final double z, final UUID worldId,
+                final Set<NodeFlag> flags) {
+        this(-1, graphId, x, y, z, worldId, flags);
     }
 
     /**
@@ -39,7 +72,8 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
      * @param loc     the {@link Location} of the node
      */
     public Node(final int dbId, final UUID graphId, final Location loc) {
-        this(dbId, graphId, loc.getX(), loc.getY(), loc.getZ(), loc.getWorld().getUID());
+        this(dbId, graphId, loc.getX(), loc.getY(), loc.getZ(), loc.getWorld().getUID(),
+                EnumSet.noneOf(NodeFlag.class));
     }
 
     /**
@@ -62,11 +96,27 @@ public record Node(int dbId, UUID graphId, double x, double y, double z, UUID wo
     }
 
     /**
+     * Normalizes node flags.
+     */
+    public Node {
+        flags = flags == null || flags.isEmpty() ? Set.of() : Set.copyOf(flags);
+    }
+
+    /**
      * Converts this node position to the center location of the represented block.
      *
      * @return the centered {@link Location}
      */
     public Location toCenterLocation() {
-        return new Location(Bukkit.getWorld(worldId), x, y, z).toCenterLocation();
+        return toLocation().toCenterLocation();
+    }
+
+    /**
+     * Converts the nodes position-values to a {@link Location}.
+     *
+     * @return the {@link Location}
+     */
+    public Location toLocation() {
+        return new Location(Bukkit.getWorld(worldId), x, y, z);
     }
 }

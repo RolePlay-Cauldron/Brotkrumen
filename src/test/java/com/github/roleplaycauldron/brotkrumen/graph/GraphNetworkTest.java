@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>
  * This test suite verifies the correct implementation of graph network features,
  * including unified graph construction, inter-graph edge constraints, handling of
- * undirected inter-graph edges, and path resolution for node references.
+ * and undirected inter-graph edges.
  */
 class GraphNetworkTest {
 
@@ -84,21 +84,10 @@ class GraphNetworkTest {
         assertEquals(2, created.size(), "Undirected inter-graph edge should create two directed edges");
         assertEquals(1, network.getOutgoingInterEdges(new NodeRef(1, nodeOne)).size(), "Forward edge should be present");
         assertEquals(1, network.getOutgoingInterEdges(new NodeRef(2, nodeTwo)).size(), "Backward edge should be present");
-    }
-
-    @Test
-    void resolvesNodeReferencePathToNodes() {
-        final Graph graphOne = new Graph(1, "One");
-        final UUID nodeOne = UUID.fromString("3643fcf8-5776-4624-a597-e73f9f8c12d2");
-        graphOne.addNode(new Node(nodeOne, 0, 64, 0, null));
-
-        final GraphNetwork network = new GraphNetwork();
-        network.addGraph(graphOne);
-
-        final List<Node> resolved = network.resolvePath(List.of(new NodeRef(1, nodeOne)));
-
-        assertEquals(1, resolved.size(), "Node path should be resolved for visualizer usage");
-        assertEquals(nodeOne, resolved.getFirst().graphId(), "Resolved node id should match");
+        assertTrue(created.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.UNDIRECTED)),
+                "Undirected inter-graph edges should keep undirected semantics");
+        assertTrue(created.stream().noneMatch(edge -> edge.flags().contains(EdgeFlag.DIRECTED)),
+                "Undirected inter-graph edges should not be reclassified as directed");
     }
 
     @Test
@@ -138,10 +127,10 @@ class GraphNetworkTest {
         network.addGraph(graphTwo);
         network.addDirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
 
-        assertEquals(1, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size(), "Edge should exist");
+        assertEquals(1, network.getOutgoingInterEdges(new NodeRef(1, nodeOne)).size(), "Edge should exist");
 
         network.removeInterGraphEdges(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo));
-        assertEquals(0, network.getInterGraphEdges(new NodeRef(1, nodeOne)).size(), "Edges should be removed");
+        assertEquals(0, network.getOutgoingInterEdges(new NodeRef(1, nodeOne)).size(), "Edges should be removed");
     }
 
     @Test

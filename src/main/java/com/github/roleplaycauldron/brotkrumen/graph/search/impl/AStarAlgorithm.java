@@ -26,12 +26,13 @@ public class AStarAlgorithm extends AbstractShortestPath {
 
     @Override
     public boolean suitable(final Graph graph, final TeleportRules rules) {
-        return rules != null && !rules.isWarpingEnabled() && !rules.isLocalTeleportEnabled();
+        return rules != null && !rules.isWarpingEnabled() && !rules.isLocalTeleportEnabled()
+                && !rules.isInterGraphTeleportEnabled();
     }
 
     @Override
     protected boolean isEdgeAllowed(final Graph graph, final Edge edge, final TeleportRules rules) {
-        return !edge.flags().contains(EdgeFlag.TELEPORT) && !edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL);
+        return !edge.flags().contains(EdgeFlag.TELEPORT);
     }
 
     @Override

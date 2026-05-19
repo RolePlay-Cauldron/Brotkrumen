@@ -23,12 +23,15 @@ public class GraphNetwork {
 
     private UnifiedGraph cachedUnifiedGraph;
 
+    private long modCount;
+
     /**
      * Constructs a new instance of the GraphNetwork.
      */
     public GraphNetwork() {
         this.graphsByDbId = new HashMap<>();
         this.outgoingInterEdges = new HashMap<>();
+        this.modCount = 0L;
     }
 
     /**
@@ -85,9 +88,7 @@ public class GraphNetwork {
      */
     public InterGraphEdge addDirectedInterGraphEdge(final NodeRef source, final NodeRef target, final double cost,
                                                     final Set<EdgeFlag> flags) {
-        final Set<EdgeFlag> normalizedFlags = flags == null || flags.isEmpty()
-                ? EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED)
-                : flags;
+        final Set<EdgeFlag> normalizedFlags = directedInterGraphFlags(flags);
 
         final InterGraphEdge edge = new InterGraphEdge(UUID.randomUUID(), source, target, cost, normalizedFlags, true);
         addInterGraphEdge(edge);
@@ -151,9 +152,7 @@ public class GraphNetwork {
      */
     public List<InterGraphEdge> addUndirectedInterGraphEdge(final NodeRef nodeA, final NodeRef nodeB, final double cost,
                                                             final Set<EdgeFlag> flags) {
-        final Set<EdgeFlag> normalizedFlags = flags == null || flags.isEmpty()
-                ? EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.UNDIRECTED)
-                : flags;
+        final Set<EdgeFlag> normalizedFlags = undirectedInterGraphFlags(flags);
 
         final InterGraphEdge edgeOne = new InterGraphEdge(UUID.randomUUID(), nodeA, nodeB, cost, normalizedFlags, true);
         final InterGraphEdge edgeTwo = new InterGraphEdge(UUID.randomUUID(), nodeB, nodeA, cost, normalizedFlags, true);
@@ -162,6 +161,26 @@ public class GraphNetwork {
         addInterGraphEdge(edgeTwo);
 
         return List.of(edgeOne, edgeTwo);
+    }
+
+    private Set<EdgeFlag> directedInterGraphFlags(final Set<EdgeFlag> flags) {
+        final Set<EdgeFlag> result = flags == null || flags.isEmpty()
+                ? EnumSet.noneOf(EdgeFlag.class)
+                : EnumSet.copyOf(flags);
+        result.remove(EdgeFlag.UNDIRECTED);
+        result.add(EdgeFlag.INTER_GRAPH);
+        result.add(EdgeFlag.DIRECTED);
+        return result;
+    }
+
+    private Set<EdgeFlag> undirectedInterGraphFlags(final Set<EdgeFlag> flags) {
+        final Set<EdgeFlag> result = flags == null || flags.isEmpty()
+                ? EnumSet.noneOf(EdgeFlag.class)
+                : EnumSet.copyOf(flags);
+        result.remove(EdgeFlag.DIRECTED);
+        result.add(EdgeFlag.INTER_GRAPH);
+        result.add(EdgeFlag.UNDIRECTED);
+        return result;
     }
 
     /**
@@ -177,16 +196,6 @@ public class GraphNetwork {
      */
     public List<InterGraphEdge> getOutgoingInterEdges(final NodeRef source) {
         return outgoingInterEdges.getOrDefault(source, List.of());
-    }
-
-    /**
-     * Alias for {@link #getOutgoingInterEdges(NodeRef)}.
-     *
-     * @param source the reference to the source node
-     * @return a list of outgoing inter-graph edges
-     */
-    public List<InterGraphEdge> getInterGraphEdges(final NodeRef source) {
-        return getOutgoingInterEdges(source);
     }
 
     /**
@@ -215,24 +224,6 @@ public class GraphNetwork {
     }
 
     /**
-     * Resolves a path of node references into concrete nodes.
-     *
-     * @param path node reference path
-     * @return concrete node path (empty if any node cannot be resolved)
-     */
-    public List<Node> resolvePath(final List<NodeRef> path) {
-        final List<Node> resolved = new ArrayList<>(path.size());
-        for (final NodeRef nodeRef : path) {
-            final Node node = getNode(nodeRef);
-            if (node == null) {
-                return List.of();
-            }
-            resolved.add(node);
-        }
-        return resolved;
-    }
-
-    /**
      * Constructs a temporary unified graph by combining multiple individual graphs and their relationships
      * from the current graph network. This method merges all nodes and edges from registered graphs, as well as
      * inter-graph edges, into a single unified graph structure.
@@ -250,21 +241,47 @@ public class GraphNetwork {
         if (cachedUnifiedGraph != null) {
             return cachedUnifiedGraph;
         }
+        final UnifiedGraph result = buildUnifiedGraph(null);
+        this.cachedUnifiedGraph = result;
+        return result;
+    }
 
+    /**
+     * Constructs a temporary unified graph using teleport routing rules.
+     *
+     * @param rules teleport rules
+     * @return unified graph containing only rule-enabled derived teleport routes
+     */
+    public UnifiedGraph toUnifiedGraph(final TeleportRules rules) {
+        return rules == null ? toUnifiedGraph() : buildUnifiedGraph(rules);
+    }
+
+    private UnifiedGraph buildUnifiedGraph(final TeleportRules rules) {
         final Graph unified = new Graph("Unified graph network");
         final Map<NodeRef, UUID> unifiedIdByNodeRef = new HashMap<>();
         final Map<UUID, NodeRef> nodeRefByUnifiedId = new HashMap<>();
 
+        copyNodesToUnifiedGraph(unified, unifiedIdByNodeRef, nodeRefByUnifiedId);
+        copyLocalEdgesToUnifiedGraph(unified, unifiedIdByNodeRef);
+        copyInterGraphEdgesToUnifiedGraph(unified, unifiedIdByNodeRef, rules);
+        return new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
+    }
+
+    private void copyNodesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef,
+                                         final Map<UUID, NodeRef> nodeRefByUnifiedId) {
         for (final Graph graph : graphsByDbId.values()) {
             for (final Node node : graph.getNodes()) {
                 final NodeRef nodeRef = new NodeRef(graph.getGraphId(), node.graphId());
                 final UUID unifiedNodeId = unifiedNodeId(nodeRef);
-                unified.addNode(new Node(node.dbId(), unifiedNodeId, node.x(), node.y(), node.z(), node.worldId()));
+                unified.addNode(new Node(node.dbId(), unifiedNodeId, node.x(), node.y(), node.z(), node.worldId(),
+                        node.flags()));
                 unifiedIdByNodeRef.put(nodeRef, unifiedNodeId);
                 nodeRefByUnifiedId.put(unifiedNodeId, nodeRef);
             }
         }
+    }
 
+    private void copyLocalEdgesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef) {
         for (final Graph graph : graphsByDbId.values()) {
             for (final Edge edge : graph.getEdges()) {
                 final UUID source = unifiedIdByNodeRef.get(new NodeRef(graph.getGraphId(), edge.source()));
@@ -272,10 +289,16 @@ public class GraphNetwork {
                 unified.addDirectedEdge(source, target, edge.cost(), edge.flags());
             }
         }
+    }
 
+    private void copyInterGraphEdgesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef,
+                                                   final TeleportRules rules) {
         for (final Collection<InterGraphEdge> edges : outgoingInterEdges.values()) {
             for (final InterGraphEdge edge : edges) {
                 if (!edge.enabled()) {
+                    continue;
+                }
+                if (isInterGraphTeleport(edge.flags()) && rules != null && !rules.isInterGraphTeleportEnabled()) {
                     continue;
                 }
                 final UUID source = unifiedIdByNodeRef.get(edge.source());
@@ -283,14 +306,15 @@ public class GraphNetwork {
                 unified.addDirectedEdge(source, target, edge.cost(), edge.flags());
             }
         }
+    }
 
-        final UnifiedGraph result = new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
-        this.cachedUnifiedGraph = result;
-        return result;
+    private boolean isInterGraphTeleport(final Set<EdgeFlag> flags) {
+        return flags.contains(EdgeFlag.TELEPORT) && flags.contains(EdgeFlag.INTER_GRAPH);
     }
 
     private void invalidateCache() {
         this.cachedUnifiedGraph = null;
+        modCount++;
     }
 
     /**
@@ -398,6 +422,15 @@ public class GraphNetwork {
 
     private UUID unifiedNodeId(final NodeRef nodeRef) {
         return UUID.nameUUIDFromBytes((nodeRef.graphDbId() + ":" + nodeRef.nodeId()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Gets the structural modification count of the network.
+     *
+     * @return modification count
+     */
+    public long getModCount() {
+        return modCount;
     }
 
     /**

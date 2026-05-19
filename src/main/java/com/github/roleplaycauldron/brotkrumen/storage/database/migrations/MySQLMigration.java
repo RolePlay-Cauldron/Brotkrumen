@@ -45,6 +45,7 @@ public final class MySQLMigration {
                                 + "`y` DOUBLE NOT NULL, "
                                 + "`z` DOUBLE NOT NULL, "
                                 + "`world_id` CHAR(36) NOT NULL, "
+                                + "`flags` TEXT NOT NULL, "
                                 + "PRIMARY KEY (`id`), "
                                 + "UNIQUE KEY `uk_" + tablePrefix + "_node_node_id` (`node_id`), "
                                 + "KEY `idx_" + tablePrefix + "_node_graph_id` (`graph_id`), "
@@ -104,6 +105,11 @@ public final class MySQLMigration {
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
                                 + ")"
+                )
+                .finishVersion()
+                .version(2)
+                .addUnconditionalQuery(
+                        "ALTER TABLE `" + tablePrefix + "_node` ADD COLUMN `flags` TEXT NOT NULL DEFAULT ''"
                 )
                 .finishVersion().finish();
     }

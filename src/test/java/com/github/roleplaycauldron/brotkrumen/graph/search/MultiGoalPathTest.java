@@ -41,10 +41,11 @@ class MultiGoalPathTest {
         graph.addDirectedEdge(start, goal2, 2.0, Set.of(EdgeFlag.DIRECTED));
 
         final PathFinder pathFinder = new PathFinder();
-        final List<Node> path = pathFinder.findPath(graph, start, Set.of(goal1, goal2), null, TeleportRules.disableTeleports());
+        final List<NodeRef> path = pathFinder.findPathResult(graph, start, Set.of(goal1, goal2), null,
+                TeleportRules.disableTeleports()).nodes();
 
         assertEquals(2, path.size(), "Should find a path to both goals");
-        assertEquals(goal2, path.get(1).graphId(), "Should target goal2 as it is closer");
+        assertEquals(new NodeRef(graph.getGraphId(), goal2), path.get(1), "Should target goal2 as it is closer");
     }
 
     @Test
@@ -77,7 +78,8 @@ class MultiGoalPathTest {
         network.addInterGraphEdge(new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, exitB), new NodeRef(2, targetB), 1.0, Set.of(EdgeFlag.INTER_GRAPH), true));
 
         final PathFinder pathFinder = new PathFinder();
-        final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, startNode), 2, null, TeleportRules.disableTeleports());
+        final List<NodeRef> path = pathFinder.findPathResult(network, new NodeRef(1, startNode), 2, null,
+                TeleportRules.disableTeleports()).nodes();
 
         assertFalse(path.isEmpty(), "Path should be found");
         assertEquals(new NodeRef(2, targetB), path.getLast(), "Should target targetB as it is closer");
@@ -94,7 +96,8 @@ class MultiGoalPathTest {
         network.addGraph(graph);
 
         final PathFinder pathFinder = new PathFinder();
-        final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, node), 1, null, TeleportRules.disableTeleports());
+        final List<NodeRef> path = pathFinder.findPathResult(network, new NodeRef(1, node), 1, null,
+                TeleportRules.disableTeleports()).nodes();
 
         assertEquals(1, path.size(), "Should return the start node if it is already in the target graph");
         assertEquals(new NodeRef(1, node), path.getFirst(), "Should return the start node if it is already in the target graph");

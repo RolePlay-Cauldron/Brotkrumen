@@ -25,6 +25,8 @@ public class Graph {
 
     private String name;
 
+    private long modCount;
+
     /**
      * Create a new graph.
      * The graph is initially empty.
@@ -38,6 +40,7 @@ public class Graph {
         this.nodes = new HashMap<>();
         this.adj = new HashMap<>();
         this.edgesById = new HashMap<>();
+        this.modCount = 0L;
     }
 
     /**
@@ -64,6 +67,7 @@ public class Graph {
         this.nodes = new HashMap<>(nodes);
         this.adj = new HashMap<>(adjacency);
         this.edgesById = new HashMap<>();
+        this.modCount = 0L;
 
         edgesById.putAll(adj.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(edge -> Map.entry(edge.edgeId(), edge))).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
@@ -81,7 +85,8 @@ public class Graph {
 
         final Node genNode;
         if (node.graphId() == null) {
-            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z(), node.worldId());
+            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z(), node.worldId(),
+                    node.flags());
         } else {
             genNode = node;
         }
@@ -90,6 +95,7 @@ public class Graph {
             throw new IllegalArgumentException("An node with id " + genNode.graphId().toString() + " already exists and therefore cannot be added to the nodes again.");
         }
         adj.computeIfAbsent(genNode.graphId(), k -> new ArrayList<>());
+        modCount++;
 
         return genNode;
     }
@@ -118,6 +124,7 @@ public class Graph {
 
         adj.remove(graphId);
         nodes.remove(graphId);
+        modCount++;
     }
 
     /**
@@ -167,7 +174,7 @@ public class Graph {
             throw new IllegalArgumentException("You need to specify at least one flag per Edge");
         }
 
-        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.TELEPORT_GLOBAL) || flags.contains(EdgeFlag.INTER_GRAPH);
+        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.INTER_GRAPH);
         final boolean undirected = flags.contains(EdgeFlag.UNDIRECTED) || flags.contains(EdgeFlag.TELEPORT);
 
         if (directed == undirected) {
@@ -201,13 +208,18 @@ public class Graph {
      * @return the created {@link Edge}
      */
     public Edge addDirectedEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
-        requireNode(source);
-        requireNode(target);
         final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
         editableFlags.add(EdgeFlag.DIRECTED);
-        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, editableFlags);
+        return addStoredEdge(source, target, cost, editableFlags);
+    }
+
+    private Edge addStoredEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
+        requireNode(source);
+        requireNode(target);
+        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, flags);
         edgesById.put(edge.edgeId(), edge);
         adj.computeIfAbsent(source, k -> new ArrayList<>()).add(edge);
+        modCount++;
 
         return edge;
     }
@@ -221,10 +233,7 @@ public class Graph {
      * @return a {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost) {
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, Set.of(EdgeFlag.DIRECTED));
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, Set.of(EdgeFlag.DIRECTED));
-
-        return List.of(edgeOne, edgeTwo);
+        return addUndirectedEdge(nodeA, nodeB, cost, Set.of(EdgeFlag.UNDIRECTED));
     }
 
     /**
@@ -238,12 +247,10 @@ public class Graph {
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost, final Set<EdgeFlag> flags) {
         final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
-        if (editableFlags.contains(EdgeFlag.UNDIRECTED)) {
-            editableFlags.remove(EdgeFlag.UNDIRECTED);
-            editableFlags.add(EdgeFlag.DIRECTED);
-        }
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, editableFlags);
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, editableFlags);
+        editableFlags.remove(EdgeFlag.DIRECTED);
+        editableFlags.add(EdgeFlag.UNDIRECTED);
+        final Edge edgeOne = addStoredEdge(nodeA, nodeB, cost, editableFlags);
+        final Edge edgeTwo = addStoredEdge(nodeB, nodeA, cost, editableFlags);
 
         return List.of(edgeOne, edgeTwo);
     }
@@ -254,9 +261,19 @@ public class Graph {
      * @param edge The edge to remove.
      */
     public void removeEdge(final Edge edge) {
+        if (edge == null || !edgesById.containsKey(edge.edgeId())) {
+            return;
+        }
         edgesById.remove(edge.edgeId());
-        adj.get(edge.source()).remove(edge);
-        adj.get(edge.target()).remove(edge);
+        final List<Edge> sourceEdges = adj.get(edge.source());
+        if (sourceEdges != null) {
+            sourceEdges.remove(edge);
+        }
+        final List<Edge> targetEdges = adj.get(edge.target());
+        if (targetEdges != null) {
+            targetEdges.remove(edge);
+        }
+        modCount++;
     }
 
     private Set<EdgeFlag> getEditableFlags(final Set<EdgeFlag> flags) {
@@ -314,6 +331,7 @@ public class Graph {
      */
     public void setName(final String name) {
         this.name = name;
+        modCount++;
     }
 
     /**
@@ -323,5 +341,14 @@ public class Graph {
      */
     public int getGraphId() {
         return graphId;
+    }
+
+    /**
+     * Gets the structural modification count of the graph.
+     *
+     * @return modification count
+     */
+    public long getModCount() {
+        return modCount;
     }
 }
