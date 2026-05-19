@@ -23,7 +23,7 @@ import java.util.UUID;
  * @param <N> node handle type
  * @param <E> edge handle type
  */
-@SuppressWarnings({"PMD.TooManyMethods", "PMD.ShortVariable"})
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.ShortVariable", "PMD.CognitiveComplexity"})
 public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
     /**
@@ -94,6 +94,26 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
     @Override
     public final void apply(final VisualGraphSnapshot snapshot, final GraphDesignResolver designs) {
+        reconcile(snapshot, designs, true);
+    }
+
+    @Override
+    public final void applyVisibilityOnly() {
+        if (lastSnapshot != null) {
+            reconcile(lastSnapshot, lastDesigns, false);
+        }
+    }
+
+    @Override
+    public final void shutdown() {
+        activeNodes.values().forEach(this::removeNode);
+        activeEdges.values().forEach(this::removeEdge);
+        activeNodes.clear();
+        activeEdges.clear();
+    }
+
+    private void reconcile(final VisualGraphSnapshot snapshot, final GraphDesignResolver designs,
+                           final boolean updateExisting) {
         final Player player = plugin.getServer().getPlayer(viewerId);
         if (player == null) {
             return;
@@ -121,29 +141,18 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
         for (final VisualNode node : snapshot.nodes()) {
             if (visibleNodeIds.contains(node.id())) {
-                activeNodes.compute(node.id(), (id, handle) -> updateNode(handle, node, designs, player));
+                activeNodes.compute(node.id(), (id, handle) -> handle == null || updateExisting
+                        ? updateNode(handle, node, designs, player)
+                        : handle);
             }
         }
         for (final VisualEdge edge : snapshot.edges()) {
             if (visibleEdgeIds.contains(edge.id())) {
-                activeEdges.compute(edge.id(), (id, handle) -> updateEdge(handle, edge, snapshot, designs, player));
+                activeEdges.compute(edge.id(), (id, handle) -> handle == null || updateExisting
+                        ? updateEdge(handle, edge, snapshot, designs, player)
+                        : handle);
             }
         }
-    }
-
-    @Override
-    public final void applyVisibilityOnly() {
-        if (lastSnapshot != null) {
-            apply(lastSnapshot, lastDesigns);
-        }
-    }
-
-    @Override
-    public final void shutdown() {
-        activeNodes.values().forEach(this::removeNode);
-        activeEdges.values().forEach(this::removeEdge);
-        activeNodes.clear();
-        activeEdges.clear();
     }
 
     /**

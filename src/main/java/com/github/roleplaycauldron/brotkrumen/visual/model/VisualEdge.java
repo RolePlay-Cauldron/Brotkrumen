@@ -32,8 +32,6 @@ public record VisualEdge(VisualEdgeId id, NodeRef source, NodeRef target, Visual
      */
     public VisualEdge(final VisualEdgeId id, final NodeRef source, final NodeRef target, final VisualEdgeKind kind,
                       final double cost, final Set<EdgeFlag> flags) {
-        this(id, source, target, kind, cost, flags, kind == VisualEdgeKind.INTER_GRAPH
-                ? VisualEdgeRole.INTER_GRAPH
-                : VisualEdgeRole.DEFAULT_LOCAL);
+        this(id, source, target, kind, cost, flags, VisualEdgeRoles.derive(kind, flags));
     }
 }

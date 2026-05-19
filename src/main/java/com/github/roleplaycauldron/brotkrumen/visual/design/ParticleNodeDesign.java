@@ -1,20 +1,19 @@
 package com.github.roleplaycauldron.brotkrumen.visual.design;
 
 import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
+import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import com.github.roleplaycauldron.spellbook.effect.shape.SphereShape;
 import org.bukkit.Particle;
 
-import java.util.function.Function;
-
 /**
  * Particle renderer design data for a visual node.
  *
- * @param particle      particle used by the effect
- * @param effectFactory factory that builds the Spellbook effect
+ * @param particle particle used by the effect
+ * @param effect   Spellbook effect recipe used by the renderer
  */
-public record ParticleNodeDesign(Particle particle, ParticleNodeEffectFactory effectFactory) {
+public record ParticleNodeDesign(Particle particle, EffectInstance effect) {
 
     /**
      * Creates the default particle node design.
@@ -33,7 +32,7 @@ public record ParticleNodeDesign(Particle particle, ParticleNodeEffectFactory ef
      * @return cube-shaped design
      */
     public static ParticleNodeDesign cube(final Particle particle, final float size) {
-        return shape(particle, context -> new CubeShape(size, 12));
+        return shape(particle, new CubeShape(size, 12));
     }
 
     /**
@@ -44,20 +43,19 @@ public record ParticleNodeDesign(Particle particle, ParticleNodeEffectFactory ef
      * @return sphere-shaped design
      */
     public static ParticleNodeDesign sphere(final Particle particle, final float radius) {
-        return shape(particle, context -> new SphereShape(radius, 36));
+        return shape(particle, new SphereShape(radius, 36));
     }
 
     /**
-     * Creates a particle node design backed by a caller-provided Spellbook shape factory.
+     * Creates a particle node design backed by a caller-provided Spellbook shape.
      *
-     * @param particle     particle used by the effect
-     * @param shapeFactory factory that builds the node shape
+     * @param particle particle used by the effect
+     * @param shape    node shape
      * @return shape-backed node design
      */
-    public static ParticleNodeDesign shape(final Particle particle,
-                                           final Function<ParticleNodeEffectContext, Shape> shapeFactory) {
-        return new ParticleNodeDesign(particle, context -> EffectBuilder.create()
-                .shape(shapeFactory.apply(context))
+    public static ParticleNodeDesign shape(final Particle particle, final Shape shape) {
+        return new ParticleNodeDesign(particle, EffectBuilder.create()
+                .shape(shape)
                 .particle(particle)
                 .build());
     }

@@ -10,6 +10,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeI
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRoles;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
@@ -118,6 +119,50 @@ class VisualGraphSourceTest {
                 .anyMatch(node -> node.ref().nodeId().equals(second)), "Local teleport target should be an endpoint");
         assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
                 .anyMatch(node -> node.ref().nodeId().equals(third)), "Global teleport target should be an endpoint");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void sourcesDeriveLocalEdgeRolesWithPrecedence() {
+        final Graph graph = new Graph(1, "Local Roles");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        final UUID fourth = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addNode(new Node(fourth, 3, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        graph.addUndirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.UNDIRECTED));
+        graph.addDirectedEdge(third, fourth, 1.0D, Set.of(EdgeFlag.BLOCKED, EdgeFlag.TELEPORT));
+
+        final VisualGraphSnapshot singleSnapshot = new SingleGraphVisualSource(graph).snapshot();
+        final Graph targetGraph = new Graph(2, "Target");
+        final UUID targetNode = UUID.randomUUID();
+        targetGraph.addNode(new Node(targetNode, 4, 0, 0, null));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graph);
+        network.addGraph(targetGraph);
+        final InterGraphEdge interGraphEdge = new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, fourth),
+                new NodeRef(2, targetNode), 1.0D, Set.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED), true);
+        network.addInterGraphEdge(interGraphEdge);
+        network.addUndirectedInterGraphEdge(new NodeRef(1, first), new NodeRef(2, targetNode), 1.0D);
+        final VisualGraphSnapshot networkSnapshot = new GraphNetworkVisualSource(network).snapshot();
+
+        assertTrue(singleSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.DIRECTED_LOCAL),
+                "Directed local flag should derive directed visual role");
+        assertTrue(singleSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.UNDIRECTED_LOCAL),
+                "Undirected graph edges should derive undirected visual role");
+        assertEquals(VisualEdgeRole.UNDIRECTED_LOCAL,
+                VisualEdgeRoles.derive(VisualEdgeKind.LOCAL, Set.of(EdgeFlag.DIRECTED, EdgeFlag.UNDIRECTED)),
+                "Undirected should win when legacy or mixed edge flags contain both direction flags");
+        assertTrue(singleSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.BLOCKED),
+                "Blocked flag should take precedence over teleport flags");
+        assertTrue(networkSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.DIRECTED_INTER_GRAPH),
+                "Directed inter-graph edges should derive directed inter-graph visual role");
+        assertTrue(networkSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
+                "Undirected inter-graph edges should derive undirected inter-graph visual role");
     }
 
     @Test

@@ -88,9 +88,7 @@ public class GraphNetwork {
      */
     public InterGraphEdge addDirectedInterGraphEdge(final NodeRef source, final NodeRef target, final double cost,
                                                     final Set<EdgeFlag> flags) {
-        final Set<EdgeFlag> normalizedFlags = flags == null || flags.isEmpty()
-                ? EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED)
-                : flags;
+        final Set<EdgeFlag> normalizedFlags = directedInterGraphFlags(flags);
 
         final InterGraphEdge edge = new InterGraphEdge(UUID.randomUUID(), source, target, cost, normalizedFlags, true);
         addInterGraphEdge(edge);
@@ -154,9 +152,7 @@ public class GraphNetwork {
      */
     public List<InterGraphEdge> addUndirectedInterGraphEdge(final NodeRef nodeA, final NodeRef nodeB, final double cost,
                                                             final Set<EdgeFlag> flags) {
-        final Set<EdgeFlag> normalizedFlags = flags == null || flags.isEmpty()
-                ? EnumSet.of(EdgeFlag.INTER_GRAPH, EdgeFlag.UNDIRECTED)
-                : flags;
+        final Set<EdgeFlag> normalizedFlags = undirectedInterGraphFlags(flags);
 
         final InterGraphEdge edgeOne = new InterGraphEdge(UUID.randomUUID(), nodeA, nodeB, cost, normalizedFlags, true);
         final InterGraphEdge edgeTwo = new InterGraphEdge(UUID.randomUUID(), nodeB, nodeA, cost, normalizedFlags, true);
@@ -165,6 +161,26 @@ public class GraphNetwork {
         addInterGraphEdge(edgeTwo);
 
         return List.of(edgeOne, edgeTwo);
+    }
+
+    private Set<EdgeFlag> directedInterGraphFlags(final Set<EdgeFlag> flags) {
+        final Set<EdgeFlag> result = flags == null || flags.isEmpty()
+                ? EnumSet.noneOf(EdgeFlag.class)
+                : EnumSet.copyOf(flags);
+        result.remove(EdgeFlag.UNDIRECTED);
+        result.add(EdgeFlag.INTER_GRAPH);
+        result.add(EdgeFlag.DIRECTED);
+        return result;
+    }
+
+    private Set<EdgeFlag> undirectedInterGraphFlags(final Set<EdgeFlag> flags) {
+        final Set<EdgeFlag> result = flags == null || flags.isEmpty()
+                ? EnumSet.noneOf(EdgeFlag.class)
+                : EnumSet.copyOf(flags);
+        result.remove(EdgeFlag.DIRECTED);
+        result.add(EdgeFlag.INTER_GRAPH);
+        result.add(EdgeFlag.UNDIRECTED);
+        return result;
     }
 
     /**

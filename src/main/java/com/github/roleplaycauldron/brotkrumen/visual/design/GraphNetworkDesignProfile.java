@@ -180,7 +180,12 @@ public class GraphNetworkDesignProfile {
         private static Map<VisualEdgeRole, EdgeRenderStrategy> defaultEdgeRenderStrategies() {
             final Map<VisualEdgeRole, EdgeRenderStrategy> result = new EnumMap<>(VisualEdgeRole.class);
             result.put(VisualEdgeRole.DEFAULT_LOCAL, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.DIRECTED_LOCAL, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.UNDIRECTED_LOCAL, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.BLOCKED, EdgeRenderStrategy.FULL_EDGE);
             result.put(VisualEdgeRole.INTER_GRAPH, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, EdgeRenderStrategy.FULL_EDGE);
+            result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, EdgeRenderStrategy.FULL_EDGE);
             result.put(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.ENDPOINTS_ONLY);
             result.put(VisualEdgeRole.GLOBAL_TELEPORT, EdgeRenderStrategy.ENDPOINTS_ONLY);
             return result;

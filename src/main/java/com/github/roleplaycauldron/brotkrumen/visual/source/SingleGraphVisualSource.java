@@ -8,7 +8,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
-import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRoles;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
@@ -68,18 +68,8 @@ public class SingleGraphVisualSource implements VisualGraphSource {
                 VisualEdgeKind.LOCAL,
                 edge.cost(),
                 edge.flags(),
-                edgeRole(edge.flags())
+                VisualEdgeRoles.derive(VisualEdgeKind.LOCAL, edge.flags())
         );
-    }
-
-    private VisualEdgeRole edgeRole(final Set<EdgeFlag> flags) {
-        if (flags.contains(EdgeFlag.TELEPORT_GLOBAL)) {
-            return VisualEdgeRole.GLOBAL_TELEPORT;
-        }
-        if (flags.contains(EdgeFlag.TELEPORT)) {
-            return VisualEdgeRole.TELEPORT;
-        }
-        return VisualEdgeRole.DEFAULT_LOCAL;
     }
 
     private Set<UUID> teleportEndpoints() {

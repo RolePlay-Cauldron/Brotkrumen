@@ -123,6 +123,24 @@ class GraphTest {
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void undirectedEdgesPreserveUndirectedFlag() {
+        final Graph graph = new Graph("Test");
+        final Node nodeOne = new Node(uuidOne, 2, 3, 4, null);
+        final Node nodeTwo = new Node(uuidTwo, 3, 4, 5, null);
+        graph.addNode(nodeOne);
+        graph.addNode(nodeTwo);
+
+        final List<Edge> resultEdges = graph.addUndirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
+
+        assertEquals(2, resultEdges.size(), "Undirected creation should still create two adjacency edges");
+        assertTrue(resultEdges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.UNDIRECTED)),
+                "Both adjacency edges should retain undirected semantics");
+        assertTrue(resultEdges.stream().noneMatch(edge -> edge.flags().contains(EdgeFlag.DIRECTED)),
+                "Undirected adjacency edges should not be reclassified as directed");
+    }
+
+    @Test
     void testThrowExceptionOnNodeInUseAndRemovalOfNonExistent() {
         final Map<UUID, Node> nodes = new HashMap<>();
         nodes.put(uuidOne, new Node(uuidOne, 2, 3, 4, null));

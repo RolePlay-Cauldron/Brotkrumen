@@ -110,6 +110,20 @@ class ProfileGraphDesignResolverTest {
                 "Preset should include teleport endpoint node design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.TELEPORT),
                 "Preset should include teleport edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL),
+                "Preset should include directed edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL),
+                "Preset should include undirected edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.BLOCKED),
+                "Preset should include blocked edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_INTER_GRAPH),
+                "Preset should include directed inter-graph edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
+                "Preset should include undirected inter-graph edge design");
+        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.DEFAULT).effect(),
+                "Particle node presets should expose EffectInstance data");
+        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DEFAULT_LOCAL).effect(),
+                "Particle edge presets should expose EffectInstance data");
     }
 
     @Test
@@ -193,9 +207,14 @@ class ProfileGraphDesignResolverTest {
         nodes.put(VisualNodeRole.TELEPORT_ENDPOINT, ParticleNodeDesign.sphere(particle, 0.5f));
         final Map<VisualEdgeRole, ParticleEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
+        edges.put(VisualEdgeRole.DIRECTED_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
+        edges.put(VisualEdgeRole.UNDIRECTED_LOCAL, ParticleEdgeDesign.line(particle, 20));
+        edges.put(VisualEdgeRole.BLOCKED, ParticleEdgeDesign.line(particle, 20));
         edges.put(VisualEdgeRole.INTER_GRAPH, ParticleEdgeDesign.movingPoint(particle, 0.25f));
         edges.put(VisualEdgeRole.TELEPORT, ParticleEdgeDesign.movingPoint(particle, 0.3f));
         edges.put(VisualEdgeRole.GLOBAL_TELEPORT, ParticleEdgeDesign.movingPoint(particle, 0.35f));
+        edges.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, ParticleEdgeDesign.movingPoint(particle, 0.25f));
+        edges.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, ParticleEdgeDesign.line(particle, 20));
         return new ParticleDesignSet(nodes, edges);
     }
 
@@ -205,9 +224,14 @@ class ProfileGraphDesignResolverTest {
         nodes.put(VisualNodeRole.TELEPORT_ENDPOINT, new BlockNodeDesign(nodeMaterial, 0.5f));
         final Map<VisualEdgeRole, BlockEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
+        edges.put(VisualEdgeRole.DIRECTED_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
+        edges.put(VisualEdgeRole.UNDIRECTED_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
+        edges.put(VisualEdgeRole.BLOCKED, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
         edges.put(VisualEdgeRole.INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
         edges.put(VisualEdgeRole.TELEPORT, new BlockEdgeDesign(edgeMaterial, 0.3f, 0.5D));
         edges.put(VisualEdgeRole.GLOBAL_TELEPORT, new BlockEdgeDesign(edgeMaterial, 0.35f, 0.5D));
+        edges.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
+        edges.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
         return new BlockDisplayDesignSet(nodes, edges);
     }
 }

@@ -207,11 +207,15 @@ public class Graph {
      * @return the created {@link Edge}
      */
     public Edge addDirectedEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
-        requireNode(source);
-        requireNode(target);
         final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
         editableFlags.add(EdgeFlag.DIRECTED);
-        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, editableFlags);
+        return addStoredEdge(source, target, cost, editableFlags);
+    }
+
+    private Edge addStoredEdge(final UUID source, final UUID target, final double cost, final Set<EdgeFlag> flags) {
+        requireNode(source);
+        requireNode(target);
+        final Edge edge = new Edge(-1, UUID.randomUUID(), source, target, cost, flags);
         edgesById.put(edge.edgeId(), edge);
         adj.computeIfAbsent(source, k -> new ArrayList<>()).add(edge);
         modCount++;
@@ -228,10 +232,7 @@ public class Graph {
      * @return a {@link List} containing the two edges.
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost) {
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, Set.of(EdgeFlag.DIRECTED));
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, Set.of(EdgeFlag.DIRECTED));
-
-        return List.of(edgeOne, edgeTwo);
+        return addUndirectedEdge(nodeA, nodeB, cost, Set.of(EdgeFlag.UNDIRECTED));
     }
 
     /**
@@ -245,12 +246,10 @@ public class Graph {
      */
     public List<Edge> addUndirectedEdge(final UUID nodeA, final UUID nodeB, final double cost, final Set<EdgeFlag> flags) {
         final Set<EdgeFlag> editableFlags = getEditableFlags(flags);
-        if (editableFlags.contains(EdgeFlag.UNDIRECTED)) {
-            editableFlags.remove(EdgeFlag.UNDIRECTED);
-            editableFlags.add(EdgeFlag.DIRECTED);
-        }
-        final Edge edgeOne = addDirectedEdge(nodeA, nodeB, cost, editableFlags);
-        final Edge edgeTwo = addDirectedEdge(nodeB, nodeA, cost, editableFlags);
+        editableFlags.remove(EdgeFlag.DIRECTED);
+        editableFlags.add(EdgeFlag.UNDIRECTED);
+        final Edge edgeOne = addStoredEdge(nodeA, nodeB, cost, editableFlags);
+        final Edge edgeTwo = addStoredEdge(nodeB, nodeA, cost, editableFlags);
 
         return List.of(edgeOne, edgeTwo);
     }

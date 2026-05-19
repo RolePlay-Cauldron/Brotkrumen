@@ -84,6 +84,10 @@ class GraphNetworkTest {
         assertEquals(2, created.size(), "Undirected inter-graph edge should create two directed edges");
         assertEquals(1, network.getOutgoingInterEdges(new NodeRef(1, nodeOne)).size(), "Forward edge should be present");
         assertEquals(1, network.getOutgoingInterEdges(new NodeRef(2, nodeTwo)).size(), "Backward edge should be present");
+        assertTrue(created.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.UNDIRECTED)),
+                "Undirected inter-graph edges should keep undirected semantics");
+        assertTrue(created.stream().noneMatch(edge -> edge.flags().contains(EdgeFlag.DIRECTED)),
+                "Undirected inter-graph edges should not be reclassified as directed");
     }
 
     @Test

@@ -6,8 +6,12 @@ import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.render.BlockDisplayGraphRenderer;
+import com.github.roleplaycauldron.brotkrumen.visual.render.EdgeRenderStrategy;
 import com.github.roleplaycauldron.brotkrumen.visual.render.ParticleGraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GraphNetworkVisualSource;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathOptions;
@@ -25,7 +29,7 @@ import java.util.UUID;
 /**
  * Factory methods for source-based graph visualizers.
  */
-@SuppressWarnings("PMD.TooManyMethods")
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.CouplingBetweenObjects"})
 public final class GraphVisualizerFactory {
 
     private static final String GUIDED_PATH_CONFIG = "visualizer.guidedPath";
@@ -268,8 +272,45 @@ public final class GraphVisualizerFactory {
                 new GuidedPathVisualGraphSource(new GraphNetworkVisualSource(network), path,
                         viewerLocationSource(plugin, viewerId), options),
                 new ParticleGraphRenderer(plugin, viewerId, executor),
-                new ProfileGraphDesignResolver(profile)
+                guidedParticleResolver(profile)
         );
+    }
+
+    private static GraphDesignResolver guidedParticleResolver(final GraphNetworkDesignProfile profile) {
+        final ProfileGraphDesignResolver delegate = new ProfileGraphDesignResolver(profile);
+        return new GraphDesignResolver() {
+            @Override
+            public com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeDesign resolveParticleNode(
+                    final VisualNode node) {
+                return delegate.resolveParticleNode(node);
+            }
+
+            @Override
+            public ParticleEdgeDesign resolveParticleEdge(final VisualEdge edge) {
+                final ParticleEdgeDesign explicit = profile.particleEdgeOverrides().get(edge.id());
+                if (explicit != null) {
+                    return explicit;
+                }
+                return ParticleEdgeDesign.movingPoint(delegate.resolveParticleEdge(edge).particle(), 0.2f);
+            }
+
+            @Override
+            public com.github.roleplaycauldron.brotkrumen.visual.design.BlockNodeDesign resolveBlockNode(
+                    final VisualNode node) {
+                return delegate.resolveBlockNode(node);
+            }
+
+            @Override
+            public com.github.roleplaycauldron.brotkrumen.visual.design.BlockEdgeDesign resolveBlockEdge(
+                    final VisualEdge edge) {
+                return delegate.resolveBlockEdge(edge);
+            }
+
+            @Override
+            public EdgeRenderStrategy resolveEdgeRenderStrategy(final VisualEdge edge) {
+                return delegate.resolveEdgeRenderStrategy(edge);
+            }
+        };
     }
 
     private static GuidedPathOptions guidedPathOptions(final Brotkrumen plugin) {

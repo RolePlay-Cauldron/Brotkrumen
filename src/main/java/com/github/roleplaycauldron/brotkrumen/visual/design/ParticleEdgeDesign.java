@@ -1,19 +1,23 @@
 package com.github.roleplaycauldron.brotkrumen.visual.design;
 
 import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
+import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
+import com.github.roleplaycauldron.spellbook.effect.shape.LineShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.MovingPointShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import org.bukkit.Particle;
 
-import java.util.function.Function;
-
 /**
  * Particle renderer design data for a visual edge.
  *
- * @param particle      particle used by the effect
- * @param effectFactory factory that builds the Spellbook effect
+ * @param particle particle used by the effect
+ * @param effect   Spellbook effect recipe used by the renderer
  */
-public record ParticleEdgeDesign(Particle particle, ParticleEdgeEffectFactory effectFactory) {
+public record ParticleEdgeDesign(Particle particle, EffectInstance effect) {
+
+    private static final float MINIMUM_MOVING_POINT_SPACING = 0.2f;
+
+    private static final int DEFAULT_EDGE_POINTS = 20;
 
     /**
      * Creates the default local particle edge design.
@@ -21,7 +25,7 @@ public record ParticleEdgeDesign(Particle particle, ParticleEdgeEffectFactory ef
      * @return default local particle edge design
      */
     public static ParticleEdgeDesign defaultLocal() {
-        return movingPoint(Particle.FLAME, 0.15f);
+        return line(Particle.FLAME, DEFAULT_EDGE_POINTS);
     }
 
     /**
@@ -30,31 +34,42 @@ public record ParticleEdgeDesign(Particle particle, ParticleEdgeEffectFactory ef
      * @return default inter-graph particle edge design
      */
     public static ParticleEdgeDesign defaultInterGraph() {
-        return movingPoint(Particle.END_ROD, 0.15f);
+        return movingPoint(Particle.END_ROD, MINIMUM_MOVING_POINT_SPACING);
     }
 
     /**
      * Creates a moving-point particle edge design.
      *
-     * @param particle  particle used by the effect
-     * @param thickness point spacing used by the effect
+     * @param particle particle used by the effect
+     * @param spacing  point spacing used by the effect, clamped to {@code 0.2f}
      * @return moving-point edge design
      */
-    public static ParticleEdgeDesign movingPoint(final Particle particle, final float thickness) {
-        return shape(particle, context -> new MovingPointShape(context.distance(), Math.max(0.05f, thickness), 8, false));
+    public static ParticleEdgeDesign movingPoint(final Particle particle, final float spacing) {
+        return shape(particle, new MovingPointShape(1.0f, Math.max(MINIMUM_MOVING_POINT_SPACING, spacing),
+                DEFAULT_EDGE_POINTS, false));
     }
 
     /**
-     * Creates a particle edge design backed by a caller-provided Spellbook shape factory.
+     * Creates a static line particle edge design.
      *
-     * @param particle     particle used by the effect
-     * @param shapeFactory factory that builds the edge shape
+     * @param particle particle used by the effect
+     * @param points   number of line points
+     * @return line edge design
+     */
+    public static ParticleEdgeDesign line(final Particle particle, final int points) {
+        return shape(particle, new LineShape(points));
+    }
+
+    /**
+     * Creates a particle edge design backed by a caller-provided Spellbook shape.
+     *
+     * @param particle particle used by the effect
+     * @param shape    edge shape
      * @return shape-backed edge design
      */
-    public static ParticleEdgeDesign shape(final Particle particle,
-                                           final Function<ParticleEdgeEffectContext, Shape> shapeFactory) {
-        return new ParticleEdgeDesign(particle, context -> EffectBuilder.create()
-                .shape(shapeFactory.apply(context))
+    public static ParticleEdgeDesign shape(final Particle particle, final Shape shape) {
+        return new ParticleEdgeDesign(particle, EffectBuilder.create()
+                .shape(shape)
                 .particle(particle)
                 .build());
     }

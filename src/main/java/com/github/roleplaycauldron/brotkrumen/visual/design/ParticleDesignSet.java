@@ -34,10 +34,15 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
         return new ParticleDesignSet(
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.4f),
                         ParticleNodeDesign.cube(Particle.PORTAL, 0.55f)),
-                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.15f),
+                edgeDesignMap(ParticleEdgeDesign.line(Particle.FLAME, 20),
+                        ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.2f),
+                        ParticleEdgeDesign.line(Particle.FLAME, 20),
+                        ParticleEdgeDesign.line(Particle.SMOKE, 20),
                         ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
                         ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
-                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.15f))
+                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
+                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
+                        ParticleEdgeDesign.line(Particle.END_ROD, 20))
         );
     }
 
@@ -50,10 +55,15 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
         return new ParticleDesignSet(
                 nodeDesignMap(ParticleNodeDesign.sphere(Particle.END_ROD, 0.35f),
                         ParticleNodeDesign.sphere(Particle.PORTAL, 0.45f)),
-                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.15f),
+                edgeDesignMap(ParticleEdgeDesign.line(Particle.END_ROD, 20),
+                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
+                        ParticleEdgeDesign.line(Particle.END_ROD, 20),
+                        ParticleEdgeDesign.line(Particle.SMOKE, 20),
                         ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
                         ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
-                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f))
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f),
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.2f),
+                        ParticleEdgeDesign.line(Particle.WITCH, 20))
         );
     }
 
@@ -65,11 +75,16 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
     public static ParticleDesignSet emberPreset() {
         return new ParticleDesignSet(
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.45f),
-                        ParticleNodeDesign.sphere(Particle.LAVA, 0.55f)),
-                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.16f),
+                        ParticleNodeDesign.sphere(Particle.ASH, 0.55f)),
+                edgeDesignMap(ParticleEdgeDesign.line(Particle.FLAME, 20),
+                        ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.2f),
+                        ParticleEdgeDesign.line(Particle.FLAME, 20),
+                        ParticleEdgeDesign.line(Particle.SMOKE, 20),
                         ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
                         ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
-                        ParticleEdgeDesign.movingPoint(Particle.LAVA, 0.18f))
+                        ParticleEdgeDesign.line(Particle.LAVA, 20),
+                        ParticleEdgeDesign.movingPoint(Particle.LAVA, 0.2f),
+                        ParticleEdgeDesign.line(Particle.LAVA, 20))
         );
     }
 
@@ -82,10 +97,15 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
         return new ParticleDesignSet(
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.END_ROD, 0.45f),
                         ParticleNodeDesign.sphere(Particle.PORTAL, 0.55f)),
-                edgeDesignMap(ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.16f),
+                edgeDesignMap(ParticleEdgeDesign.line(Particle.END_ROD, 20),
+                        ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
+                        ParticleEdgeDesign.line(Particle.END_ROD, 20),
+                        ParticleEdgeDesign.line(Particle.SMOKE, 20),
                         ParticleEdgeDesign.movingPoint(Particle.PORTAL, 0.2f),
                         ParticleEdgeDesign.movingPoint(Particle.REVERSE_PORTAL, 0.22f),
-                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f))
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.18f),
+                        ParticleEdgeDesign.movingPoint(Particle.WITCH, 0.2f),
+                        ParticleEdgeDesign.line(Particle.WITCH, 20))
         );
     }
 
@@ -98,14 +118,24 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
     }
 
     private static Map<VisualEdgeRole, ParticleEdgeDesign> edgeDesignMap(final ParticleEdgeDesign localEdge,
+                                                                         final ParticleEdgeDesign directedEdge,
+                                                                         final ParticleEdgeDesign undirectedEdge,
+                                                                         final ParticleEdgeDesign blockedEdge,
                                                                          final ParticleEdgeDesign teleportEdge,
                                                                          final ParticleEdgeDesign globalTeleportEdge,
-                                                                         final ParticleEdgeDesign interGraphEdge) {
+                                                                         final ParticleEdgeDesign interGraphEdge,
+                                                                         final ParticleEdgeDesign directedInterGraphEdge,
+                                                                         final ParticleEdgeDesign undirectedInterGraphEdge) {
         final Map<VisualEdgeRole, ParticleEdgeDesign> result = new EnumMap<>(VisualEdgeRole.class);
         result.put(VisualEdgeRole.DEFAULT_LOCAL, localEdge);
+        result.put(VisualEdgeRole.DIRECTED_LOCAL, directedEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_LOCAL, undirectedEdge);
+        result.put(VisualEdgeRole.BLOCKED, blockedEdge);
         result.put(VisualEdgeRole.TELEPORT, teleportEdge);
         result.put(VisualEdgeRole.GLOBAL_TELEPORT, globalTeleportEdge);
         result.put(VisualEdgeRole.INTER_GRAPH, interGraphEdge);
+        result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, directedInterGraphEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, undirectedInterGraphEdge);
         return result;
     }
 

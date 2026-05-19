@@ -4,9 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
-import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeEffectContext;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeDesign;
-import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeEffectContext;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
@@ -80,15 +78,15 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
     }
 
     /* default */ EffectInstance buildNodeEffect(final ParticleNodeDesign design, final VisualNode node) {
-        return design.effectFactory().create(new ParticleNodeEffectContext(node));
+        return design.effect();
     }
 
     /* default */ EffectInstance buildEdgeEffect(final ParticleEdgeDesign design, final VisualEdge edge,
                                                  final VisualNode source, final VisualNode target) {
-        return design.effectFactory().create(new ParticleEdgeEffectContext(edge, source, target));
+        return design.effect();
     }
 
-    private EffectExecutionConfig executionConfig(final Location origin, final Location target, final Player player) {
+    /* default */ EffectExecutionConfig executionConfig(final Location origin, final Location target, final Player player) {
         return EffectExecutionConfig.builder()
                 .originAnchor(new FixedAnchor(origin))
                 .targetAnchor(new FixedAnchor(target))

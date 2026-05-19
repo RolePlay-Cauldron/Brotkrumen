@@ -118,6 +118,20 @@ class AbstractGraphRendererTest {
         assertEquals(1, renderer.edgeUpdates, "Full-edge strategy should render the teleport edge");
     }
 
+    @Test
+    void visibilityOnlyUpdateRetainsStillVisibleHandles() {
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final RendererHarness renderer = new RendererHarness(plugin(new YamlConfiguration(), worldId, viewerId), viewerId);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 1, 2);
+
+        renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
+        renderer.applyVisibilityOnly();
+
+        assertEquals(2, renderer.nodeUpdates, "Initial apply should render both visible nodes only once");
+        assertEquals(1, renderer.edgeUpdates, "Initial apply should render the visible edge only once");
+    }
+
     private Brotkrumen plugin(final YamlConfiguration config, final UUID worldId, final UUID viewerId) {
         final Brotkrumen plugin = mock(Brotkrumen.class);
         final Server server = mock(Server.class);

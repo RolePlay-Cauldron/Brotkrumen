@@ -75,9 +75,14 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                                                                       final BlockEdgeDesign interGraphEdge) {
         final Map<VisualEdgeRole, BlockEdgeDesign> result = new EnumMap<>(VisualEdgeRole.class);
         result.put(VisualEdgeRole.DEFAULT_LOCAL, localEdge);
+        result.put(VisualEdgeRole.DIRECTED_LOCAL, localEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_LOCAL, localEdge);
+        result.put(VisualEdgeRole.BLOCKED, localEdge);
         result.put(VisualEdgeRole.TELEPORT, teleportEdge);
         result.put(VisualEdgeRole.GLOBAL_TELEPORT, globalTeleportEdge);
         result.put(VisualEdgeRole.INTER_GRAPH, interGraphEdge);
+        result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, interGraphEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, interGraphEdge);
         return result;
     }
 

@@ -105,6 +105,9 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final Node nodeE = graphOne.addNode(new Node(null, 125, 72, -115, getServer().getWorld("world").getUID()));
         final Node nodeF = graphOne.addNode(new Node(null, 115, 71, -125, getServer().getWorld("world").getUID()));
         final Node nodeG = graphOne.addNode(new Node(null, 130, 72, -120, getServer().getWorld("world").getUID()));
+        final Node nodeHTpG = graphOne.addNode(new Node(null, 127, 72, -101, getServer().getWorld("world").getUID()));
+        final Node nodeHTpL1 = graphOne.addNode(new Node(null, 139, 72, -100, getServer().getWorld("world").getUID()));
+        final Node nodeHTpL2 = graphOne.addNode(new Node(null, 134, 72, -99, getServer().getWorld("world").getUID()));
 
         graphOne.addEdge(nodeA.graphId(), nodeC.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeC.graphId(), nodeE.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
@@ -112,6 +115,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         graphOne.addEdge(nodeE.graphId(), nodeD.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeD.graphId(), nodeF.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
         graphOne.addEdge(nodeG.graphId(), nodeB.graphId(), 1.0D, EnumSet.of(EdgeFlag.UNDIRECTED));
+        graphOne.addEdge(nodeB.graphId(), nodeHTpG.graphId(), 1.0D, EnumSet.of(EdgeFlag.TELEPORT_GLOBAL));
+        graphOne.addEdge(nodeHTpL1.graphId(), nodeHTpL2.graphId(), 1.0D, EnumSet.of(EdgeFlag.TELEPORT));
+        graphOne.addEdge(nodeHTpL2.graphId(), nodeHTpL1.graphId(), 1.0D, EnumSet.of(EdgeFlag.TELEPORT));
+        graphOne.addEdge(nodeC.graphId(), nodeHTpL1.graphId(), 1.0D, EnumSet.of(EdgeFlag.DIRECTED));
 
         graphTwo = new Graph(2, "Test Graph pathfinder");
 
