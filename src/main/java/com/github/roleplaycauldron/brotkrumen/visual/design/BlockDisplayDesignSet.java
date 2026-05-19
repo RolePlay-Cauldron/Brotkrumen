@@ -22,12 +22,7 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
      * @return default block-display design set
      */
     public static BlockDisplayDesignSet defaults() {
-        return new BlockDisplayDesignSet(
-                nodeDesignMap(BlockNodeDesign.defaults(), BlockNodeDesign.defaults(),
-                        new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f),
-                        new BlockNodeDesign(Material.END_STONE, 0.55f)),
-                edgeDesignMap(BlockEdgeDesign.defaultLocal(), BlockEdgeDesign.defaultInterGraph())
-        );
+        return emberPreset();
     }
 
     /**
@@ -41,8 +36,14 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                         new BlockNodeDesign(Material.MAGMA_BLOCK, 0.55f),
                         new BlockNodeDesign(Material.REDSTONE_BLOCK, 0.5f),
                         new BlockNodeDesign(Material.OBSIDIAN, 0.55f)),
-                edgeDesignMap(new BlockEdgeDesign(Material.ORANGE_STAINED_GLASS, 0.16f, 0.8D),
-                        new BlockEdgeDesign(Material.RED_STAINED_GLASS, 0.18f, 0.8D))
+                edgeDesignMap(
+                        new BlockEdgeDesign(Material.ORANGE_WOOL, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.GREEN_STAINED_GLASS, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.GREEN_STAINED_GLASS, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.RED_WOOL, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.GOLD_BLOCK, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.WHITE_STAINED_GLASS, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.WHITE_STAINED_GLASS, 0.18f, 0.8D))
         );
     }
 
@@ -57,8 +58,14 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                         new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f),
                         new BlockNodeDesign(Material.PURPUR_BLOCK, 0.5f),
                         new BlockNodeDesign(Material.END_STONE, 0.55f)),
-                edgeDesignMap(new BlockEdgeDesign(Material.LIGHT_BLUE_STAINED_GLASS, 0.16f, 0.8D),
-                        new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.18f, 0.8D))
+                edgeDesignMap(
+                        new BlockEdgeDesign(Material.LIGHT_BLUE_STAINED_GLASS, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.18f, 0.8D),
+                        new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.2f, 0.8D),
+                        new BlockEdgeDesign(Material.RED_STAINED_GLASS, 0.22f, 0.8D),
+                        new BlockEdgeDesign(Material.BLACK_STAINED_GLASS, 0.22f, 0.8D),
+                        new BlockEdgeDesign(Material.GRAY_STAINED_GLASS, 0.22f, 0.8D),
+                        new BlockEdgeDesign(Material.GRAY_STAINED_GLASS, 0.24f, 0.8D))
         );
     }
 
@@ -75,15 +82,20 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
     }
 
     private static Map<VisualEdgeRole, BlockEdgeDesign> edgeDesignMap(final BlockEdgeDesign localEdge,
-                                                                      final BlockEdgeDesign interGraphEdge) {
+                                                                      final BlockEdgeDesign directedEdge,
+                                                                      final BlockEdgeDesign undirectedEdge,
+                                                                      final BlockEdgeDesign blockedEdge,
+                                                                      final BlockEdgeDesign interGraphEdge,
+                                                                      final BlockEdgeDesign directedInterGraphEdge,
+                                                                      final BlockEdgeDesign undirectedInterGraphEdge) {
         final Map<VisualEdgeRole, BlockEdgeDesign> result = new EnumMap<>(VisualEdgeRole.class);
         result.put(VisualEdgeRole.DEFAULT_LOCAL, localEdge);
-        result.put(VisualEdgeRole.DIRECTED_LOCAL, localEdge);
-        result.put(VisualEdgeRole.UNDIRECTED_LOCAL, localEdge);
-        result.put(VisualEdgeRole.BLOCKED, localEdge);
+        result.put(VisualEdgeRole.DIRECTED_LOCAL, directedEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_LOCAL, undirectedEdge);
+        result.put(VisualEdgeRole.BLOCKED, blockedEdge);
         result.put(VisualEdgeRole.INTER_GRAPH, interGraphEdge);
-        result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, interGraphEdge);
-        result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, interGraphEdge);
+        result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, directedInterGraphEdge);
+        result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, undirectedInterGraphEdge);
         return result;
     }
 

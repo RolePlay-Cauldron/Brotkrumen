@@ -223,13 +223,22 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                visualizerTestProfile
 //        );
 
-        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+//                this,
+//                loggerFactory,
+//                visualizerTestNetwork,
+//                pathResult,
+//                player.getUniqueId(),
+//                executor,
+//                visualizerTestProfile
+//        );
+
+        final GraphVisualizer visualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(
                 this,
                 loggerFactory,
                 visualizerTestNetwork,
                 pathResult,
                 player.getUniqueId(),
-                executor,
                 visualizerTestProfile
         );
         reg.register(player.getUniqueId(), visualizer);
