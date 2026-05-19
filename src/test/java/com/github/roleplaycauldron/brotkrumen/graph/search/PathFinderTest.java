@@ -46,8 +46,8 @@ class PathFinderTest {
         final PathFinder finderWithRegistry = new PathFinder(registry);
         final PathFinder defaultFinder = new PathFinder();
 
-        final List<NodeRef> resultOne = finderWithRegistry.findPath(graph, uuidOne, uuidTwo, null, rules);
-        final List<NodeRef> resultTwo = defaultFinder.findPath(graph, uuidOne, uuidTwo, null, rules);
+        final List<NodeRef> resultOne = finderWithRegistry.findPathResult(graph, uuidOne, uuidTwo, null, rules).nodes();
+        final List<NodeRef> resultTwo = defaultFinder.findPathResult(graph, uuidOne, uuidTwo, null, rules).nodes();
 
         final List<NodeRef> expectedRefs = expectedRefs(graph);
         assertEquals(List.of(expectedRefs, expectedRefs), List.of(resultOne, resultTwo), "The results should be the same");
@@ -68,7 +68,7 @@ class PathFinderTest {
         when(algo.findPathResult(graph, uuidOne, Set.of(uuidTwo), null, rules))
                 .thenReturn(new PathResult(expectedRefs(graph), List.of()));
 
-        new PathFinder(registry).findPath(graph, uuidOne, uuidTwo, null, rules);
+        new PathFinder(registry).findPathResult(graph, uuidOne, uuidTwo, null, rules);
 
         final InOrder inOrder = inOrder(registry, algo);
         inOrder.verify(registry).select(graph, rules);
@@ -99,8 +99,8 @@ class PathFinderTest {
 
         final PathFinder pathFinder = new PathFinder();
 
-        final List<NodeRef> path = pathFinder.findPath(network, new NodeRef(1, g1A), new NodeRef(2, g2B), null,
-                TeleportRules.disableTeleports());
+        final List<NodeRef> path = pathFinder.findPathResult(network, new NodeRef(1, g1A), new NodeRef(2, g2B), null,
+                TeleportRules.disableTeleports()).nodes();
 
         assertEquals(List.of(new NodeRef(1, g1A), new NodeRef(1, g1B), new NodeRef(2, g2A), new NodeRef(2, g2B)), path,
                 "Path should cross the inter-graph edge");
@@ -123,11 +123,11 @@ class PathFinderTest {
         final PathFinder pathFinder = new PathFinder();
 
         assertEquals(List.of(new NodeRef(1, source), new NodeRef(2, target)),
-                pathFinder.findPath(network, new NodeRef(1, source), new NodeRef(2, target), null,
-                        new TeleportRules(false, true, false, List.of())),
+                pathFinder.findPathResult(network, new NodeRef(1, source), new NodeRef(2, target), null,
+                        new TeleportRules(false, true, false, List.of())).nodes(),
                 "Enabled intergraph teleport should be traversable");
-        assertTrue(pathFinder.findPath(network, new NodeRef(1, source), new NodeRef(2, target), null,
-                        new TeleportRules(false, false, false, List.of())).isEmpty(),
+        assertTrue(pathFinder.findPathResult(network, new NodeRef(1, source), new NodeRef(2, target), null,
+                        new TeleportRules(false, false, false, List.of())).nodes().isEmpty(),
                 "Disabled intergraph teleport should be excluded from search input");
     }
 
@@ -145,16 +145,16 @@ class PathFinderTest {
         network.addGraph(graphTwo);
         final NodeRef sourceRef = new NodeRef(1, source);
         final NodeRef targetRef = new NodeRef(2, target);
-        final TeleportRules enabledRules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 0.0D, true)));
+        final TeleportRules enabledRules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 0.0D, true, false)));
         final PathFinder pathFinder = new PathFinder();
 
-        assertEquals(List.of(sourceRef, targetRef), pathFinder.findPath(network, sourceRef, targetRef, null, enabledRules),
+        assertEquals(List.of(sourceRef, targetRef), pathFinder.findPathResult(network, sourceRef, targetRef, null, enabledRules).nodes(),
                 "Warp target should be reachable through globally callable warp traversal");
-        assertEquals(0, network.getInterGraphEdges().size(), "Derived global routes should not be persisted as edges");
+        assertEquals(0, network.getInterGraphEdges().size(), "Derived warp routes should not be persisted as edges");
 
         graphTwo.removeNode(graphTwo.getNodeById(target));
 
-        assertTrue(pathFinder.findPath(network, sourceRef, targetRef, null, enabledRules).isEmpty(),
+        assertTrue(pathFinder.findPathResult(network, sourceRef, targetRef, null, enabledRules).nodes().isEmpty(),
                 "Removing the warp target node should remove routes from later search input");
     }
 
@@ -171,7 +171,7 @@ class PathFinderTest {
         network.addGraph(graphTwo);
         final NodeRef sourceRef = new NodeRef(1, source);
         final NodeRef targetRef = new NodeRef(2, target);
-        final TeleportRules rules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 1.0D, true)));
+        final TeleportRules rules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 1.0D, true, false)));
 
         final PathResult result = new PathFinder().findPathResult(network, sourceRef, targetRef, null, rules);
 

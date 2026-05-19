@@ -2,11 +2,8 @@ package com.github.roleplaycauldron.brotkrumen.graph.search;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
-import com.github.roleplaycauldron.brotkrumen.graph.Node;
-import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -25,18 +22,6 @@ public interface PathAlgorithm {
     boolean suitable(Graph graph, TeleportRules rules);
 
     /**
-     * Finds a path from the start node to one of the goal nodes.
-     *
-     * @param graph         the {@link Graph} to search in
-     * @param start         the start node id
-     * @param goals         the goal node ids
-     * @param edgeFilter    the {@link Predicate} to filter the edges to consider
-     * @param teleportRules the {@link TeleportRules} to use
-     * @return the path as a {@link List} of {@link Node}s
-     */
-    List<Node> findPath(Graph graph, UUID start, Set<UUID> goals, Predicate<Edge> edgeFilter, TeleportRules teleportRules);
-
-    /**
      * Finds a structured path result from the start node to one of the goal nodes.
      *
      * @param graph         the {@link Graph} to search in
@@ -46,11 +31,6 @@ public interface PathAlgorithm {
      * @param teleportRules the {@link TeleportRules} to use
      * @return the structured path result
      */
-    default PathResult findPathResult(final Graph graph, final UUID start, final Set<UUID> goals,
-                                      final Predicate<Edge> edgeFilter, final TeleportRules teleportRules) {
-        final List<NodeRef> nodes = findPath(graph, start, goals, edgeFilter, teleportRules).stream()
-                .map(node -> new NodeRef(graph.getGraphId(), node.graphId()))
-                .toList();
-        return new PathResult(nodes, List.of());
-    }
+    PathResult findPathResult(Graph graph, UUID start, Set<UUID> goals, Predicate<Edge> edgeFilter,
+                              TeleportRules teleportRules);
 }

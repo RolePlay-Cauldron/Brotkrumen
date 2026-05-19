@@ -4,8 +4,10 @@ import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +15,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -67,8 +68,8 @@ class AStarAlgorithmTest {
     @Test
     void testSuitability() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
-        final TeleportRules tpAllowed = new TeleportRules(true, true, List.of(spawn));
+        final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true, false);
+        final TeleportRules tpAllowed = new TeleportRules(true, true, true, List.of(spawn));
 
         assertTrue(algorithm.suitable(graph, tpNotAllowed), "Algorithm should be suitable");
         assertFalse(algorithm.suitable(graph, tpAllowed), "Algorithm should not be suitable with teleport allowed");
@@ -77,11 +78,11 @@ class AStarAlgorithmTest {
     @Test
     void testAStarPathFinding() {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, Set.of(uuidSeven), null, tpNotAllowed);
+        final PathResult path = algorithm.findPathResult(graph, uuidOne, Set.of(uuidSeven), null, tpNotAllowed);
 
-        assertNotNull(pathNodes, "The path should not be null");
+        assertNotNull(path, "The path should not be null");
 
-        final List<UUID> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
+        final List<UUID> actual = path.nodes().stream().map(NodeRef::nodeId).toList();
         final List<UUID> expected = List.of(uuidOne, uuidTwo, uuidThree, uuidSeven);
 
         assertIterableEquals(expected, actual, "The path should match expected");
@@ -92,11 +93,12 @@ class AStarAlgorithmTest {
         final TeleportRules tpNotAllowed = TeleportRules.disableTeleports();
         final Predicate<Edge> filterWithoutBlocked = edge -> !edge.flags().contains(EdgeFlag.BLOCKED);
 
-        final List<Node> pathNodes = algorithm.findPath(graph, uuidOne, Set.of(uuidSeven), filterWithoutBlocked, tpNotAllowed);
+        final PathResult path = algorithm.findPathResult(graph, uuidOne, Set.of(uuidSeven), filterWithoutBlocked,
+                tpNotAllowed);
 
-        assertNotNull(pathNodes, "The path should not be null");
+        assertNotNull(path, "The path should not be null");
 
-        final List<UUID> actual = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
+        final List<UUID> actual = path.nodes().stream().map(NodeRef::nodeId).toList();
         final List<UUID> expected = List.of(uuidOne, uuidFive, uuidFour, uuidSeven);
 
         assertIterableEquals(expected, actual, "The path should match expected");

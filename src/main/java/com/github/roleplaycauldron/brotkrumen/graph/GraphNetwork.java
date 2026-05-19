@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Aggregates multiple graphs plus inter-graph edges.
  */
-@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods", "PMD.CouplingBetweenObjects"})
+@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods"})
 public class GraphNetwork {
 
     private final Map<Integer, Graph> graphsByDbId;
@@ -199,16 +199,6 @@ public class GraphNetwork {
     }
 
     /**
-     * Alias for {@link #getOutgoingInterEdges(NodeRef)}.
-     *
-     * @param source the reference to the source node
-     * @return a list of outgoing inter-graph edges
-     */
-    public List<InterGraphEdge> getInterGraphEdges(final NodeRef source) {
-        return getOutgoingInterEdges(source);
-    }
-
-    /**
      * Returns all inter-graph edges currently registered in this network.
      *
      * @return immutable list of all inter-graph edges
@@ -231,24 +221,6 @@ public class GraphNetwork {
             return null;
         }
         return graph.getNodeById(nodeRef.nodeId());
-    }
-
-    /**
-     * Resolves a path of node references into concrete nodes.
-     *
-     * @param path node reference path
-     * @return concrete node path (empty if any node cannot be resolved)
-     */
-    public List<Node> resolvePath(final List<NodeRef> path) {
-        final List<Node> resolved = new ArrayList<>(path.size());
-        for (final NodeRef nodeRef : path) {
-            final Node node = getNode(nodeRef);
-            if (node == null) {
-                return List.of();
-            }
-            resolved.add(node);
-        }
-        return resolved;
     }
 
     /**

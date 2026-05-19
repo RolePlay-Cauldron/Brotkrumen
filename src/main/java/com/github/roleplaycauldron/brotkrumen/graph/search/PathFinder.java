@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 /**
  * The pathfinder class that uses the search registry to find the shortest path.
  */
-@SuppressWarnings("PMD.TooManyMethods")
 public class PathFinder {
 
     private final SearchRegistry registry;
@@ -42,36 +41,6 @@ public class PathFinder {
      */
     public PathFinder(final SearchRegistry registry) {
         this.registry = registry;
-    }
-
-    /**
-     * Searches a path from the start node to the goal node.
-     *
-     * @param graph      the {@link Graph} to search in
-     * @param start      the start node id
-     * @param goal       the goal node id
-     * @param edgeFilter the {@link Predicate} to filter the edges to consider
-     * @param rules      the {@link TeleportRules} to use
-     * @return the path as node references
-     */
-    public List<NodeRef> findPath(final Graph graph, final UUID start, final UUID goal,
-                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        return findPathResult(graph, start, goal, edgeFilter, rules).nodes();
-    }
-
-    /**
-     * Searches a path from the start node to one of the goal nodes.
-     *
-     * @param graph      the {@link Graph} to search in
-     * @param start      the start node id
-     * @param goals      the goal node ids
-     * @param edgeFilter the {@link Predicate} to filter the edges to consider
-     * @param rules      the {@link TeleportRules} to use
-     * @return the path as node references
-     */
-    public List<NodeRef> findPath(final Graph graph, final UUID start, final Set<UUID> goals,
-                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        return findPathResult(graph, start, goals, edgeFilter, rules).nodes();
     }
 
     /**
@@ -106,21 +75,6 @@ public class PathFinder {
     }
 
     /**
-     * Searches a path across multiple graphs using inter-graph edges.
-     *
-     * @param network    graph network containing local graphs and inter-graph edges
-     * @param start      start node reference
-     * @param goals      goal node references
-     * @param edgeFilter edge filter
-     * @param rules      teleport rules
-     * @return path as node references, empty if no route exists
-     */
-    public List<NodeRef> findPath(final GraphNetwork network, final NodeRef start, final Collection<NodeRef> goals,
-                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        return findPathResult(network, start, goals, edgeFilter, rules).nodes();
-    }
-
-    /**
      * Searches a structured path result across multiple graphs using inter-graph edges.
      *
      * @param network    graph network containing local graphs and inter-graph edges
@@ -149,21 +103,6 @@ public class PathFinder {
     }
 
     /**
-     * Searches a path across multiple graphs using inter-graph edges.
-     *
-     * @param network    graph network containing local graphs and inter-graph edges
-     * @param start      start node reference
-     * @param goal       goal node reference
-     * @param edgeFilter edge filter
-     * @param rules      teleport rules
-     * @return path as node references, empty if no route exists
-     */
-    public List<NodeRef> findPath(final GraphNetwork network, final NodeRef start, final NodeRef goal,
-                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        return findPath(network, start, List.of(goal), edgeFilter, rules);
-    }
-
-    /**
      * Searches a structured path result across multiple graphs using inter-graph edges.
      *
      * @param network    graph network containing local graphs and inter-graph edges
@@ -187,15 +126,15 @@ public class PathFinder {
      * @param targetGraphId target graph ID
      * @param edgeFilter    edge filter
      * @param rules         teleport rules
-     * @return path as node references
+     * @return structured path result
      */
-    public List<NodeRef> findPath(final GraphNetwork network, final NodeRef start, final int targetGraphId,
-                                  final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+    public PathResult findPathResult(final GraphNetwork network, final NodeRef start, final int targetGraphId,
+                                     final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         if (start.graphDbId() == targetGraphId) {
-            return List.of(start);
+            return new PathResult(List.of(start), List.of());
         }
         final Set<NodeRef> entryPoints = network.getGraphEntryPoints(targetGraphId);
-        return findPath(network, start, entryPoints, edgeFilter, rules);
+        return findPathResult(network, start, entryPoints, edgeFilter, rules);
     }
 
     private TeleportRules translateWarpRules(final TeleportRules rules, final GraphNetwork.UnifiedGraph unified) {

@@ -22,20 +22,6 @@ public class TeleportRules {
     /**
      * The default constructor.
      *
-     * @param enableWarps         {@code true} if warps are enabled, {@code false} otherwise
-     * @param enableLocalTeleport {@code true} if local teleports are enabled, {@code false} otherwise
-     * @param warps               the {@link Warp}s to use
-     */
-    public TeleportRules(final boolean enableWarps, final boolean enableLocalTeleport, final Collection<Warp> warps) {
-        this.enableWarps = enableWarps;
-        this.enableLocalTeleport = enableLocalTeleport;
-        this.enableInterGraphTeleport = enableWarps;
-        this.warps = warps == null ? List.of() : Collections.unmodifiableCollection(warps);
-    }
-
-    /**
-     * The default constructor.
-     *
      * @param enableLocalTeleport      {@code true} if local teleports are enabled, {@code false} otherwise
      * @param enableInterGraphTeleport {@code true} if intergraph teleports are enabled, {@code false} otherwise
      * @param enableWarps              {@code true} if globally callable warps are enabled, {@code false} otherwise
@@ -83,15 +69,6 @@ public class TeleportRules {
      */
     public boolean isInterGraphTeleportEnabled() {
         return enableInterGraphTeleport;
-    }
-
-    /**
-     * Checks if globally callable warps are enabled.
-     *
-     * @return {@code true} if warps are enabled, {@code false} otherwise
-     */
-    public boolean isWarpTeleportEnabled() {
-        return enableWarps;
     }
 
     /**

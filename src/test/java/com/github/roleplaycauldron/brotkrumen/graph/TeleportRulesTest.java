@@ -20,17 +20,16 @@ class TeleportRulesTest {
                 rules.isWarpingEnabled(),
                 rules.isLocalTeleportEnabled(),
                 rules.isInterGraphTeleportEnabled(),
-                rules.isWarpTeleportEnabled(),
                 rules.getWarps().size()
         );
-        final List<Object> expected = List.of(false, false, false, false, 0);
+        final List<Object> expected = List.of(false, false, false, 0);
         assertEquals(expected, actual, "Disabled rules should have all teleport kinds off and no warps");
     }
 
     @Test
     void testTeleportEnabled() {
-        final Warp warp = new Warp("Spawn", uuidOne, 10.0, true);
-        final TeleportRules rules = new TeleportRules(true, true, List.of(warp));
+        final Warp warp = new Warp("Spawn", uuidOne, 10.0, true, false);
+        final TeleportRules rules = new TeleportRules(true, true, true, List.of(warp));
 
         final Optional<Warp> warpOpt = rules.getWarp("Spawn");
 
@@ -38,12 +37,11 @@ class TeleportRulesTest {
                 rules.isWarpingEnabled(),
                 rules.isLocalTeleportEnabled(),
                 rules.isInterGraphTeleportEnabled(),
-                rules.isWarpTeleportEnabled(),
                 warpOpt.isPresent(),
                 warpOpt.map(Warp::cost).orElse(null),
                 warpOpt.map(Warp::targetNodeId).orElse(null)
         );
-        final List<Object> expected = List.of(true, true, true, true, true, 10.0, uuidOne);
+        final List<Object> expected = List.of(true, true, true, true, 10.0, uuidOne);
         assertEquals(expected, actual, "Enabled rules + warp properties should match");
     }
 
@@ -54,7 +52,7 @@ class TeleportRulesTest {
         assertAll(
                 () -> assertTrue(rules.isLocalTeleportEnabled(), "Local teleport switch should be independent"),
                 () -> assertFalse(rules.isInterGraphTeleportEnabled(), "Intergraph teleport switch should be independent"),
-                () -> assertTrue(rules.isWarpTeleportEnabled(), "Warp switch should be independent")
+                () -> assertTrue(rules.isWarpingEnabled(), "Warp switch should be independent")
         );
     }
 

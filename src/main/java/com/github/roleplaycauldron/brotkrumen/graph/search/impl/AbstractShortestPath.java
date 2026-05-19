@@ -38,15 +38,6 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     }
 
     @Override
-    public List<Node> findPath(final Graph graph, final UUID start, final Set<UUID> goals,
-                               final Predicate<Edge> edgeFilter, final TeleportRules rules) {
-        return findPathResult(graph, start, goals, edgeFilter, rules).nodes().stream()
-                .map(NodeRef::nodeId)
-                .map(graph::getNodeById)
-                .toList();
-    }
-
-    @Override
     public PathResult findPathResult(final Graph graph, final UUID start, final Set<UUID> goals,
                                      final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         if (isMissingNode(graph, start, goals)) {
@@ -124,19 +115,6 @@ abstract class AbstractShortestPath implements PathAlgorithm {
             afterRelax(graph, targetId, goals, tentative, gScore);
             open.add(targetId);
         }
-    }
-
-    /**
-     * Reconstructs the path from the goal node to the start node.
-     */
-    protected List<Node> reconstructNodes(final Graph graph, final Map<UUID, UUID> parent, final UUID goal) {
-        final List<Node> path = new LinkedList<>();
-        UUID current = goal;
-        while (current != null) {
-            path.addFirst(graph.getNodeById(current));
-            current = parent.get(current);
-        }
-        return path;
     }
 
     /**

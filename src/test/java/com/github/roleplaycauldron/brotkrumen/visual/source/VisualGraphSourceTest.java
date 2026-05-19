@@ -157,7 +157,7 @@ class VisualGraphSourceTest {
                 "Undirected graph edges should derive undirected visual role");
         assertEquals(VisualEdgeRole.UNDIRECTED_LOCAL,
                 VisualEdgeRoles.derive(VisualEdgeKind.LOCAL, Set.of(EdgeFlag.DIRECTED, EdgeFlag.UNDIRECTED)),
-                "Undirected should win when legacy or mixed edge flags contain both direction flags");
+                "Undirected should win when mixed edge flags contain both direction flags");
         assertTrue(singleSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.BLOCKED),
                 "Blocked flag should take precedence over teleport flags");
         assertTrue(networkSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.DIRECTED_INTER_GRAPH),
