@@ -28,7 +28,7 @@ import java.util.function.Predicate;
  * Abstract base class for the different shortest path algorithms.
  */
 @SuppressWarnings("PMD.TooManyMethods")
-abstract class AbstractShortestPath implements PathAlgorithm {
+public abstract class AbstractShortestPath implements PathAlgorithm {
 
     /**
      * The default constructor.
@@ -98,6 +98,7 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     /**
      * Relaxes a single edge with explicit traversal metadata.
      */
+    @SuppressWarnings("PMD.ExcessiveParameterList")
     protected void relax(final UUID from, final Edge edge, final Graph graph, final Set<UUID> goals,
                          final Map<UUID, Double> gScore,
                          final Map<UUID, UUID> parent,
