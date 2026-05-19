@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
@@ -91,7 +92,7 @@ class PlayerGraphVisualizerTest {
         graph.addNode(new Node(nodeId, 0, 0, 0, null));
         final GraphNetwork network = new GraphNetwork();
         network.addGraph(graph);
-        final List<NodeRef> path = List.of(new NodeRef(1, nodeId));
+        final PathResult path = new PathResult(List.of(new NodeRef(1, nodeId)), List.of());
         final GuidedPathOptions options = new GuidedPathOptions(2, 3.0D, 1);
 
         final GraphVisualizer particleVisualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
@@ -121,7 +122,8 @@ class PlayerGraphVisualizerTest {
                 .particleEdgeOverride(edgeId, explicit)
                 .build();
         final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
-                List.of(new NodeRef(1, first), new NodeRef(1, second)), UUID.randomUUID(), null, profile,
+                new PathResult(List.of(new NodeRef(1, first), new NodeRef(1, second)), List.of()),
+                UUID.randomUUID(), null, profile,
                 GuidedPathOptions.defaults());
         final GraphDesignResolver resolver = designs(visualizer);
         final VisualEdge roleEdge = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), new NodeRef(1, first),

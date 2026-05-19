@@ -1,10 +1,15 @@
 package com.github.roleplaycauldron.brotkrumen.graph.search.impl;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
+import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathAlgorithm;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
+import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -35,13 +40,23 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     @Override
     public List<Node> findPath(final Graph graph, final UUID start, final Set<UUID> goals,
                                final Predicate<Edge> edgeFilter, final TeleportRules rules) {
+        return findPathResult(graph, start, goals, edgeFilter, rules).nodes().stream()
+                .map(NodeRef::nodeId)
+                .map(graph::getNodeById)
+                .toList();
+    }
+
+    @Override
+    public PathResult findPathResult(final Graph graph, final UUID start, final Set<UUID> goals,
+                                     final Predicate<Edge> edgeFilter, final TeleportRules rules) {
         if (isMissingNode(graph, start, goals)) {
-            return List.of();
+            return PathResult.empty();
         }
 
         final Predicate<Edge> filter = normalizeFilter(edgeFilter);
         final Map<UUID, Double> gScore = new HashMap<>();
         final Map<UUID, UUID> parent = new HashMap<>();
+        final Map<UUID, PathSegment> segments = new HashMap<>();
 
         final Queue<UUID> open = compareAndGetUUID(gScore);
         final Set<UUID> closed = new HashSet<>();
@@ -53,15 +68,15 @@ abstract class AbstractShortestPath implements PathAlgorithm {
         while (!open.isEmpty()) {
             final UUID current = open.poll();
             if (goals.contains(current)) {
-                return reconstructNodes(graph, parent, current);
+                return reconstructPath(graph, parent, segments, current);
             }
             if (!closed.add(current)) {
                 continue;
             }
 
-            expandNode(graph, current, rules, filter, gScore, parent, open, goals);
+            expandNode(graph, current, rules, filter, gScore, parent, segments, open, goals);
         }
-        return List.of();
+        return PathResult.empty();
     }
 
     private @NotNull Queue<UUID> compareAndGetUUID(final Map<UUID, Double> gScore) {
@@ -84,11 +99,27 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     protected void relax(final UUID from, final Edge edge, final Graph graph, final Set<UUID> goals,
                          final Map<UUID, Double> gScore,
                          final Map<UUID, UUID> parent,
+                         final Map<UUID, PathSegment> segments,
                          final Queue<UUID> open) {
+        relax(from, edge, graph, goals, gScore, parent, segments, open, traversalKind(edge), null);
+    }
+
+    /**
+     * Relaxes a single edge with explicit traversal metadata.
+     */
+    protected void relax(final UUID from, final Edge edge, final Graph graph, final Set<UUID> goals,
+                         final Map<UUID, Double> gScore,
+                         final Map<UUID, UUID> parent,
+                         final Map<UUID, PathSegment> segments,
+                         final Queue<UUID> open,
+                         final TraversalKind traversalKind,
+                         final String warpKey) {
         final UUID targetId = edge.target();
         final double tentative = gScore.get(from) + edge.cost();
         if (tentative < gScore.getOrDefault(targetId, Double.POSITIVE_INFINITY)) {
             parent.put(targetId, from);
+            segments.put(targetId, new PathSegment(new NodeRef(graph.getGraphId(), from),
+                    new NodeRef(graph.getGraphId(), targetId), traversalKind, edge.edgeId(), warpKey));
             gScore.put(targetId, tentative);
             afterRelax(graph, targetId, goals, tentative, gScore);
             open.add(targetId);
@@ -106,6 +137,25 @@ abstract class AbstractShortestPath implements PathAlgorithm {
             current = parent.get(current);
         }
         return path;
+    }
+
+    /**
+     * Reconstructs the structured path from the goal node to the start node.
+     */
+    protected PathResult reconstructPath(final Graph graph, final Map<UUID, UUID> parent,
+                                         final Map<UUID, PathSegment> segments, final UUID goal) {
+        final List<NodeRef> nodes = new LinkedList<>();
+        final List<PathSegment> pathSegments = new LinkedList<>();
+        UUID current = goal;
+        while (current != null) {
+            nodes.addFirst(new NodeRef(graph.getGraphId(), current));
+            final PathSegment segment = segments.get(current);
+            if (segment != null) {
+                pathSegments.addFirst(segment);
+            }
+            current = parent.get(current);
+        }
+        return new PathResult(nodes, pathSegments);
     }
 
     /**
@@ -142,7 +192,8 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     @SuppressWarnings({"PMD.CommentRequired", "PMD.EmptyMethodInAbstractClassShouldBeAbstract"})
     protected void onExpandNode(final Graph graph, final UUID nodeId, final TeleportRules rules,
                                 final Predicate<Edge> filter, final Map<UUID, Double> gScore,
-                                final Map<UUID, UUID> parent, final Queue<UUID> open, final Set<UUID> goals) {
+                                final Map<UUID, UUID> parent, final Map<UUID, PathSegment> segments,
+                                final Queue<UUID> open, final Set<UUID> goals) {
         // Empty
     }
 
@@ -162,12 +213,28 @@ abstract class AbstractShortestPath implements PathAlgorithm {
     private void expandNode(final Graph graph, final UUID current, final TeleportRules rules,
                             final Predicate<Edge> filter,
                             final Map<UUID, Double> gScore, final Map<UUID, UUID> parent,
+                            final Map<UUID, PathSegment> segments,
                             final Queue<UUID> open, final Set<UUID> goals) {
         for (final Edge edge : graph.neighbors(current)) {
             if (isEdgeAllowed(graph, edge, rules) && filter.test(edge)) {
-                relax(current, edge, graph, goals, gScore, parent, open);
+                relax(current, edge, graph, goals, gScore, parent, segments, open);
             }
         }
-        onExpandNode(graph, current, rules, filter, gScore, parent, open, goals);
+        onExpandNode(graph, current, rules, filter, gScore, parent, segments, open, goals);
+    }
+
+    private TraversalKind traversalKind(final Edge edge) {
+        final boolean interGraph = edge.flags().contains(EdgeFlag.INTER_GRAPH);
+        final boolean teleport = edge.flags().contains(EdgeFlag.TELEPORT);
+        if (interGraph && teleport) {
+            return TraversalKind.INTERGRAPH_TELEPORT;
+        }
+        if (teleport) {
+            return TraversalKind.LOCAL_TELEPORT;
+        }
+        if (interGraph) {
+            return TraversalKind.INTERGRAPH_NORMAL;
+        }
+        return TraversalKind.NORMAL;
     }
 }

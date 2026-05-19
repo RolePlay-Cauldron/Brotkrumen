@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Aggregates multiple graphs plus inter-graph edges.
  */
-@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods", "PMD.CouplingBetweenObjects"})
 public class GraphNetwork {
 
     private final Map<Integer, Graph> graphsByDbId;
@@ -269,21 +269,47 @@ public class GraphNetwork {
         if (cachedUnifiedGraph != null) {
             return cachedUnifiedGraph;
         }
+        final UnifiedGraph result = buildUnifiedGraph(null);
+        this.cachedUnifiedGraph = result;
+        return result;
+    }
 
+    /**
+     * Constructs a temporary unified graph using teleport routing rules.
+     *
+     * @param rules teleport rules
+     * @return unified graph containing only rule-enabled derived teleport routes
+     */
+    public UnifiedGraph toUnifiedGraph(final TeleportRules rules) {
+        return rules == null ? toUnifiedGraph() : buildUnifiedGraph(rules);
+    }
+
+    private UnifiedGraph buildUnifiedGraph(final TeleportRules rules) {
         final Graph unified = new Graph("Unified graph network");
         final Map<NodeRef, UUID> unifiedIdByNodeRef = new HashMap<>();
         final Map<UUID, NodeRef> nodeRefByUnifiedId = new HashMap<>();
 
+        copyNodesToUnifiedGraph(unified, unifiedIdByNodeRef, nodeRefByUnifiedId);
+        copyLocalEdgesToUnifiedGraph(unified, unifiedIdByNodeRef);
+        copyInterGraphEdgesToUnifiedGraph(unified, unifiedIdByNodeRef, rules);
+        return new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
+    }
+
+    private void copyNodesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef,
+                                         final Map<UUID, NodeRef> nodeRefByUnifiedId) {
         for (final Graph graph : graphsByDbId.values()) {
             for (final Node node : graph.getNodes()) {
                 final NodeRef nodeRef = new NodeRef(graph.getGraphId(), node.graphId());
                 final UUID unifiedNodeId = unifiedNodeId(nodeRef);
-                unified.addNode(new Node(node.dbId(), unifiedNodeId, node.x(), node.y(), node.z(), node.worldId()));
+                unified.addNode(new Node(node.dbId(), unifiedNodeId, node.x(), node.y(), node.z(), node.worldId(),
+                        node.flags()));
                 unifiedIdByNodeRef.put(nodeRef, unifiedNodeId);
                 nodeRefByUnifiedId.put(unifiedNodeId, nodeRef);
             }
         }
+    }
 
+    private void copyLocalEdgesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef) {
         for (final Graph graph : graphsByDbId.values()) {
             for (final Edge edge : graph.getEdges()) {
                 final UUID source = unifiedIdByNodeRef.get(new NodeRef(graph.getGraphId(), edge.source()));
@@ -291,10 +317,16 @@ public class GraphNetwork {
                 unified.addDirectedEdge(source, target, edge.cost(), edge.flags());
             }
         }
+    }
 
+    private void copyInterGraphEdgesToUnifiedGraph(final Graph unified, final Map<NodeRef, UUID> unifiedIdByNodeRef,
+                                                   final TeleportRules rules) {
         for (final Collection<InterGraphEdge> edges : outgoingInterEdges.values()) {
             for (final InterGraphEdge edge : edges) {
                 if (!edge.enabled()) {
+                    continue;
+                }
+                if (isInterGraphTeleport(edge.flags()) && rules != null && !rules.isInterGraphTeleportEnabled()) {
                     continue;
                 }
                 final UUID source = unifiedIdByNodeRef.get(edge.source());
@@ -302,10 +334,10 @@ public class GraphNetwork {
                 unified.addDirectedEdge(source, target, edge.cost(), edge.flags());
             }
         }
+    }
 
-        final UnifiedGraph result = new UnifiedGraph(unified, nodeRefByUnifiedId, unifiedIdByNodeRef);
-        this.cachedUnifiedGraph = result;
-        return result;
+    private boolean isInterGraphTeleport(final Set<EdgeFlag> flags) {
+        return flags.contains(EdgeFlag.TELEPORT) && flags.contains(EdgeFlag.INTER_GRAPH);
     }
 
     private void invalidateCache() {

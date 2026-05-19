@@ -6,6 +6,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -87,7 +89,7 @@ class DijkstraAlgorithmTest {
     }
 
     @Test
-    void testDijkstraPathFinderWithGlobalTeleport() {
+    void testDijkstraPathFinderWithWarp() {
         final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
         final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
         final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, Set.of(uuidOne), null, rules);
@@ -104,7 +106,7 @@ class DijkstraAlgorithmTest {
         final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
         final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
         final Predicate<Edge> filterWithoutGlobalTeleport =
-                edge -> !edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL) && !edge.flags().contains(EdgeFlag.BLOCKED);
+                edge -> edge.edgeId() != null && !edge.flags().contains(EdgeFlag.BLOCKED);
 
         final List<Node> pathNodes = algorithm.findPath(graph, uuidThree, Set.of(uuidOne), filterWithoutGlobalTeleport, rules);
 
@@ -113,5 +115,21 @@ class DijkstraAlgorithmTest {
         final List<UUID> pathIds = pathNodes.stream().map(Node::graphId).collect(Collectors.toList());
         final List<UUID> expected = List.of(uuidThree, uuidSeven, uuidSix, uuidOne);
         assertIterableEquals(expected, pathIds, "The node ids of the paths are not matching");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void structuredPathResultReportsTraversalMetadata() {
+        final Warp spawn = new Warp("Spawn", uuidOne, 1.0, true);
+        final TeleportRules rules = new TeleportRules(true, true, List.of(spawn));
+
+        final PathResult localTeleport = algorithm.findPathResult(graph, uuidOne, Set.of(uuidSeven), null, rules);
+        final PathResult warp = algorithm.findPathResult(graph, uuidThree, Set.of(uuidOne), null, rules);
+
+        assertEquals(TraversalKind.LOCAL_TELEPORT, localTeleport.segments().getLast().traversalKind(),
+                "Local teleport edge should be reported as local teleport traversal");
+        assertEquals(TraversalKind.WARP, warp.segments().getLast().traversalKind(),
+                "Warp route should be reported as warp traversal");
+        assertEquals("Spawn", warp.segments().getLast().warpKey(), "Warp segment should keep warp key metadata");
     }
 }

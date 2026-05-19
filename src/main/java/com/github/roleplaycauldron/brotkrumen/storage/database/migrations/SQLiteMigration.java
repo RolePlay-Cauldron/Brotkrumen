@@ -47,6 +47,7 @@ public final class SQLiteMigration {
                                 + "`y` DOUBLE NOT NULL, "
                                 + "`z` DOUBLE NOT NULL, "
                                 + "`world_id` CHAR(36) NOT NULL, "
+                                + "`flags` TEXT NOT NULL DEFAULT '', "
                                 + "FOREIGN KEY (`graph_id`) REFERENCES `" + tablePrefix + "_graph` (`id`) ON DELETE CASCADE"
                                 + ")"
                 )
@@ -108,6 +109,11 @@ public final class SQLiteMigration {
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
                                 + ")"
+                )
+                .finishVersion()
+                .version(2)
+                .addUnconditionalQuery(
+                        "ALTER TABLE `" + tablePrefix + "_node` ADD COLUMN `flags` TEXT NOT NULL DEFAULT ''"
                 )
                 .finishVersion().finish();
     }

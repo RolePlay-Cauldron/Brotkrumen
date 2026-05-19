@@ -3,8 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.graph;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -16,7 +15,9 @@ public class TeleportRules {
 
     private final boolean enableLocalTeleport;
 
-    private final Map<String, Warp> warps;
+    private final boolean enableInterGraphTeleport;
+
+    private final Collection<Warp> warps;
 
     /**
      * The default constructor.
@@ -28,13 +29,24 @@ public class TeleportRules {
     public TeleportRules(final boolean enableWarps, final boolean enableLocalTeleport, final Collection<Warp> warps) {
         this.enableWarps = enableWarps;
         this.enableLocalTeleport = enableLocalTeleport;
-        final Map<String, Warp> warpMap = new HashMap<>();
-        if (warps != null) {
-            for (final Warp warp : warps) {
-                warpMap.put(warp.key(), warp);
-            }
-        }
-        this.warps = Collections.unmodifiableMap(warpMap);
+        this.enableInterGraphTeleport = enableWarps;
+        this.warps = warps == null ? List.of() : Collections.unmodifiableCollection(warps);
+    }
+
+    /**
+     * The default constructor.
+     *
+     * @param enableLocalTeleport      {@code true} if local teleports are enabled, {@code false} otherwise
+     * @param enableInterGraphTeleport {@code true} if intergraph teleports are enabled, {@code false} otherwise
+     * @param enableWarps              {@code true} if globally callable warps are enabled, {@code false} otherwise
+     * @param warps                    the allowed {@link Warp}s to use
+     */
+    public TeleportRules(final boolean enableLocalTeleport, final boolean enableInterGraphTeleport,
+                         final boolean enableWarps, final Collection<Warp> warps) {
+        this.enableWarps = enableWarps;
+        this.enableLocalTeleport = enableLocalTeleport;
+        this.enableInterGraphTeleport = enableInterGraphTeleport;
+        this.warps = warps == null ? List.of() : Collections.unmodifiableCollection(warps);
     }
 
     /**
@@ -43,7 +55,7 @@ public class TeleportRules {
      * @return the {@link TeleportRules} object
      */
     public static TeleportRules disableTeleports() {
-        return new TeleportRules(false, false, new ArrayList<>());
+        return new TeleportRules(false, false, false, new ArrayList<>());
     }
 
     /**
@@ -65,12 +77,30 @@ public class TeleportRules {
     }
 
     /**
+     * Checks if intergraph teleports are enabled.
+     *
+     * @return {@code true} if intergraph teleports are enabled, {@code false} otherwise
+     */
+    public boolean isInterGraphTeleportEnabled() {
+        return enableInterGraphTeleport;
+    }
+
+    /**
+     * Checks if globally callable warps are enabled.
+     *
+     * @return {@code true} if warps are enabled, {@code false} otherwise
+     */
+    public boolean isWarpTeleportEnabled() {
+        return enableWarps;
+    }
+
+    /**
      * Returns all registered {@link Warp}s.
      *
      * @return the {@link Warp}s
      */
     public Collection<Warp> getWarps() {
-        return warps.values();
+        return warps;
     }
 
     /**
@@ -80,6 +110,8 @@ public class TeleportRules {
      * @return the {@link Warp} with the given key, or {@code null} if no {@link Warp} with the given key exists
      */
     public Optional<Warp> getWarp(final String key) {
-        return Optional.ofNullable(warps.get(key));
+        return warps.stream()
+                .filter(warp -> warp.key().equals(key))
+                .findFirst();
     }
 }

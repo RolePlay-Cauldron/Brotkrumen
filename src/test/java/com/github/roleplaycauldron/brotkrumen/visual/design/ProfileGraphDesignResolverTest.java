@@ -91,7 +91,7 @@ class ProfileGraphDesignResolverTest {
     void roleSpecificDesignsWinBeforeFallbacks() {
         final NodeRef ref = new NodeRef(1, UUID.randomUUID());
         final ParticleDesignSet set = ParticleDesignSet.emberPreset();
-        final VisualNode teleportNode = visualNode(ref, VisualNodeRole.TELEPORT_ENDPOINT);
+        final VisualNode teleportNode = visualNode(ref, VisualNodeRole.LOCAL_TELEPORT);
         final VisualEdge teleportEdge = new VisualEdge(new InterGraphVisualEdgeId(UUID.randomUUID()), ref,
                 new NodeRef(1, UUID.randomUUID()), VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.TELEPORT),
                 VisualEdgeRole.TELEPORT);
@@ -100,16 +100,20 @@ class ProfileGraphDesignResolverTest {
                 .particleGraphDesign(1, set)
                 .build());
 
-        assertEquals(set.nodeDesign(VisualNodeRole.TELEPORT_ENDPOINT), resolver.resolveParticleNode(teleportNode),
+        assertEquals(set.nodeDesign(VisualNodeRole.LOCAL_TELEPORT), resolver.resolveParticleNode(teleportNode),
                 "Teleport endpoint node role should use role design");
         assertEquals(set.edgeDesign(VisualEdgeRole.TELEPORT), resolver.resolveParticleEdge(teleportEdge),
                 "Teleport edge role should use role design");
         assertEquals(EdgeRenderStrategy.ENDPOINTS_ONLY, resolver.resolveEdgeRenderStrategy(teleportEdge),
                 "Teleport edges should default to endpoint-only rendering");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.TELEPORT_ENDPOINT),
-                "Preset should include teleport endpoint node design");
+        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.LOCAL_TELEPORT),
+                "Preset should include local teleport node design");
+        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.INTERGRAPH_TELEPORT),
+                "Preset should include intergraph teleport node design");
+        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.WARP),
+                "Preset should include warp node design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.TELEPORT),
-                "Preset should include teleport edge design");
+                "Teleport edge role should fall back to default edge design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL),
                 "Preset should include directed edge design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL),
@@ -143,7 +147,7 @@ class ProfileGraphDesignResolverTest {
                 .edgeRenderStrategy(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.FULL_EDGE)
                 .build());
 
-        assertEquals(nodeOverride, resolver.resolveParticleNode(visualNode(ref, VisualNodeRole.TELEPORT_ENDPOINT)),
+        assertEquals(nodeOverride, resolver.resolveParticleNode(visualNode(ref, VisualNodeRole.LOCAL_TELEPORT)),
                 "Explicit node override should win before role design");
         assertEquals(edgeOverride, resolver.resolveParticleEdge(edge), "Explicit edge override should win before role design");
         assertEquals(EdgeRenderStrategy.FULL_EDGE, resolver.resolveEdgeRenderStrategy(edge),
@@ -204,7 +208,9 @@ class ProfileGraphDesignResolverTest {
     private ParticleDesignSet particleSet(final Particle particle) {
         final Map<VisualNodeRole, ParticleNodeDesign> nodes = new EnumMap<>(VisualNodeRole.class);
         nodes.put(VisualNodeRole.DEFAULT, ParticleNodeDesign.cube(particle, 0.4f));
-        nodes.put(VisualNodeRole.TELEPORT_ENDPOINT, ParticleNodeDesign.sphere(particle, 0.5f));
+        nodes.put(VisualNodeRole.LOCAL_TELEPORT, ParticleNodeDesign.sphere(particle, 0.5f));
+        nodes.put(VisualNodeRole.INTERGRAPH_TELEPORT, ParticleNodeDesign.sphere(particle, 0.55f));
+        nodes.put(VisualNodeRole.WARP, ParticleNodeDesign.sphere(particle, 0.6f));
         final Map<VisualEdgeRole, ParticleEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
         edges.put(VisualEdgeRole.DIRECTED_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
@@ -212,7 +218,6 @@ class ProfileGraphDesignResolverTest {
         edges.put(VisualEdgeRole.BLOCKED, ParticleEdgeDesign.line(particle, 20));
         edges.put(VisualEdgeRole.INTER_GRAPH, ParticleEdgeDesign.movingPoint(particle, 0.25f));
         edges.put(VisualEdgeRole.TELEPORT, ParticleEdgeDesign.movingPoint(particle, 0.3f));
-        edges.put(VisualEdgeRole.GLOBAL_TELEPORT, ParticleEdgeDesign.movingPoint(particle, 0.35f));
         edges.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, ParticleEdgeDesign.movingPoint(particle, 0.25f));
         edges.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, ParticleEdgeDesign.line(particle, 20));
         return new ParticleDesignSet(nodes, edges);
@@ -221,7 +226,9 @@ class ProfileGraphDesignResolverTest {
     private BlockDisplayDesignSet blockSet(final Material nodeMaterial, final Material edgeMaterial) {
         final Map<VisualNodeRole, BlockNodeDesign> nodes = new EnumMap<>(VisualNodeRole.class);
         nodes.put(VisualNodeRole.DEFAULT, new BlockNodeDesign(nodeMaterial, 0.4f));
-        nodes.put(VisualNodeRole.TELEPORT_ENDPOINT, new BlockNodeDesign(nodeMaterial, 0.5f));
+        nodes.put(VisualNodeRole.LOCAL_TELEPORT, new BlockNodeDesign(nodeMaterial, 0.5f));
+        nodes.put(VisualNodeRole.INTERGRAPH_TELEPORT, new BlockNodeDesign(nodeMaterial, 0.55f));
+        nodes.put(VisualNodeRole.WARP, new BlockNodeDesign(nodeMaterial, 0.6f));
         final Map<VisualEdgeRole, BlockEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
         edges.put(VisualEdgeRole.DIRECTED_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
@@ -229,7 +236,6 @@ class ProfileGraphDesignResolverTest {
         edges.put(VisualEdgeRole.BLOCKED, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
         edges.put(VisualEdgeRole.INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
         edges.put(VisualEdgeRole.TELEPORT, new BlockEdgeDesign(edgeMaterial, 0.3f, 0.5D));
-        edges.put(VisualEdgeRole.GLOBAL_TELEPORT, new BlockEdgeDesign(edgeMaterial, 0.35f, 0.5D));
         edges.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
         edges.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, new BlockEdgeDesign(edgeMaterial, 0.25f, 0.6D));
         return new BlockDisplayDesignSet(nodes, edges);

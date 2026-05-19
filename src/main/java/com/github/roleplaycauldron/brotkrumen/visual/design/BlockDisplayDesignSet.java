@@ -23,9 +23,10 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
      */
     public static BlockDisplayDesignSet defaults() {
         return new BlockDisplayDesignSet(
-                nodeDesignMap(BlockNodeDesign.defaults(), BlockNodeDesign.defaults()),
-                edgeDesignMap(BlockEdgeDesign.defaultLocal(), BlockEdgeDesign.defaultLocal(),
-                        BlockEdgeDesign.defaultLocal(), BlockEdgeDesign.defaultInterGraph())
+                nodeDesignMap(BlockNodeDesign.defaults(), BlockNodeDesign.defaults(),
+                        new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f),
+                        new BlockNodeDesign(Material.END_STONE, 0.55f)),
+                edgeDesignMap(BlockEdgeDesign.defaultLocal(), BlockEdgeDesign.defaultInterGraph())
         );
     }
 
@@ -37,10 +38,10 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
     public static BlockDisplayDesignSet emberPreset() {
         return new BlockDisplayDesignSet(
                 nodeDesignMap(new BlockNodeDesign(Material.COAL_BLOCK, 0.45f),
-                        new BlockNodeDesign(Material.MAGMA_BLOCK, 0.55f)),
+                        new BlockNodeDesign(Material.MAGMA_BLOCK, 0.55f),
+                        new BlockNodeDesign(Material.REDSTONE_BLOCK, 0.5f),
+                        new BlockNodeDesign(Material.OBSIDIAN, 0.55f)),
                 edgeDesignMap(new BlockEdgeDesign(Material.ORANGE_STAINED_GLASS, 0.16f, 0.8D),
-                        new BlockEdgeDesign(Material.YELLOW_STAINED_GLASS, 0.2f, 0.6D),
-                        new BlockEdgeDesign(Material.GOLD_BLOCK, 0.22f, 0.6D),
                         new BlockEdgeDesign(Material.RED_STAINED_GLASS, 0.18f, 0.8D))
         );
     }
@@ -53,33 +54,33 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
     public static BlockDisplayDesignSet prismPreset() {
         return new BlockDisplayDesignSet(
                 nodeDesignMap(new BlockNodeDesign(Material.LAPIS_BLOCK, 0.45f),
-                        new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f)),
+                        new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f),
+                        new BlockNodeDesign(Material.PURPUR_BLOCK, 0.5f),
+                        new BlockNodeDesign(Material.END_STONE, 0.55f)),
                 edgeDesignMap(new BlockEdgeDesign(Material.LIGHT_BLUE_STAINED_GLASS, 0.16f, 0.8D),
-                        new BlockEdgeDesign(Material.PURPLE_STAINED_GLASS, 0.2f, 0.6D),
-                        new BlockEdgeDesign(Material.DIAMOND_BLOCK, 0.22f, 0.6D),
                         new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.18f, 0.8D))
         );
     }
 
     private static Map<VisualNodeRole, BlockNodeDesign> nodeDesignMap(final BlockNodeDesign defaultNode,
-                                                                      final BlockNodeDesign teleportNode) {
+                                                                      final BlockNodeDesign localTeleportNode,
+                                                                      final BlockNodeDesign intergraphTeleportNode,
+                                                                      final BlockNodeDesign warpNode) {
         final Map<VisualNodeRole, BlockNodeDesign> result = new EnumMap<>(VisualNodeRole.class);
         result.put(VisualNodeRole.DEFAULT, defaultNode);
-        result.put(VisualNodeRole.TELEPORT_ENDPOINT, teleportNode);
+        result.put(VisualNodeRole.LOCAL_TELEPORT, localTeleportNode);
+        result.put(VisualNodeRole.INTERGRAPH_TELEPORT, intergraphTeleportNode);
+        result.put(VisualNodeRole.WARP, warpNode);
         return result;
     }
 
     private static Map<VisualEdgeRole, BlockEdgeDesign> edgeDesignMap(final BlockEdgeDesign localEdge,
-                                                                      final BlockEdgeDesign teleportEdge,
-                                                                      final BlockEdgeDesign globalTeleportEdge,
                                                                       final BlockEdgeDesign interGraphEdge) {
         final Map<VisualEdgeRole, BlockEdgeDesign> result = new EnumMap<>(VisualEdgeRole.class);
         result.put(VisualEdgeRole.DEFAULT_LOCAL, localEdge);
         result.put(VisualEdgeRole.DIRECTED_LOCAL, localEdge);
         result.put(VisualEdgeRole.UNDIRECTED_LOCAL, localEdge);
         result.put(VisualEdgeRole.BLOCKED, localEdge);
-        result.put(VisualEdgeRole.TELEPORT, teleportEdge);
-        result.put(VisualEdgeRole.GLOBAL_TELEPORT, globalTeleportEdge);
         result.put(VisualEdgeRole.INTER_GRAPH, interGraphEdge);
         result.put(VisualEdgeRole.DIRECTED_INTER_GRAPH, interGraphEdge);
         result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, interGraphEdge);

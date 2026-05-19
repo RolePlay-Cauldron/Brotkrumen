@@ -210,7 +210,8 @@ public class GraphTable {
                         node.x(),
                         node.y(),
                         node.z(),
-                        node.worldId()
+                        node.worldId(),
+                        node.flags()
                 );
                 nodeTable.saveNode(con, graph.getGraphId(), nodeToUpdate);
             }

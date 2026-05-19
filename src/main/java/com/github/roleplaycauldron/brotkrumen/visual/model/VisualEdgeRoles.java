@@ -15,7 +15,7 @@ public final class VisualEdgeRoles {
     /**
      * Derives a visual role from graph edge facts.
      * <p>
-     * Precedence is blocked, global teleport, local teleport, inter-graph direction, undirected, directed,
+     * Precedence is blocked, local teleport, inter-graph direction, undirected, directed,
      * then default local. This keeps editorial blocked styling visible even when other flags are present.
      *
      * @param kind  broad visual edge kind
@@ -26,15 +26,12 @@ public final class VisualEdgeRoles {
         if (flags.contains(EdgeFlag.BLOCKED)) {
             return VisualEdgeRole.BLOCKED;
         }
-        if (flags.contains(EdgeFlag.TELEPORT_GLOBAL)) {
-            return VisualEdgeRole.GLOBAL_TELEPORT;
-        }
-        if (flags.contains(EdgeFlag.TELEPORT)) {
-            return VisualEdgeRole.TELEPORT;
-        }
         final boolean interGraph = kind == VisualEdgeKind.INTER_GRAPH || flags.contains(EdgeFlag.INTER_GRAPH);
         if (interGraph) {
             return interGraphRole(flags);
+        }
+        if (flags.contains(EdgeFlag.TELEPORT)) {
+            return VisualEdgeRole.TELEPORT;
         }
         if (flags.contains(EdgeFlag.UNDIRECTED)) {
             return VisualEdgeRole.UNDIRECTED_LOCAL;

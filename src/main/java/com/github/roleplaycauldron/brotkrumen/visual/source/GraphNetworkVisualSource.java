@@ -1,11 +1,11 @@
 package com.github.roleplaycauldron.brotkrumen.visual.source;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
-import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
@@ -18,9 +18,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Visual source for a graph network.
@@ -42,14 +40,11 @@ public class GraphNetworkVisualSource implements VisualGraphSource {
     public VisualGraphSnapshot snapshot() {
         final List<VisualNode> nodes = new ArrayList<>();
         final List<VisualEdge> edges = new ArrayList<>();
-        final Set<NodeRef> teleportEndpoints = teleportEndpoints();
 
         for (final Graph graph : network.getGraphs()) {
             for (final Node node : graph.getNodes()) {
                 final NodeRef ref = new NodeRef(graph.getGraphId(), node.graphId());
-                final VisualNodeRole role = teleportEndpoints.contains(ref)
-                        ? VisualNodeRole.TELEPORT_ENDPOINT
-                        : VisualNodeRole.DEFAULT;
+                final VisualNodeRole role = nodeRole(node);
                 nodes.add(new VisualNode(new VisualNodeId(ref), ref, node, role));
             }
             for (final Edge edge : graph.getEdges()) {
@@ -100,18 +95,16 @@ public class GraphNetworkVisualSource implements VisualGraphSource {
         );
     }
 
-    private Set<NodeRef> teleportEndpoints() {
-        final Set<NodeRef> result = new HashSet<>();
-        for (final Graph graph : network.getGraphs()) {
-            for (final Edge edge : graph.getEdges()) {
-                if (edge.flags().contains(EdgeFlag.TELEPORT_GLOBAL)) {
-                    result.add(new NodeRef(graph.getGraphId(), edge.target()));
-                } else if (edge.flags().contains(EdgeFlag.TELEPORT)) {
-                    result.add(new NodeRef(graph.getGraphId(), edge.source()));
-                    result.add(new NodeRef(graph.getGraphId(), edge.target()));
-                }
-            }
+    private VisualNodeRole nodeRole(final Node node) {
+        if (node.flags().contains(NodeFlag.WARP)) {
+            return VisualNodeRole.WARP;
         }
-        return result;
+        if (node.flags().contains(NodeFlag.INTERGRAPH_TELEPORT)) {
+            return VisualNodeRole.INTERGRAPH_TELEPORT;
+        }
+        if (node.flags().contains(NodeFlag.LOCAL_TELEPORT)) {
+            return VisualNodeRole.LOCAL_TELEPORT;
+        }
+        return VisualNodeRole.DEFAULT;
     }
 }

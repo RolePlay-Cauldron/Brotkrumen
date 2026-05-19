@@ -5,8 +5,10 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -38,8 +40,8 @@ class PathFinderTest {
         final TeleportRules rules = TeleportRules.disableTeleports();
         when(registry.select(graph, rules)).thenReturn(algo);
 
-        final List<Node> expected = List.of(graph.getNodeById(uuidOne), graph.getNodeById(uuidTwo));
-        when(algo.findPath(graph, uuidOne, Set.of(uuidTwo), null, rules)).thenReturn(expected);
+        when(algo.findPathResult(graph, uuidOne, Set.of(uuidTwo), null, rules)).thenReturn(
+                new PathResult(expectedRefs(graph), List.of()));
 
         final PathFinder finderWithRegistry = new PathFinder(registry);
         final PathFinder defaultFinder = new PathFinder();
@@ -47,7 +49,7 @@ class PathFinderTest {
         final List<NodeRef> resultOne = finderWithRegistry.findPath(graph, uuidOne, uuidTwo, null, rules);
         final List<NodeRef> resultTwo = defaultFinder.findPath(graph, uuidOne, uuidTwo, null, rules);
 
-        final List<NodeRef> expectedRefs = List.of(new NodeRef(graph.getGraphId(), uuidOne), new NodeRef(graph.getGraphId(), uuidTwo));
+        final List<NodeRef> expectedRefs = expectedRefs(graph);
         assertEquals(List.of(expectedRefs, expectedRefs), List.of(resultOne, resultTwo), "The results should be the same");
     }
 
@@ -63,14 +65,14 @@ class PathFinderTest {
 
         final TeleportRules rules = TeleportRules.disableTeleports();
         when(registry.select(graph, rules)).thenReturn(algo);
-        when(algo.findPath(graph, uuidOne, Set.of(uuidTwo), null, rules))
-                .thenReturn(List.of(graph.getNodeById(uuidOne), graph.getNodeById(uuidTwo)));
+        when(algo.findPathResult(graph, uuidOne, Set.of(uuidTwo), null, rules))
+                .thenReturn(new PathResult(expectedRefs(graph), List.of()));
 
         new PathFinder(registry).findPath(graph, uuidOne, uuidTwo, null, rules);
 
         final InOrder inOrder = inOrder(registry, algo);
         inOrder.verify(registry).select(graph, rules);
-        inOrder.verify(algo).findPath(graph, uuidOne, Set.of(uuidTwo), null, rules);
+        inOrder.verify(algo).findPathResult(graph, uuidOne, Set.of(uuidTwo), null, rules);
     }
 
     @Test
@@ -102,5 +104,83 @@ class PathFinderTest {
 
         assertEquals(List.of(new NodeRef(1, g1A), new NodeRef(1, g1B), new NodeRef(2, g2A), new NodeRef(2, g2B)), path,
                 "Path should cross the inter-graph edge");
+    }
+
+    @Test
+    void interGraphTeleportObeysIndependentRuleSwitch() {
+        final Graph graphOne = new Graph(1, "One");
+        final UUID source = UUID.randomUUID();
+        graphOne.addNode(new Node(source, 0, 0, 0, null));
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID target = UUID.randomUUID();
+        graphTwo.addNode(new Node(target, 10, 0, 0, null));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addDirectedInterGraphEdge(new NodeRef(1, source), new NodeRef(2, target), 1.0D,
+                Set.of(EdgeFlag.TELEPORT, EdgeFlag.INTER_GRAPH));
+
+        final PathFinder pathFinder = new PathFinder();
+
+        assertEquals(List.of(new NodeRef(1, source), new NodeRef(2, target)),
+                pathFinder.findPath(network, new NodeRef(1, source), new NodeRef(2, target), null,
+                        new TeleportRules(false, true, false, List.of())),
+                "Enabled intergraph teleport should be traversable");
+        assertTrue(pathFinder.findPath(network, new NodeRef(1, source), new NodeRef(2, target), null,
+                        new TeleportRules(false, false, false, List.of())).isEmpty(),
+                "Disabled intergraph teleport should be excluded from search input");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void warpRoutesAreGloballyCallableAndDisappearWhenTargetIsRemoved() {
+        final Graph graphOne = new Graph(1, "One");
+        final UUID source = UUID.randomUUID();
+        graphOne.addNode(new Node(source, 0, 0, 0, null));
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID target = UUID.randomUUID();
+        graphTwo.addNode(new Node(target, 10, 0, 0, null, Set.of(NodeFlag.WARP)));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        final NodeRef sourceRef = new NodeRef(1, source);
+        final NodeRef targetRef = new NodeRef(2, target);
+        final TeleportRules enabledRules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 0.0D, true)));
+        final PathFinder pathFinder = new PathFinder();
+
+        assertEquals(List.of(sourceRef, targetRef), pathFinder.findPath(network, sourceRef, targetRef, null, enabledRules),
+                "Warp target should be reachable through globally callable warp traversal");
+        assertEquals(0, network.getInterGraphEdges().size(), "Derived global routes should not be persisted as edges");
+
+        graphTwo.removeNode(graphTwo.getNodeById(target));
+
+        assertTrue(pathFinder.findPath(network, sourceRef, targetRef, null, enabledRules).isEmpty(),
+                "Removing the warp target node should remove routes from later search input");
+    }
+
+    @Test
+    void networkPathResultKeepsIntergraphAndWarpSegmentMetadata() {
+        final Graph graphOne = new Graph(1, "One");
+        final UUID source = UUID.randomUUID();
+        graphOne.addNode(new Node(source, 0, 0, 0, null));
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID target = UUID.randomUUID();
+        graphTwo.addNode(new Node(target, 10, 0, 0, null, Set.of(NodeFlag.WARP)));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        final NodeRef sourceRef = new NodeRef(1, source);
+        final NodeRef targetRef = new NodeRef(2, target);
+        final TeleportRules rules = new TeleportRules(false, false, true, List.of(new Warp("target", target, 1.0D, true)));
+
+        final PathResult result = new PathFinder().findPathResult(network, sourceRef, targetRef, null, rules);
+
+        assertEquals(List.of(sourceRef, targetRef), result.nodes(), "Network result should map unified IDs back to node refs");
+        assertEquals(TraversalKind.WARP, result.segments().getFirst().traversalKind(),
+                "Network warp traversal should keep segment metadata");
+    }
+
+    private List<NodeRef> expectedRefs(final Graph graph) {
+        return List.of(new NodeRef(graph.getGraphId(), uuidOne), new NodeRef(graph.getGraphId(), uuidTwo));
     }
 }

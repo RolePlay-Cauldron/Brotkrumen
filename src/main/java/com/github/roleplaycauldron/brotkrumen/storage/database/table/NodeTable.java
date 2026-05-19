@@ -1,15 +1,19 @@
 package com.github.roleplaycauldron.brotkrumen.storage.database.table;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * The NodeTable class operates as an abstraction for interacting with a database table containing data
@@ -37,7 +41,8 @@ public class NodeTable {
     /* default */
     Set<Node> getAllNodesForGraph(final Connection con, final int graphId) {
         final Set<Node> nodes = new HashSet<>();
-        final String sql = "SELECT `id`, `node_id`, `x`, `y`, `z`, `world_id` FROM `" + tableName + "` WHERE `graph_id` = ?";
+        final String sql = "SELECT `id`, `node_id`, `x`, `y`, `z`, `world_id`, `flags` "
+                + "FROM `" + tableName + "` WHERE `graph_id` = ?";
 
         try (PreparedStatement statement = con.prepareStatement(sql)) {
             statement.setInt(1, graphId);
@@ -50,7 +55,8 @@ public class NodeTable {
                             resultSet.getDouble("x"),
                             resultSet.getDouble("y"),
                             resultSet.getDouble("z"),
-                            UUID.fromString(resultSet.getString("world_id"))
+                            UUID.fromString(resultSet.getString("world_id")),
+                            parseFlags(resultSet.getString("flags"))
                     ));
                 }
             }
@@ -127,7 +133,7 @@ public class NodeTable {
 
     private void updateNode(final Connection con, final int graphId, final Node node) {
         final String sql = "UPDATE `" + tableName + "` "
-                + "SET `graph_id` = ?, `node_id` = ?, `x` = ?, `y` = ?, `z` = ?, `world_id` = ? "
+                + "SET `graph_id` = ?, `node_id` = ?, `x` = ?, `y` = ?, `z` = ?, `world_id` = ?, `flags` = ? "
                 + "WHERE `id` = ?";
 
         try (PreparedStatement statement = con.prepareStatement(sql)) {
@@ -137,7 +143,8 @@ public class NodeTable {
             statement.setDouble(4, node.y());
             statement.setDouble(5, node.z());
             statement.setString(6, node.worldId().toString());
-            statement.setInt(7, node.dbId());
+            statement.setString(7, serializeFlags(node.flags()));
+            statement.setInt(8, node.dbId());
             statement.executeUpdate();
         } catch (final SQLException e) {
             throw new StorageException("Failed to update node with id " + node.dbId(), e);
@@ -145,8 +152,8 @@ public class NodeTable {
     }
 
     private void createNode(final Connection con, final int graphId, final Node node) {
-        final String sql = "INSERT INTO `" + tableName + "` (`graph_id`, `node_id`, `x`, `y`, `z`, `world_id`) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        final String sql = "INSERT INTO `" + tableName + "` (`graph_id`, `node_id`, `x`, `y`, `z`, `world_id`, `flags`) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement statement = con.prepareStatement(sql)) {
             statement.setInt(1, graphId);
@@ -155,9 +162,31 @@ public class NodeTable {
             statement.setDouble(4, node.y());
             statement.setDouble(5, node.z());
             statement.setString(6, node.worldId().toString());
+            statement.setString(7, serializeFlags(node.flags()));
             statement.executeUpdate();
         } catch (final SQLException e) {
             throw new StorageException("Failed to create node " + node.graphId(), e);
         }
+    }
+
+    private String serializeFlags(final Set<NodeFlag> flags) {
+        if (flags == null || flags.isEmpty()) {
+            return "";
+        }
+        return flags.stream()
+                .map(Enum::name)
+                .collect(Collectors.joining(","));
+    }
+
+    private Set<NodeFlag> parseFlags(final String flags) {
+        if (flags == null || flags.isBlank()) {
+            return EnumSet.noneOf(NodeFlag.class);
+        }
+
+        return Arrays.stream(flags.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(NodeFlag::valueOf)
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(NodeFlag.class)));
     }
 }

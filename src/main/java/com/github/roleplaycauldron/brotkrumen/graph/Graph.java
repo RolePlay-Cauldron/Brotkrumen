@@ -85,7 +85,8 @@ public class Graph {
 
         final Node genNode;
         if (node.graphId() == null) {
-            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z(), node.worldId());
+            genNode = new Node(node.dbId(), UUID.randomUUID(), node.x(), node.y(), node.z(), node.worldId(),
+                    node.flags());
         } else {
             genNode = node;
         }
@@ -173,7 +174,7 @@ public class Graph {
             throw new IllegalArgumentException("You need to specify at least one flag per Edge");
         }
 
-        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.TELEPORT_GLOBAL) || flags.contains(EdgeFlag.INTER_GRAPH);
+        final boolean directed = flags.contains(EdgeFlag.DIRECTED) || flags.contains(EdgeFlag.INTER_GRAPH);
         final boolean undirected = flags.contains(EdgeFlag.UNDIRECTED) || flags.contains(EdgeFlag.TELEPORT);
 
         if (directed == undirected) {

@@ -3,7 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.visual;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
-import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
@@ -23,7 +23,6 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bukkit.entity.Player;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -99,18 +98,18 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param profile       design profile
      * @return visualizer
      */
     public static GraphVisualizer blockDisplayNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                          final GraphNetwork network, final List<NodeRef> path,
+                                                          final GraphNetwork network, final PathResult pathResult,
                                                           final UUID viewerId,
                                                           final GraphNetworkDesignProfile profile) {
         return new PlayerGraphVisualizer(
                 loggerFactory,
-                new PathVisualGraphSource(new GraphNetworkVisualSource(network), path),
+                new PathVisualGraphSource(new GraphNetworkVisualSource(network), pathResult),
                 new BlockDisplayGraphRenderer(plugin, viewerId),
                 new ProfileGraphDesignResolver(profile)
         );
@@ -122,16 +121,16 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param profile       design profile
      * @return visualizer
      */
     public static GraphVisualizer blockDisplayGuidedNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                                final GraphNetwork network, final List<NodeRef> path,
+                                                                final GraphNetwork network, final PathResult pathResult,
                                                                 final UUID viewerId,
                                                                 final GraphNetworkDesignProfile profile) {
-        return blockDisplayGuidedNetworkPath(plugin, loggerFactory, network, path, viewerId, profile,
+        return blockDisplayGuidedNetworkPath(plugin, loggerFactory, network, pathResult, viewerId, profile,
                 guidedPathOptions(plugin));
     }
 
@@ -141,20 +140,20 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param profile       design profile
      * @param options       guided path options
      * @return visualizer
      */
     public static GraphVisualizer blockDisplayGuidedNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                                final GraphNetwork network, final List<NodeRef> path,
+                                                                final GraphNetwork network, final PathResult pathResult,
                                                                 final UUID viewerId,
                                                                 final GraphNetworkDesignProfile profile,
                                                                 final GuidedPathOptions options) {
         return new PlayerGraphVisualizer(
                 loggerFactory,
-                new GuidedPathVisualGraphSource(new GraphNetworkVisualSource(network), path,
+                new GuidedPathVisualGraphSource(new GraphNetworkVisualSource(network), pathResult,
                         viewerLocationSource(plugin, viewerId), options),
                 new BlockDisplayGraphRenderer(plugin, viewerId),
                 new ProfileGraphDesignResolver(profile)
@@ -211,19 +210,19 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param executor      effect executor
      * @param profile       design profile
      * @return visualizer
      */
     public static GraphVisualizer particleNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                      final GraphNetwork network, final List<NodeRef> path,
+                                                      final GraphNetwork network, final PathResult pathResult,
                                                       final UUID viewerId, final EffectExecutor executor,
                                                       final GraphNetworkDesignProfile profile) {
         return new PlayerGraphVisualizer(
                 loggerFactory,
-                new PathVisualGraphSource(new GraphNetworkVisualSource(network), path),
+                new PathVisualGraphSource(new GraphNetworkVisualSource(network), pathResult),
                 new ParticleGraphRenderer(plugin, viewerId, executor),
                 new ProfileGraphDesignResolver(profile)
         );
@@ -235,17 +234,17 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param executor      effect executor
      * @param profile       design profile
      * @return visualizer
      */
     public static GraphVisualizer particleGuidedNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                            final GraphNetwork network, final List<NodeRef> path,
+                                                            final GraphNetwork network, final PathResult pathResult,
                                                             final UUID viewerId, final EffectExecutor executor,
                                                             final GraphNetworkDesignProfile profile) {
-        return particleGuidedNetworkPath(plugin, loggerFactory, network, path, viewerId, executor, profile,
+        return particleGuidedNetworkPath(plugin, loggerFactory, network, pathResult, viewerId, executor, profile,
                 guidedPathOptions(plugin));
     }
 
@@ -255,7 +254,7 @@ public final class GraphVisualizerFactory {
      * @param plugin        plugin
      * @param loggerFactory logger factory
      * @param network       graph network
-     * @param path          node-reference path
+     * @param pathResult    structured path result
      * @param viewerId      viewer id
      * @param executor      effect executor
      * @param profile       design profile
@@ -263,13 +262,13 @@ public final class GraphVisualizerFactory {
      * @return visualizer
      */
     public static GraphVisualizer particleGuidedNetworkPath(final Brotkrumen plugin, final LoggerFactory loggerFactory,
-                                                            final GraphNetwork network, final List<NodeRef> path,
+                                                            final GraphNetwork network, final PathResult pathResult,
                                                             final UUID viewerId, final EffectExecutor executor,
                                                             final GraphNetworkDesignProfile profile,
                                                             final GuidedPathOptions options) {
         return new PlayerGraphVisualizer(
                 loggerFactory,
-                new GuidedPathVisualGraphSource(new GraphNetworkVisualSource(network), path,
+                new GuidedPathVisualGraphSource(new GraphNetworkVisualSource(network), pathResult,
                         viewerLocationSource(plugin, viewerId), options),
                 new ParticleGraphRenderer(plugin, viewerId, executor),
                 guidedParticleResolver(profile)

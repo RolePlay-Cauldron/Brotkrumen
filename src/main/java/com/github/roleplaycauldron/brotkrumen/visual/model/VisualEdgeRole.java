@@ -30,11 +30,6 @@ public enum VisualEdgeRole {
     TELEPORT,
 
     /**
-     * Global teleport edge inside one graph.
-     */
-    GLOBAL_TELEPORT,
-
-    /**
      * Edge connecting nodes from different graphs.
      */
     INTER_GRAPH,

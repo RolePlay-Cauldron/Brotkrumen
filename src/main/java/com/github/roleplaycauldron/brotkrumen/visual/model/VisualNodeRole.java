@@ -10,7 +10,17 @@ public enum VisualNodeRole {
     DEFAULT,
 
     /**
-     * Node connected to a teleport edge.
+     * Node connected to a local teleport edge.
      */
-    TELEPORT_ENDPOINT
+    LOCAL_TELEPORT,
+
+    /**
+     * Node connected to an intergraph teleport edge.
+     */
+    INTERGRAPH_TELEPORT,
+
+    /**
+     * Node that is a warp target or route warp entry marker.
+     */
+    WARP
 }

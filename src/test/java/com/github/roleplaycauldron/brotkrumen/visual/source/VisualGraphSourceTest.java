@@ -5,7 +5,11 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
+import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
@@ -36,8 +40,8 @@ class VisualGraphSourceTest {
         final Graph graph = new Graph(7, "Single");
         final UUID first = UUID.randomUUID();
         final UUID second = UUID.randomUUID();
-        graph.addNode(new Node(first, 0, 0, 0, null));
-        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(first, 0, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(second, 1, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
         graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
 
         final VisualGraphSnapshot snapshot = new SingleGraphVisualSource(graph).snapshot();
@@ -101,24 +105,21 @@ class VisualGraphSourceTest {
         final UUID first = UUID.randomUUID();
         final UUID second = UUID.randomUUID();
         final UUID third = UUID.randomUUID();
-        graph.addNode(new Node(first, 0, 0, 0, null));
-        graph.addNode(new Node(second, 1, 0, 0, null));
-        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addNode(new Node(first, 0, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(second, 1, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(third, 2, 0, 0, null, Set.of(NodeFlag.WARP)));
         graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.TELEPORT));
-        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.TELEPORT_GLOBAL));
 
         final VisualGraphSnapshot snapshot = new SingleGraphVisualSource(graph).snapshot();
 
         assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.TELEPORT),
                 "Local teleport edge should get teleport role");
-        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.GLOBAL_TELEPORT),
-                "Global teleport edge should get global teleport role");
-        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.LOCAL_TELEPORT)
                 .anyMatch(node -> node.ref().nodeId().equals(first)), "Local teleport source should be an endpoint");
-        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.LOCAL_TELEPORT)
                 .anyMatch(node -> node.ref().nodeId().equals(second)), "Local teleport target should be an endpoint");
-        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT)
-                .anyMatch(node -> node.ref().nodeId().equals(third)), "Global teleport target should be an endpoint");
+        assertTrue(snapshot.nodes().stream().filter(node -> node.role() == VisualNodeRole.WARP)
+                .anyMatch(node -> node.ref().nodeId().equals(third)), "Warp target should be a warp node");
     }
 
     @Test
@@ -129,8 +130,8 @@ class VisualGraphSourceTest {
         final UUID second = UUID.randomUUID();
         final UUID third = UUID.randomUUID();
         final UUID fourth = UUID.randomUUID();
-        graph.addNode(new Node(first, 0, 0, 0, null));
-        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(first, 0, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(second, 1, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
         graph.addNode(new Node(third, 2, 0, 0, null));
         graph.addNode(new Node(fourth, 3, 0, 0, null));
         graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
@@ -166,21 +167,24 @@ class VisualGraphSourceTest {
     }
 
     @Test
-    void pathSourcesPreserveVisualRoles() {
+    void pathSourcesUseTraversalRoles() {
         final Graph graph = new Graph(1, "Path Teleport Roles");
         final UUID first = UUID.randomUUID();
         final UUID second = UUID.randomUUID();
-        graph.addNode(new Node(first, 0, 0, 0, null));
-        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(first, 0, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(second, 1, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
         graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.TELEPORT));
 
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
         final PathVisualGraphSource source = new PathVisualGraphSource(new SingleGraphVisualSource(graph),
-                List.of(new NodeRef(1, first), new NodeRef(1, second)));
+                new PathResult(List.of(firstRef, secondRef),
+                        List.of(new PathSegment(firstRef, secondRef, TraversalKind.LOCAL_TELEPORT, null, null))));
 
         final VisualGraphSnapshot snapshot = source.snapshot();
 
-        assertTrue(snapshot.nodes().stream().allMatch(node -> node.role() == VisualNodeRole.TELEPORT_ENDPOINT),
-                "Path source should keep node roles from delegate");
+        assertTrue(snapshot.nodes().stream().allMatch(node -> node.role() == VisualNodeRole.LOCAL_TELEPORT),
+                "Path source should derive node roles from traversal metadata");
         assertTrue(snapshot.edges().stream().allMatch(edge -> edge.role() == VisualEdgeRole.TELEPORT),
                 "Path source should keep edge roles from delegate");
     }
@@ -200,6 +204,41 @@ class VisualGraphSourceTest {
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void networkSourceDerivesTeleportNodeRolesWithPrecedence() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID local = UUID.randomUUID();
+        final UUID shared = UUID.randomUUID();
+        final UUID global = UUID.randomUUID();
+        final UUID target = UUID.randomUUID();
+        graphOne.addNode(new Node(local, 0, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graphOne.addNode(new Node(shared, 1, 0, 0, null,
+                Set.of(NodeFlag.LOCAL_TELEPORT, NodeFlag.INTERGRAPH_TELEPORT)));
+        graphOne.addNode(new Node(global, 2, 0, 0, null, Set.of(NodeFlag.WARP)));
+        graphTwo.addNode(new Node(target, 3, 0, 0, null, Set.of(NodeFlag.INTERGRAPH_TELEPORT)));
+        graphOne.addDirectedEdge(local, shared, 1.0D, Set.of(EdgeFlag.TELEPORT));
+
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addDirectedInterGraphEdge(new NodeRef(1, shared), new NodeRef(2, target), 1.0D,
+                Set.of(EdgeFlag.TELEPORT, EdgeFlag.INTER_GRAPH));
+        final VisualGraphSnapshot snapshot = new GraphNetworkVisualSource(network).snapshot();
+
+        assertEquals(VisualNodeRole.LOCAL_TELEPORT, nodeRole(snapshot, new NodeRef(1, local)),
+                "Local-only teleport node should keep local role");
+        assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(snapshot, new NodeRef(1, shared)),
+                "Intergraph teleport role should win over local teleport");
+        assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, new NodeRef(1, global)),
+                "Warp role should win when present");
+        assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(snapshot, new NodeRef(2, target)),
+                "Intergraph target should be classified");
+        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.kind() == VisualEdgeKind.INTER_GRAPH
+                && edge.role() == VisualEdgeRole.DIRECTED_INTER_GRAPH), "Intergraph teleport edge body keeps intergraph role");
+    }
+
+    @Test
     void pathSourceFiltersByNodeReferences() {
         final Graph graph = new Graph(1, "Path");
         final UUID first = UUID.randomUUID();
@@ -212,7 +251,7 @@ class VisualGraphSourceTest {
         graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.DIRECTED));
 
         final PathVisualGraphSource source = new PathVisualGraphSource(new SingleGraphVisualSource(graph),
-                List.of(new NodeRef(1, first), new NodeRef(1, second)));
+                new PathResult(List.of(new NodeRef(1, first), new NodeRef(1, second)), List.of()));
 
         final VisualGraphSnapshot snapshot = source.snapshot();
 
@@ -221,11 +260,38 @@ class VisualGraphSourceTest {
     }
 
     @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void structuredPathSourceUsesTraversalRolesInsteadOfStoredTeleportMetadata() {
+        final Graph graph = new Graph(1, "Path Metadata");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null, Set.of(NodeFlag.WARP)));
+        graph.addNode(new Node(second, 1, 0, 0, null, Set.of(NodeFlag.LOCAL_TELEPORT)));
+        graph.addNode(new Node(third, 2, 0, 0, null, Set.of(NodeFlag.WARP)));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
+        final NodeRef thirdRef = new NodeRef(1, third);
+        final PathResult result = new PathResult(List.of(firstRef, secondRef, thirdRef),
+                List.of(new PathSegment(firstRef, secondRef, TraversalKind.NORMAL, null, null),
+                        new PathSegment(secondRef, thirdRef, TraversalKind.WARP, null, "target")));
+
+        final VisualGraphSnapshot snapshot = new PathVisualGraphSource(new SingleGraphVisualSource(graph), result).snapshot();
+
+        assertEquals(VisualNodeRole.DEFAULT, nodeRole(snapshot, firstRef),
+                "Stored warp metadata should not show in path mode when the segment did not use it");
+        assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, secondRef), "Warp segment source should be marked");
+        assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, thirdRef), "Warp segment target should be marked");
+    }
+
+    @Test
     void guidedPathSourceExposesInitialWindow() {
         final PathFixture fixture = pathFixture();
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
-                fixture.refs(),
+                new PathResult(fixture.refs(), List.of()),
                 () -> null,
                 new GuidedPathOptions(3, 4.0D, 1)
         );
@@ -242,7 +308,7 @@ class VisualGraphSourceTest {
         final PathFixture fixture = pathFixture();
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
-                fixture.refs().subList(0, 2),
+                new PathResult(fixture.refs().subList(0, 2), List.of()),
                 () -> null,
                 new GuidedPathOptions(4, 4.0D, 1)
         );
@@ -276,7 +342,7 @@ class VisualGraphSourceTest {
         final MutableLocationSource location = new MutableLocationSource(new Location(null, 2.5D, 0.5D, 0.5D));
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
-                fixture.refs(),
+                new PathResult(fixture.refs(), List.of()),
                 location,
                 new GuidedPathOptions(3, 1.0D, 1)
         );
@@ -299,13 +365,14 @@ class VisualGraphSourceTest {
         final PathFixture fixture = pathFixture();
         final GuidedPathVisualGraphSource empty = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
-                List.of(),
+                PathResult.empty(),
                 () -> null,
                 GuidedPathOptions.defaults()
         );
         final GuidedPathVisualGraphSource missing = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
-                List.of(fixture.refs().getFirst(), new NodeRef(1, UUID.randomUUID()), fixture.refs().get(1)),
+                new PathResult(List.of(fixture.refs().getFirst(), new NodeRef(1, UUID.randomUUID()), fixture.refs().get(1)),
+                        List.of()),
                 () -> null,
                 new GuidedPathOptions(3, 4.0D, 0)
         );
@@ -318,6 +385,36 @@ class VisualGraphSourceTest {
         assertTrue(missingSnapshot.edges().isEmpty(), "Segments through missing nodes should not be exposed");
     }
 
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void guidedPathSourceMarksIntergraphAndWarpSegmentsFromPathResult() {
+        final Graph graph = new Graph(1, "Guided Metadata");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
+        final NodeRef thirdRef = new NodeRef(1, third);
+        final PathResult result = new PathResult(List.of(firstRef, secondRef, thirdRef),
+                List.of(new PathSegment(firstRef, secondRef, TraversalKind.INTERGRAPH_TELEPORT, null, null),
+                        new PathSegment(secondRef, thirdRef, TraversalKind.WARP, null, "target")));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(new SingleGraphVisualSource(graph),
+                result, () -> null, new GuidedPathOptions(4, 4.0D, 0));
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(snapshot, firstRef),
+                "Intergraph teleport source should be marked");
+        assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, secondRef),
+                "Warp role should win for a node that is also an intergraph teleport endpoint");
+        assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, thirdRef), "Warp target should be marked");
+    }
+
     private PathFixture pathFixture() {
         final Graph graph = new Graph(1, "Guided");
         final List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
@@ -328,6 +425,14 @@ class VisualGraphSourceTest {
             graph.addDirectedEdge(ids.get(i), ids.get(i + 1), 1.0D, Set.of(EdgeFlag.DIRECTED));
         }
         return new PathFixture(graph, ids.stream().map(VisualGraphSourceTest::nodeRef).toList());
+    }
+
+    private VisualNodeRole nodeRole(final VisualGraphSnapshot snapshot, final NodeRef ref) {
+        return snapshot.nodes().stream()
+                .filter(node -> node.ref().equals(ref))
+                .map(VisualNode::role)
+                .findFirst()
+                .orElseThrow();
     }
 
     private record PathFixture(Graph graph, List<NodeRef> refs) {
