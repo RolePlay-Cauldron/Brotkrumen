@@ -40,7 +40,7 @@ public class SingleGraphVisualSource implements VisualGraphSource {
         final List<VisualEdge> edges = graph.getEdges().stream()
                 .map(this::toVisualEdge)
                 .toList();
-        return new VisualGraphSnapshot(nodes, edges, version());
+        return new VisualGraphSnapshot(nodes, VisualEdgeCanonicalizer.canonicalize(edges), version());
     }
 
     @Override

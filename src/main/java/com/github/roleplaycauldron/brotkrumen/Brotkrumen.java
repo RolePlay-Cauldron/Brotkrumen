@@ -14,8 +14,8 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
-import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
+import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
@@ -206,7 +206,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     }
 
     private void registerVisualizerTest(final Player player) {
-        //        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGraph(
+        //        final Visualizer visualizer = GraphVisualizerFactory.particleGraph(
 //                this,
 //                loggerFactory,
 //                graphTwo,
@@ -214,7 +214,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                executor
 //        );
 
-//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleNetwork(
+//        final Visualizer visualizer = GraphVisualizerFactory.particleNetwork(
 //                this,
 //                loggerFactory,
 //                visualizerTestNetwork,
@@ -223,7 +223,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                visualizerTestProfile
 //        );
 
-//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+//        final Visualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
 //                this,
 //                loggerFactory,
 //                visualizerTestNetwork,
@@ -233,11 +233,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                visualizerTestProfile
 //        );
 
-        final GraphVisualizer visualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(
+        final Visualizer visualizer = GraphVisualizerFactory.blockDisplayNetwork(
                 this,
                 loggerFactory,
                 visualizerTestNetwork,
-                pathResult,
                 player.getUniqueId(),
                 visualizerTestProfile
         );

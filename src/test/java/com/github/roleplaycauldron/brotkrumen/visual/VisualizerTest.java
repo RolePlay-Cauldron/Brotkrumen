@@ -34,13 +34,13 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-class PlayerGraphVisualizerTest {
+class VisualizerTest {
 
     @Test
     void skipsSnapshotApplyWhenVersionIsUnchanged() {
         final StubSource source = new StubSource();
         final StubRenderer renderer = new StubRenderer();
-        final PlayerGraphVisualizer visualizer = new PlayerGraphVisualizer(null, source, renderer,
+        final Visualizer visualizer = new Visualizer(null, source, renderer,
                 ProfileGraphDesignResolver.defaults());
 
         visualizer.visibilityUpdate();
@@ -54,7 +54,7 @@ class PlayerGraphVisualizerTest {
     void refreshForcesSnapshotApply() {
         final StubSource source = new StubSource();
         final StubRenderer renderer = new StubRenderer();
-        final PlayerGraphVisualizer visualizer = new PlayerGraphVisualizer(null, source, renderer,
+        final Visualizer visualizer = new Visualizer(null, source, renderer,
                 ProfileGraphDesignResolver.defaults());
 
         visualizer.visibilityUpdate();
@@ -75,9 +75,9 @@ class PlayerGraphVisualizerTest {
                 .blockDisplayGraphDesign(1, BlockDisplayDesignSet.emberPreset())
                 .build();
 
-        final GraphVisualizer graphVisualizer = GraphVisualizerFactory.blockDisplayGraph(null, null, graph, UUID.randomUUID());
-        final GraphVisualizer networkVisualizer = GraphVisualizerFactory.blockDisplayNetwork(null, null, network, UUID.randomUUID(), profile);
-        final GraphVisualizer particleNetworkVisualizer = GraphVisualizerFactory.particleNetwork(null, null, network, UUID.randomUUID(), null, profile);
+        final Visualizer graphVisualizer = GraphVisualizerFactory.blockDisplayGraph(null, null, graph, UUID.randomUUID());
+        final Visualizer networkVisualizer = GraphVisualizerFactory.blockDisplayNetwork(null, null, network, UUID.randomUUID(), profile);
+        final Visualizer particleNetworkVisualizer = GraphVisualizerFactory.particleNetwork(null, null, network, UUID.randomUUID(), null, profile);
 
         assertNotNull(graphVisualizer, "Factory should create a single-graph visualizer");
         assertNotNull(networkVisualizer, "Factory should create a network visualizer");
@@ -95,11 +95,11 @@ class PlayerGraphVisualizerTest {
         final PathResult path = new PathResult(List.of(new NodeRef(1, nodeId)), List.of());
         final GuidedPathOptions options = new GuidedPathOptions(2, 3.0D, 1);
 
-        final GraphVisualizer particleVisualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
+        final Visualizer particleVisualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
                 path, UUID.randomUUID(), null, GraphNetworkDesignProfile.defaults(), options);
-        final GraphVisualizer blockDisplayVisualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(null, null,
+        final Visualizer blockDisplayVisualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(null, null,
                 network, path, UUID.randomUUID(), GraphNetworkDesignProfile.defaults(), options);
-        final GraphVisualizer defaultOptionsVisualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(null, null,
+        final Visualizer defaultOptionsVisualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(null, null,
                 network, path, UUID.randomUUID(), GraphNetworkDesignProfile.defaults());
 
         assertNotNull(particleVisualizer, "Factory should create a guided particle visualizer");
@@ -121,7 +121,7 @@ class PlayerGraphVisualizerTest {
         final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.builder()
                 .particleEdgeOverride(edgeId, explicit)
                 .build();
-        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
+        final Visualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
                 new PathResult(List.of(new NodeRef(1, first), new NodeRef(1, second)), List.of()),
                 UUID.randomUUID(), null, profile,
                 GuidedPathOptions.defaults());
@@ -141,6 +141,18 @@ class PlayerGraphVisualizerTest {
         );
     }
 
+    private GraphDesignResolver designs(final Visualizer visualizer) throws ReflectiveOperationException {
+        final Field field = Visualizer.class.getDeclaredField("designs");
+        field.setAccessible(true);
+        return (GraphDesignResolver) field.get(visualizer);
+    }
+
+    private Shape shape(final EffectInstance effect) throws ReflectiveOperationException {
+        final Field field = EffectInstance.class.getDeclaredField("shape");
+        field.setAccessible(true);
+        return (Shape) field.get(effect);
+    }
+
     private static final class StubSource implements VisualGraphSource {
 
         @Override
@@ -152,18 +164,6 @@ class PlayerGraphVisualizerTest {
         public long version() {
             return 1L;
         }
-    }
-
-    private GraphDesignResolver designs(final GraphVisualizer visualizer) throws ReflectiveOperationException {
-        final Field field = GraphVisualizer.class.getDeclaredField("designs");
-        field.setAccessible(true);
-        return (GraphDesignResolver) field.get(visualizer);
-    }
-
-    private Shape shape(final EffectInstance effect) throws ReflectiveOperationException {
-        final Field field = EffectInstance.class.getDeclaredField("shape");
-        field.setAccessible(true);
-        return (Shape) field.get(effect);
     }
 
     private static final class StubRenderer implements GraphRenderer {

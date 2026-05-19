@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Manages the lifecycle and visibility updates of {@link GraphVisualizer} instances registered for players.
+ * Manages the lifecycle and visibility updates of {@link Visualizer} instances registered for players.
  * Responsible for registering, unregistering, and periodically updating the visibility of visualizers
  * associated with player UUIDs.
  */
@@ -21,7 +21,7 @@ public class VisualizerRegistry {
 
     private final WrappedLogger log;
 
-    private final Map<UUID, GraphVisualizer> visualisers;
+    private final Map<UUID, Visualizer> visualisers;
 
     private int visibilityTaskId;
 
@@ -42,20 +42,20 @@ public class VisualizerRegistry {
     }
 
     /**
-     * Registers a {@link GraphVisualizer} instance with the associated UUID and updates its visibility.
+     * Registers a {@link Visualizer} instance with the associated UUID and updates its visibility.
      * This method stores the provided visualizer in the registry and immediately triggers a visibility update
      * to ensure the visualizer's state is synchronized upon registration.
      *
      * @param uuid       the {@link UUID} of the player or entity for which the visualizer is being registered
-     * @param visualiser the {@link GraphVisualizer} instance to be registered and managed
+     * @param visualiser the {@link Visualizer} instance to be registered and managed
      */
-    public void register(final UUID uuid, final GraphVisualizer visualiser) {
+    public void register(final UUID uuid, final Visualizer visualiser) {
         visualisers.put(uuid, visualiser);
         visualiser.visibilityUpdate();
     }
 
     /**
-     * Unregisters and shuts down the {@link GraphVisualizer} instance associated with the specified UUID.
+     * Unregisters and shuts down the {@link Visualizer} instance associated with the specified UUID.
      * This method removes the visualizer from the registry and invokes its {@code shutdown()} method to
      * ensure any resources are released and operations are safely terminated.
      *
@@ -76,7 +76,7 @@ public class VisualizerRegistry {
      * @param uuid viewer uuid
      */
     public void refresh(final UUID uuid) {
-        final GraphVisualizer visualiser = visualisers.get(uuid);
+        final Visualizer visualiser = visualisers.get(uuid);
         if (visualiser != null) {
             visualiser.refresh();
         }
@@ -86,7 +86,7 @@ public class VisualizerRegistry {
      * Refreshes all active visualizers from their visual graph sources.
      */
     public void refreshAll() {
-        new HashMap<>(visualisers).values().forEach(GraphVisualizer::refresh);
+        new HashMap<>(visualisers).values().forEach(Visualizer::refresh);
     }
 
     /**
@@ -131,7 +131,7 @@ public class VisualizerRegistry {
     }
 
     private void visibilityUpdate() {
-        final Map<UUID, GraphVisualizer> copiedVisualiser = new HashMap<>(visualisers);
+        final Map<UUID, Visualizer> copiedVisualiser = new HashMap<>(visualisers);
         copiedVisualiser.forEach((key, vis) -> {
             if (plugin.getServer().getPlayer(key) == null) {
                 vis.shutdown();

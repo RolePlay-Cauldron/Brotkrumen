@@ -58,7 +58,7 @@ public class GraphNetworkVisualSource implements VisualGraphSource {
             }
         }
 
-        return new VisualGraphSnapshot(nodes, edges, version());
+        return new VisualGraphSnapshot(nodes, VisualEdgeCanonicalizer.canonicalize(edges), version());
     }
 
     @Override

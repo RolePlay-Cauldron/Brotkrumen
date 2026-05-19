@@ -39,7 +39,7 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                 edgeDesignMap(
                         new BlockEdgeDesign(Material.ORANGE_WOOL, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.GREEN_STAINED_GLASS, 0.16f, 0.8D),
-                        new BlockEdgeDesign(Material.GREEN_STAINED_GLASS, 0.16f, 0.8D),
+                        new BlockEdgeDesign(Material.LIME_STAINED_GLASS, 0.18f, 0.8D),
                         new BlockEdgeDesign(Material.RED_WOOL, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.GOLD_BLOCK, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.WHITE_STAINED_GLASS, 0.16f, 0.8D),
@@ -61,7 +61,7 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                 edgeDesignMap(
                         new BlockEdgeDesign(Material.LIGHT_BLUE_STAINED_GLASS, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.18f, 0.8D),
-                        new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.2f, 0.8D),
+                        new BlockEdgeDesign(Material.BLUE_STAINED_GLASS, 0.2f, 0.8D),
                         new BlockEdgeDesign(Material.RED_STAINED_GLASS, 0.22f, 0.8D),
                         new BlockEdgeDesign(Material.BLACK_STAINED_GLASS, 0.22f, 0.8D),
                         new BlockEdgeDesign(Material.GRAY_STAINED_GLASS, 0.22f, 0.8D),

@@ -164,6 +164,10 @@ class VisualGraphSourceTest {
                 "Directed inter-graph edges should derive directed inter-graph visual role");
         assertTrue(networkSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
                 "Undirected inter-graph edges should derive undirected inter-graph visual role");
+        assertEquals(VisualEdgeRole.TELEPORT,
+                VisualEdgeRoles.derive(VisualEdgeKind.INTER_GRAPH, Set.of(EdgeFlag.TELEPORT, EdgeFlag.INTER_GRAPH,
+                        EdgeFlag.DIRECTED)),
+                "Teleport should win for intergraph teleport role derivation");
     }
 
     @Test
@@ -235,7 +239,43 @@ class VisualGraphSourceTest {
         assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(snapshot, new NodeRef(2, target)),
                 "Intergraph target should be classified");
         assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.kind() == VisualEdgeKind.INTER_GRAPH
-                && edge.role() == VisualEdgeRole.DIRECTED_INTER_GRAPH), "Intergraph teleport edge body keeps intergraph role");
+                && edge.role() == VisualEdgeRole.TELEPORT), "Intergraph teleport edge should use teleport role");
+    }
+
+    @Test
+    void visualSourcesCanonicalizeUndirectedRelationships() {
+        final Graph graph = new Graph(1, "Canonical Local");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addUndirectedEdge(first, second, 1.0D);
+
+        final VisualGraphSnapshot snapshot = new SingleGraphVisualSource(graph).snapshot();
+
+        assertEquals(1, snapshot.edges().size(), "Undirected local relationship should appear once");
+        assertEquals(VisualEdgeRole.UNDIRECTED_LOCAL, snapshot.edges().iterator().next().role(),
+                "Canonical edge should keep undirected role");
+    }
+
+    @Test
+    void networkSourceCanonicalizesUndirectedIntergraphRelationships() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        graphOne.addNode(new Node(first, 0, 0, 0, null));
+        graphTwo.addNode(new Node(second, 1, 0, 0, null));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addUndirectedInterGraphEdge(new NodeRef(1, first), new NodeRef(2, second), 1.0D);
+
+        final VisualGraphSnapshot snapshot = new GraphNetworkVisualSource(network).snapshot();
+
+        assertEquals(1, snapshot.edges().size(), "Undirected intergraph relationship should appear once");
+        assertEquals(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, snapshot.edges().iterator().next().role(),
+                "Canonical intergraph edge should keep undirected role");
     }
 
     @Test
