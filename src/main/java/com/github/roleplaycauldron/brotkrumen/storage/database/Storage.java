@@ -95,7 +95,6 @@ public class Storage {
         log.error("Database is already connected!");
     }
 
-    @SuppressWarnings("PMD.AssignmentInOperand")
     private BrotkrumenConnectionProvider getProvider(final Engine engine) {
         BrotkrumenConnectionProvider provider = null;
         switch (engine) {
