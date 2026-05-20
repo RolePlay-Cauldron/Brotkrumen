@@ -32,7 +32,7 @@ public record ParticleNodeDesign(Particle particle, EffectInstance effect) {
      * @return cube-shaped design
      */
     public static ParticleNodeDesign cube(final Particle particle, final float size) {
-        return shape(particle, new CubeShape(size, 12));
+        return shape(particle, new CubeShape(size, 5));
     }
 
     /**
