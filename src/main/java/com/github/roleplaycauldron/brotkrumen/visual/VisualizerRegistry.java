@@ -104,6 +104,9 @@ public class VisualizerRegistry {
      * It is recommended to ensure no duplicate scheduling occurs.
      */
     public void startVisibilityUpdates() {
+        if (visibilityTaskId != -1) {
+            return;
+        }
         visibilityTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
                 plugin,
                 this::visibilityUpdate,

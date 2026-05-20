@@ -3,15 +3,12 @@ package com.github.roleplaycauldron.brotkrumen.visual.source;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
-import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
-import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import org.bukkit.Location;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +18,6 @@ import java.util.Set;
 /**
  * Visual source that exposes a moving path window for one viewer.
  */
-@SuppressWarnings("PMD.TooManyMethods")
 public class GuidedPathVisualGraphSource implements VisualGraphSource {
 
     private final VisualGraphSource delegate;
@@ -49,7 +45,7 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         final PathResult safeResult = result == null ? PathResult.empty() : result;
         this.path = safeResult.nodes();
-        this.pathRoles = segmentRoles(safeResult.segments());
+        this.pathRoles = PathVisualRoles.fromSegments(safeResult.segments());
         this.locationSource = locationSource;
         this.options = options == null ? GuidedPathOptions.defaults() : options;
         this.progressIndex = 0;
@@ -144,42 +140,5 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
         result = (31 * result) + options.hashCode();
         result = (31 * result) + progressIndex;
         return result;
-    }
-
-    private Map<NodeRef, VisualNodeRole> segmentRoles(final List<PathSegment> segments) {
-        final Map<NodeRef, VisualNodeRole> result = new HashMap<>();
-        for (final PathSegment segment : segments) {
-            final VisualNodeRole role = roleFor(segment.traversalKind());
-            if (role != null) {
-                putRole(result, segment.source(), role);
-                putRole(result, segment.target(), role);
-            }
-        }
-        return result;
-    }
-
-    private VisualNodeRole roleFor(final TraversalKind traversalKind) {
-        return switch (traversalKind) {
-            case LOCAL_TELEPORT -> VisualNodeRole.LOCAL_TELEPORT;
-            case INTERGRAPH_TELEPORT -> VisualNodeRole.INTERGRAPH_TELEPORT;
-            case WARP -> VisualNodeRole.WARP;
-            default -> null;
-        };
-    }
-
-    private void putRole(final Map<NodeRef, VisualNodeRole> roles, final NodeRef ref, final VisualNodeRole role) {
-        final VisualNodeRole current = roles.get(ref);
-        if (current == null || precedence(role) > precedence(current)) {
-            roles.put(ref, role);
-        }
-    }
-
-    private int precedence(final VisualNodeRole role) {
-        return switch (role) {
-            case WARP -> 3;
-            case INTERGRAPH_TELEPORT -> 2;
-            case LOCAL_TELEPORT -> 1;
-            default -> 0;
-        };
     }
 }

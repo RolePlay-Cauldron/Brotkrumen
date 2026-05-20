@@ -21,7 +21,6 @@ import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathOptions;
 import com.github.roleplaycauldron.brotkrumen.visual.source.VisualGraphSource;
 import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
 import com.github.roleplaycauldron.spellbook.effect.shape.LineShape;
-import com.github.roleplaycauldron.spellbook.effect.shape.MovingPointShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import org.bukkit.Particle;
 import org.junit.jupiter.api.Test;
@@ -108,8 +107,8 @@ class VisualizerTest {
     }
 
     @Test
-    void guidedParticleFactoryUsesMovingEdgesAndPreservesExplicitOverrides() throws ReflectiveOperationException {
-        final Graph graph = new Graph(1, "Guided Moving");
+    void guidedParticleFactoryUsesProfileDesignsAndPreservesExplicitOverrides() throws ReflectiveOperationException {
+        final Graph graph = new Graph(1, "Guided Profile");
         final UUID first = UUID.randomUUID();
         final UUID second = UUID.randomUUID();
         graph.addNode(new Node(first, 0, 0, 0, null));
@@ -118,7 +117,15 @@ class VisualizerTest {
         network.addGraph(graph);
         final LocalVisualEdgeId edgeId = new LocalVisualEdgeId(1, UUID.randomUUID());
         final ParticleEdgeDesign explicit = ParticleEdgeDesign.line(Particle.SMOKE, 6);
+        final ParticleEdgeDesign roleDesign = ParticleEdgeDesign.line(Particle.CLOUD, 4);
         final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.builder()
+                .particleDefaultDesign(new ParticleDesignSet(
+                        ParticleDesignSet.defaults().nodeDesigns(),
+                        java.util.Map.of(
+                                VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.line(Particle.FLAME, 20),
+                                VisualEdgeRole.UNDIRECTED_LOCAL, roleDesign
+                        )
+                ))
                 .particleEdgeOverride(edgeId, explicit)
                 .build();
         final Visualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(null, null, network,
@@ -132,8 +139,10 @@ class VisualizerTest {
                 VisualEdgeKind.LOCAL, 1.0D, Set.of(), VisualEdgeRole.UNDIRECTED_LOCAL);
 
         assertAll(
-                () -> assertInstanceOf(MovingPointShape.class, shape(resolver.resolveParticleEdge(roleEdge).effect()),
-                        "Guided particle edges should use moving edge designs"),
+                () -> assertSame(roleDesign, resolver.resolveParticleEdge(roleEdge),
+                        "Guided particle edges should use configured profile role designs"),
+                () -> assertInstanceOf(LineShape.class, shape(resolver.resolveParticleEdge(roleEdge).effect()),
+                        "Configured line role design should not be forced into moving-point styling"),
                 () -> assertSame(explicit, resolver.resolveParticleEdge(explicitEdge),
                         "Explicit guided particle edge override should be preserved"),
                 () -> assertInstanceOf(LineShape.class, shape(resolver.resolveParticleEdge(explicitEdge).effect()),
