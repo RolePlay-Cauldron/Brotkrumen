@@ -65,6 +65,6 @@ public class PathVisualGraphSource implements VisualGraphSource {
     }
 
     private VisualNode pathNode(final VisualNode node) {
-        return new VisualNode(node.id(), node.ref(), node.node(), pathRoles.getOrDefault(node.ref(), VisualNodeRole.DEFAULT));
+        return new VisualNode(node.visualNodeId(), node.ref(), node.node(), pathRoles.getOrDefault(node.ref(), VisualNodeRole.DEFAULT));
     }
 }

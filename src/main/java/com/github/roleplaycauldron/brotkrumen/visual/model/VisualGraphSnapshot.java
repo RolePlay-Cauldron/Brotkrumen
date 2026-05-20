@@ -34,10 +34,10 @@ public record VisualGraphSnapshot(Collection<VisualNode> nodes, Collection<Visua
     /**
      * Creates an immutable visual graph snapshot and derives its node index from its node collection.
      *
-     * @param edges
-     * @param nodes
-     * @param nodesByRef
-     * @param version
+     * @param nodes      visual nodes to expose
+     * @param edges      visual edges to expose
+     * @param version    source version represented by the snapshot
+     * @param nodesByRef node index that must match the supplied node collection
      */
     public VisualGraphSnapshot {
         nodes = List.copyOf(nodes);
@@ -48,6 +48,12 @@ public record VisualGraphSnapshot(Collection<VisualNode> nodes, Collection<Visua
         }
     }
 
+    /**
+     * Builds a node-reference index for the supplied visual nodes.
+     *
+     * @param nodes visual nodes to index
+     * @return immutable node index
+     */
     private static Map<NodeRef, VisualNode> nodeIndex(final Collection<VisualNode> nodes) {
         return nodes.stream().collect(Collectors.toUnmodifiableMap(VisualNode::ref, Function.identity()));
     }
