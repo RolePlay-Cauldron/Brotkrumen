@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * The class representing a graph. It includes the creation of Edges between nodes.
  */
-@SuppressWarnings({"PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class Graph {
     private final int graphId;
 
@@ -65,7 +65,8 @@ public class Graph {
         this.graphId = graphId;
         this.name = name;
         this.nodes = new HashMap<>(nodes);
-        this.adj = new HashMap<>(adjacency);
+        this.adj = adjacency.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> new ArrayList<>(entry.getValue())));
         this.edgesById = new HashMap<>();
         this.modCount = 0L;
 
@@ -350,5 +351,25 @@ public class Graph {
      */
     public long getModCount() {
         return modCount;
+    }
+
+    /**
+     * Creates a detached copy of this graph.
+     *
+     * @return copied graph preserving persistent ids and graph-local UUIDs
+     */
+    public Graph copy() {
+        final Map<UUID, Node> copiedNodes = nodes.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    final Node node = entry.getValue();
+                    return new Node(node.dbId(), node.graphId(), node.x(), node.y(), node.z(), node.worldId(), node.flags());
+                }));
+
+        final Map<UUID, List<Edge>> copiedAdjacency = adj.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
+                        .map(edge -> new Edge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), edge.flags()))
+                        .toList()));
+
+        return new Graph(graphId, name, copiedNodes, copiedAdjacency);
     }
 }

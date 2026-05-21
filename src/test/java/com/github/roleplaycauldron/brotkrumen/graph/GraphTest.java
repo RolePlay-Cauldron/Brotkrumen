@@ -200,4 +200,25 @@ class GraphTest {
         assertNull(graph.getEdgeById(edge.edgeId()), "Incoming edge should be removed from id index");
         assertTrue(graph.neighbors(nodeOne.graphId()).isEmpty(), "Incoming edge should be removed from source adjacency");
     }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void copyPreservesIdsAndCanBeMutatedIndependently() {
+        final Graph graph = new Graph(7, "Original");
+        final Node nodeOne = graph.addNode(new Node(uuidOne, 2, 3, 4, null));
+        final Node nodeTwo = graph.addNode(new Node(uuidTwo, 3, 4, 5, null));
+        final Edge edge = graph.addDirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
+
+        final Graph copy = graph.copy();
+        copy.setName("Changed");
+        copy.removeEdge(copy.getEdgeById(edge.edgeId()));
+
+        assertEquals(7, copy.getGraphId(), "Copy should preserve graph id");
+        assertEquals("Original", graph.getName(), "Original graph name should be unchanged");
+        assertEquals("Changed", copy.getName(), "Copy graph name should change independently");
+        assertNotNull(graph.getEdgeById(edge.edgeId()), "Original graph edge should be unchanged");
+        assertNull(copy.getEdgeById(edge.edgeId()), "Copy graph edge should be removed independently");
+        assertNotSame(graph.getNodeById(nodeOne.graphId()), copy.getNodeById(nodeOne.graphId()),
+                "Copy should contain detached node instances");
+    }
 }

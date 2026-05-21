@@ -27,9 +27,7 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
-import org.bukkit.command.CommandMap;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
-import org.bukkit.command.CommandMap;
 import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.MorphPointStrategies;
@@ -118,10 +116,9 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         this.executor = new EffectExecutor(this);
 
         getServer().getPluginManager().registerEvents(this, this);
-        this.editorService = new EditorService(reg, this, loggerFactory);
+        this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService);
         new CoordinatesCommand(this);
-        final CommandMap commandMap = getServer().getCommandMap();
-        commandMap.register("bkeditor", new EditorCommand(editorService, graphService));
+        new EditorCommand(this, editorService, graphService);
 
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);

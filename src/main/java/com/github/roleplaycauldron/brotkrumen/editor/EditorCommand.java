@@ -1,75 +1,146 @@
 package com.github.roleplaycauldron.brotkrumen.editor;
 
-import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
+/**
+ * Brigadier command registration for graph editor operations.
+ */
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.CommentRequired", "PMD.AvoidDuplicateLiterals"})
+public class EditorCommand {
 
-public class EditorCommand extends Command {
+    private static final String DEFAULT_NODE_DISTANCE_CONFIG = "editor.defaultNodeDistance";
+
+    private static final int FALLBACK_NODE_DISTANCE = 10;
 
     private final EditorService editorService;
 
     private final GraphService graphService;
 
-    public EditorCommand(EditorService editorService, GraphService graphService) {
-        super("bkeditor");
+    private final JavaPlugin plugin;
+
+    public EditorCommand(final JavaPlugin plugin, final EditorService editorService, final GraphService graphService) {
+        this.plugin = plugin;
         this.editorService = editorService;
         this.graphService = graphService;
+
+        plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar()
+                .register(commandTree(), "Graph editor commands"));
     }
 
-    @Override
-    public @NotNull List<String> tabComplete(@NotNull final CommandSender sender,
-                                             @NotNull final String alias,
-                                             @NonNull final @NotNull String[] args) throws IllegalArgumentException {
-        if (args.length < 2) {
-            return List.of("create", "finish");
-        }
-        return List.of();
+    private LiteralCommandNode<CommandSourceStack> commandTree() {
+        return Commands.literal("bkeditor")
+                .then(Commands.literal("create")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(this::createWithDefaultDistance)
+                                .then(Commands.argument("nodeDistance", IntegerArgumentType.integer(1))
+                                        .executes(this::createWithCommandDistance))))
+                .then(Commands.literal("edit")
+                        .then(Commands.argument("graphName", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    graphService.getAllGraphs().forEach(graph -> builder.suggest(graph.getName()));
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::editWithDefaultDistance)
+                                .then(Commands.argument("nodeDistance", IntegerArgumentType.integer(1))
+                                        .executes(this::editWithCommandDistance))))
+                .then(Commands.literal("rename")
+                        .then(Commands.argument("newName", StringArgumentType.word())
+                                .executes(this::rename)))
+                .then(Commands.literal("finish")
+                        .executes(this::finish))
+                .then(Commands.literal("cancel")
+                        .executes(this::cancel))
+                .build();
     }
 
-    @Override
-    public boolean execute(@NotNull final CommandSender sender,
-                           @NotNull final String commandLabel,
-                           @NonNull final @NotNull String[] args) {
-        if (!(sender instanceof final Player player)) {
-            return false;
+    private int createWithDefaultDistance(final CommandContext<CommandSourceStack> context) {
+        return create(context, configuredDefaultNodeDistance());
+    }
+
+    private int createWithCommandDistance(final CommandContext<CommandSourceStack> context) {
+        return create(context, IntegerArgumentType.getInteger(context, "nodeDistance"));
+    }
+
+    private int create(final CommandContext<CommandSourceStack> context, final int nodeDistance) {
+        final Player player = player(context);
+        if (player == null) {
+            return 0;
         }
 
-        final String subCmd = args[0];
+        return send(player, editorService.startGraphCreation(player.getUniqueId(),
+                StringArgumentType.getString(context, "name"), nodeDistance));
+    }
 
-        if (subCmd.equalsIgnoreCase("create")) {
-            if (args.length < 2) {
-                player.sendMessage("Please specify a graph name and optionally a node distance");
-                return false;
-            }
+    private int editWithDefaultDistance(final CommandContext<CommandSourceStack> context) {
+        return edit(context, configuredDefaultNodeDistance());
+    }
 
-            // ToDo Checken ob der Graph bereits existiert in der DB (oder nem Cache, wenn wir einen machen?)
+    private int editWithCommandDistance(final CommandContext<CommandSourceStack> context) {
+        return edit(context, IntegerArgumentType.getInteger(context, "nodeDistance"));
+    }
 
-            final String graphName = args[1];
-            final String nodeDistance = args.length >= 3 ? args[2] : null;
-            final int nodeDistanceInt = NumberUtils.toInt(nodeDistance, 10);
-            editorService.startGraphCreation(player.getUniqueId(), graphName, nodeDistanceInt);
-            player.sendMessage("We will trace your steps now and create graph " + graphName + "!");
-            return true;
+    private int edit(final CommandContext<CommandSourceStack> context, final int nodeDistance) {
+        final Player player = player(context);
+        if (player == null) {
+            return 0;
         }
 
-        if (subCmd.equalsIgnoreCase("finish")) {
-            editorService.finishRouteCreation(player.getUniqueId());
-            player.sendMessage("Route creation finished");
-            return true;
+        return send(player, editorService.startGraphEdit(player.getUniqueId(),
+                StringArgumentType.getString(context, "graphName"), nodeDistance));
+    }
+
+    private int rename(final CommandContext<CommandSourceStack> context) {
+        final Player player = player(context);
+        if (player == null) {
+            return 0;
         }
 
-        if (subCmd.equalsIgnoreCase("edit")) {
-            player.sendMessage("Jibbet noch nicht");
-            // ToDo: Mehrere Modes / Tools needed -> Fortführen des Creators übers Laufen,
-            //   Anpassen von Edge-Flags, Custom Edges Setzen (maybe mit nem Tool das commands ausführt oder so)
+        return send(player, editorService.renameActiveGraph(player.getUniqueId(),
+                StringArgumentType.getString(context, "newName")));
+    }
+
+    private int finish(final CommandContext<CommandSourceStack> context) {
+        final Player player = player(context);
+        if (player == null) {
+            return 0;
         }
-        return false;
+
+        return send(player, editorService.finishRouteCreation(player.getUniqueId()));
+    }
+
+    private int cancel(final CommandContext<CommandSourceStack> context) {
+        final Player player = player(context);
+        if (player == null) {
+            return 0;
+        }
+
+        return send(player, editorService.cancel(player.getUniqueId()));
+    }
+
+    private Player player(final CommandContext<CommandSourceStack> context) {
+        if (context.getSource().getSender() instanceof final Player player) {
+            return player;
+        }
+        context.getSource().getSender().sendMessage("Only players can use the graph editor.");
+        return null;
+    }
+
+    private int send(final Player player, final EditorService.EditorResult result) {
+        player.sendMessage(result.message());
+        return result.success() ? Command.SINGLE_SUCCESS : 0;
+    }
+
+    private int configuredDefaultNodeDistance() {
+        return Math.max(1, plugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG, FALLBACK_NODE_DISTANCE));
     }
 }

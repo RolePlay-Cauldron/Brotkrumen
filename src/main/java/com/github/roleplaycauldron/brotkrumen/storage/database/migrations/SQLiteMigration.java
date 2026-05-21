@@ -35,7 +35,7 @@ public final class SQLiteMigration {
                 .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_graph` ("
                                 + "`id` INTEGER PRIMARY KEY AUTOINCREMENT, "
-                                + "`name` TEXT NOT NULL"
+                                + "`name` TEXT NOT NULL UNIQUE"
                                 + ")"
                 )
                 .addFirstStartupQuery(
@@ -109,11 +109,6 @@ public final class SQLiteMigration {
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
                                 + ")"
-                )
-                .finishVersion()
-                .version(2)
-                .addUnconditionalQuery(
-                        "ALTER TABLE `" + tablePrefix + "_node` ADD COLUMN `flags` TEXT NOT NULL DEFAULT ''"
                 )
                 .finishVersion().finish();
     }

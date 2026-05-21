@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.storage.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.EdgeTable;
 import com.github.roleplaycauldron.brotkrumen.storage.database.table.GraphTable;
@@ -43,22 +44,33 @@ public class GraphServiceImpl implements GraphService {
         this.graphTable = new GraphTable(storage.getTablePrefix() + "_graph", edgeTable, nodeTable);
     }
 
+    /* default */ GraphServiceImpl(final Storage storage, final GraphTable graphTable) {
+        this.storage = storage;
+        this.graphCache = new BiKeyLoadingCache<>(Graph::getGraphId,
+                this::loadGraphById,
+                Graph::getName,
+                this::loadGraphByName);
+        this.graphTable = graphTable;
+    }
+
     @Override
     public Optional<Graph> getGraphById(final int graphId) {
-        return graphCache.getByFirstKey(graphId);
+        return graphCache.getByFirstKey(graphId).map(Graph::copy);
     }
 
     @Override
     public Optional<Graph> getGraphByName(final String name) {
-        return graphCache.getBySecondKey(name);
+        return graphCache.getBySecondKey(name).map(Graph::copy);
     }
 
     @Override
     public Set<Graph> getAllGraphs() {
         if (graphCache.size() == 0) {
-            return loadAllGraphsToCache();
+            loadAllGraphsToCache();
         }
-        return new HashSet<>(graphCache.getAll());
+        return graphCache.getAll().stream()
+                .map(Graph::copy)
+                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
     }
 
     private Set<Graph> loadAllGraphsToCache() {
@@ -69,8 +81,11 @@ public class GraphServiceImpl implements GraphService {
 
     @Override
     public void saveGraph(final Graph graph) {
+        if (graphTable.isNameUsedByOtherGraph(storage.getProvider(), graph.getName(), graph.getGraphId())) {
+            throw new StorageException("A graph with the name '" + graph.getName() + "' already exists");
+        }
         graphTable.saveGraph(storage.getProvider(), graph);
-        graphCache.put(graph);
+        invalidateCache();
     }
 
     @Override

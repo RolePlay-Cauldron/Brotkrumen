@@ -78,3 +78,12 @@ visualizer:
   # Extends the base view distance, in blocks, so graph elements stay active beyond the immediate view range.
   # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
   spawnDistanceBuffer: 16.0
+
+############
+#  Editor  #
+############
+
+editor:
+
+  # Default distance, in blocks, between automatically created editor nodes.
+  defaultNodeDistance: 10

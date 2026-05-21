@@ -33,7 +33,8 @@ public final class MySQLMigration {
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_graph` ("
                                 + "`id` INT NOT NULL AUTO_INCREMENT, "
                                 + "`name` VARCHAR(255) NOT NULL, "
-                                + "PRIMARY KEY (`id`)"
+                                + "PRIMARY KEY (`id`), "
+                                + "UNIQUE KEY `uk_" + tablePrefix + "_graph_name` (`name`)"
                                 + ")"
                 )
                 .addFirstStartupQuery(
@@ -105,11 +106,6 @@ public final class MySQLMigration {
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
                                 + ")"
-                )
-                .finishVersion()
-                .version(2)
-                .addUnconditionalQuery(
-                        "ALTER TABLE `" + tablePrefix + "_node` ADD COLUMN `flags` TEXT NOT NULL DEFAULT ''"
                 )
                 .finishVersion().finish();
     }
