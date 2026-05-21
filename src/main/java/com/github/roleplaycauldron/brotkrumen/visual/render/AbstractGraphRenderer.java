@@ -140,8 +140,8 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         });
 
         for (final VisualNode node : snapshot.nodes()) {
-            if (visibleNodeIds.contains(node.id())) {
-                activeNodes.compute(node.id(), (id, handle) -> handle == null || updateExisting
+            if (visibleNodeIds.contains(node.visualNodeId())) {
+                activeNodes.compute(node.visualNodeId(), (id, handle) -> handle == null || updateExisting
                         ? updateNode(handle, node, designs, player)
                         : handle);
             }
@@ -158,10 +158,10 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     /**
      * Creates or updates the rendered representation of a visible node.
      *
-     * @param handle existing renderer-specific node handle, or {@code null} when none exists yet
-     * @param node   visual node to render
+     * @param handle  existing renderer-specific node handle, or {@code null} when none exists yet
+     * @param node    visual node to render
      * @param designs resolver for renderer-specific designs
-     * @param player viewer that should see the rendered node
+     * @param player  viewer that should see the rendered node
      * @return active node handle to keep for future reconciliation
      */
     protected abstract N updateNode(N handle, VisualNode node, GraphDesignResolver designs, Player player);
@@ -202,7 +202,7 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
                 continue;
             }
             if (nodeDistanceSquared(location, node) <= radiusSq) {
-                result.add(node.id());
+                result.add(node.visualNodeId());
             }
         }
         return result;
@@ -212,7 +212,7 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
                                              final GraphDesignResolver designs) {
         final Set<NodeRef> visibleRefs = new HashSet<>();
         for (final VisualNode node : snapshot.nodes()) {
-            if (visibleNodeIds.contains(node.id())) {
+            if (visibleNodeIds.contains(node.visualNodeId())) {
                 visibleRefs.add(node.ref());
             }
         }

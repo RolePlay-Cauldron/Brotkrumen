@@ -44,19 +44,19 @@
     <dependency>
       <groupId>com.github.roleplay-cauldron</groupId>
       <artifactId>spellbook-core</artifactId>
-      <version>0.0.9-alpha</version>
+      <version>0.0.10-alpha</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.github.roleplay-cauldron</groupId>
       <artifactId>spellbook-database</artifactId>
-      <version>0.0.9-alpha</version>
+      <version>0.0.10-alpha</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.github.roleplay-cauldron</groupId>
       <artifactId>spellbook-effect</artifactId>
-      <version>0.0.9-alpha</version>
+      <version>0.0.10-alpha</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

@@ -124,6 +124,9 @@ class ProfileGraphDesignResolverTest {
                 "Preset should include directed inter-graph edge design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
                 "Preset should include undirected inter-graph edge design");
+        assertNotEquals(BlockDisplayDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL).blockMaterial(),
+                BlockDisplayDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL).blockMaterial(),
+                "Block-display directed and undirected edge roles should be visually distinct");
         assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.DEFAULT).effect(),
                 "Particle node presets should expose EffectInstance data");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DEFAULT_LOCAL).effect(),

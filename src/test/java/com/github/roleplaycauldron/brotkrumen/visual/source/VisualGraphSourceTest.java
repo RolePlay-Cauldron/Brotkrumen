@@ -23,6 +23,7 @@ import org.bukkit.configuration.MemoryConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -100,6 +101,46 @@ class VisualGraphSourceTest {
 
     @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void snapshotReusesImmutableNodeReferenceLookup() {
+        final UUID first = UUID.randomUUID();
+        final NodeRef firstRef = new NodeRef(1, first);
+        final VisualNode firstNode = new VisualNode(null, firstRef, new Node(first, 0, 0, 0, null));
+        final VisualGraphSnapshot snapshot = new VisualGraphSnapshot(new java.util.ArrayList<>(List.of(firstNode)),
+                new java.util.ArrayList<>(), 1L);
+
+        final Map<NodeRef, VisualNode> firstLookup = snapshot.nodesByRef();
+        final Map<NodeRef, VisualNode> secondLookup = snapshot.nodesByRef();
+
+        assertSame(firstLookup, secondLookup, "Snapshot should return the same precomputed node lookup");
+        assertSame(firstNode, firstLookup.get(firstRef), "Lookup should contain nodes from the snapshot");
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.nodes().clear(),
+                "Snapshot node collection should be immutable");
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.edges().clear(),
+                "Snapshot edge collection should be immutable");
+        assertThrows(UnsupportedOperationException.class, firstLookup::clear,
+                "Snapshot node lookup should be immutable");
+    }
+
+    @Test
+    void newSnapshotExposesUpdatedNodeReferenceLookup() {
+        final Graph graph = new Graph(4, "Lookup Mutable");
+        final UUID first = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        final SingleGraphVisualSource source = new SingleGraphVisualSource(graph);
+        final VisualGraphSnapshot before = source.snapshot();
+        final UUID second = UUID.randomUUID();
+
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        final VisualGraphSnapshot after = source.snapshot();
+
+        assertFalse(before.nodesByRef().containsKey(new NodeRef(4, second)),
+                "Old snapshot lookup should remain tied to old snapshot contents");
+        assertTrue(after.nodesByRef().containsKey(new NodeRef(4, second)),
+                "New snapshot lookup should include newly emitted nodes");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void singleGraphSourceDerivesTeleportRoles() {
         final Graph graph = new Graph(1, "Teleport Roles");
         final UUID first = UUID.randomUUID();
@@ -164,6 +205,10 @@ class VisualGraphSourceTest {
                 "Directed inter-graph edges should derive directed inter-graph visual role");
         assertTrue(networkSnapshot.edges().stream().anyMatch(edge -> edge.role() == VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
                 "Undirected inter-graph edges should derive undirected inter-graph visual role");
+        assertEquals(VisualEdgeRole.TELEPORT,
+                VisualEdgeRoles.derive(VisualEdgeKind.INTER_GRAPH, Set.of(EdgeFlag.TELEPORT, EdgeFlag.INTER_GRAPH,
+                        EdgeFlag.DIRECTED)),
+                "Teleport should win for intergraph teleport role derivation");
     }
 
     @Test
@@ -235,7 +280,43 @@ class VisualGraphSourceTest {
         assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(snapshot, new NodeRef(2, target)),
                 "Intergraph target should be classified");
         assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.kind() == VisualEdgeKind.INTER_GRAPH
-                && edge.role() == VisualEdgeRole.DIRECTED_INTER_GRAPH), "Intergraph teleport edge body keeps intergraph role");
+                && edge.role() == VisualEdgeRole.TELEPORT), "Intergraph teleport edge should use teleport role");
+    }
+
+    @Test
+    void visualSourcesCanonicalizeUndirectedRelationships() {
+        final Graph graph = new Graph(1, "Canonical Local");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addUndirectedEdge(first, second, 1.0D);
+
+        final VisualGraphSnapshot snapshot = new SingleGraphVisualSource(graph).snapshot();
+
+        assertEquals(1, snapshot.edges().size(), "Undirected local relationship should appear once");
+        assertEquals(VisualEdgeRole.UNDIRECTED_LOCAL, snapshot.edges().iterator().next().role(),
+                "Canonical edge should keep undirected role");
+    }
+
+    @Test
+    void networkSourceCanonicalizesUndirectedIntergraphRelationships() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        graphOne.addNode(new Node(first, 0, 0, 0, null));
+        graphTwo.addNode(new Node(second, 1, 0, 0, null));
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addUndirectedInterGraphEdge(new NodeRef(1, first), new NodeRef(2, second), 1.0D);
+
+        final VisualGraphSnapshot snapshot = new GraphNetworkVisualSource(network).snapshot();
+
+        assertEquals(1, snapshot.edges().size(), "Undirected intergraph relationship should appear once");
+        assertEquals(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, snapshot.edges().iterator().next().role(),
+                "Canonical intergraph edge should keep undirected role");
     }
 
     @Test
@@ -413,6 +494,38 @@ class VisualGraphSourceTest {
         assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, secondRef),
                 "Warp role should win for a node that is also an intergraph teleport endpoint");
         assertEquals(VisualNodeRole.WARP, nodeRole(snapshot, thirdRef), "Warp target should be marked");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void pathAndGuidedSourcesShareTraversalRolePrecedence() {
+        final Graph graph = new Graph(1, "Shared Roles");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
+        final NodeRef thirdRef = new NodeRef(1, third);
+        final PathResult result = new PathResult(List.of(firstRef, secondRef, thirdRef),
+                List.of(new PathSegment(firstRef, secondRef, TraversalKind.INTERGRAPH_TELEPORT, null, null),
+                        new PathSegment(secondRef, thirdRef, TraversalKind.WARP, null, "target")));
+
+        final VisualGraphSnapshot pathSnapshot = new PathVisualGraphSource(new SingleGraphVisualSource(graph), result)
+                .snapshot();
+        final VisualGraphSnapshot guidedSnapshot = new GuidedPathVisualGraphSource(new SingleGraphVisualSource(graph),
+                result, () -> null, new GuidedPathOptions(4, 4.0D, 0)).snapshot();
+
+        assertEquals(nodeRole(pathSnapshot, firstRef), nodeRole(guidedSnapshot, firstRef),
+                "Path and guided path should agree on first segment role");
+        assertEquals(nodeRole(pathSnapshot, secondRef), nodeRole(guidedSnapshot, secondRef),
+                "Path and guided path should share precedence for overlapping roles");
+        assertEquals(nodeRole(pathSnapshot, thirdRef), nodeRole(guidedSnapshot, thirdRef),
+                "Path and guided path should agree on warp target role");
     }
 
     private PathFixture pathFixture() {

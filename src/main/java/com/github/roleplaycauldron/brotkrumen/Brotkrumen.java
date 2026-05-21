@@ -14,15 +14,25 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
-import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
+import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
+import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
+import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.MorphPointStrategies;
+import com.github.roleplaycauldron.spellbook.effect.shape.MorphShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
+import com.github.roleplaycauldron.spellbook.effect.shape.SphereShape;
+import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
+import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -198,6 +208,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     @EventHandler
     public void playerJoin(final PlayerJoinEvent event) {
         registerVisualizerTest(event.getPlayer());
+        shapeTest(event.getPlayer());
     }
 
     @EventHandler
@@ -205,8 +216,35 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         reg.unregister(event.getPlayer().getUniqueId());
     }
 
+    private void shapeTest(final Player player) {
+        final Shape sphere = new SphereShape(2, 60);
+        final Shape cube = new CubeShape(2, 8);
+//        final Shape helixShape = new HelixShape(2, 40, 2.0f, 5, 4.0f, 0.1f);
+//        final Shape spiralHelixShape = new SpiralHelixShape(2, 40, 2.0f, 5, 4.0f, 0.1f);
+
+        final Shape morph = MorphShape.between(sphere, cube)
+                .afterSeconds(5, 3)
+                .strategy(MorphPointStrategies.resampleToMax())
+                .build();
+
+        final var effect = EffectBuilder.create()
+                .shape(morph)
+                .particle(Particle.END_ROD)
+                .build();
+
+        // Konfiguration für die permanente Ausführung
+        final EffectExecutionConfig config = EffectExecutionConfig.builder()
+                .originAnchor(new FixedAnchor(player.getLocation()))
+                .viewerSource(new FixedViewerSource(Collections.singletonList(player)))
+                .periodTicks(2) // Alle 2 Ticks ausführen (10x pro Sekunde)
+                .maxRuns(-1)    // Permanent ausführen
+                .build();
+
+        executor.start(effect, config);
+    }
+
     private void registerVisualizerTest(final Player player) {
-        //        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGraph(
+        //        final Visualizer visualizer = GraphVisualizerFactory.particleGraph(
 //                this,
 //                loggerFactory,
 //                graphTwo,
@@ -214,16 +252,16 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                executor
 //        );
 
-//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleNetwork(
-//                this,
-//                loggerFactory,
-//                visualizerTestNetwork,
-//                player.getUniqueId(),
-//                executor,
-//                visualizerTestProfile
-//        );
+        final Visualizer visualizer = GraphVisualizerFactory.particleNetwork(
+                this,
+                loggerFactory,
+                visualizerTestNetwork,
+                player.getUniqueId(),
+                executor,
+                visualizerTestProfile
+        );
 
-//        final GraphVisualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
+//        final Visualizer visualizer = GraphVisualizerFactory.particleGuidedNetworkPath(
 //                this,
 //                loggerFactory,
 //                visualizerTestNetwork,
@@ -233,14 +271,13 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 //                visualizerTestProfile
 //        );
 
-        final GraphVisualizer visualizer = GraphVisualizerFactory.blockDisplayGuidedNetworkPath(
-                this,
-                loggerFactory,
-                visualizerTestNetwork,
-                pathResult,
-                player.getUniqueId(),
-                visualizerTestProfile
-        );
+//        final Visualizer visualizer = GraphVisualizerFactory.blockDisplayNetwork(
+//                this,
+//                loggerFactory,
+//                visualizerTestNetwork,
+//                player.getUniqueId(),
+//                visualizerTestProfile
+//        );
         reg.register(player.getUniqueId(), visualizer);
     }
 
