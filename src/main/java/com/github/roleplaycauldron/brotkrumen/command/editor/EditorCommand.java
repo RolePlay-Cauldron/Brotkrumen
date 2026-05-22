@@ -1,9 +1,6 @@
-package com.github.roleplaycauldron.brotkrumen.editor;
+package com.github.roleplaycauldron.brotkrumen.command.editor;
 
-import com.github.roleplaycauldron.brotkrumen.editor.command.EditorCommandContext;
-import com.github.roleplaycauldron.brotkrumen.editor.command.EditorPlacementSubcommands;
-import com.github.roleplaycauldron.brotkrumen.editor.command.EditorSessionSubcommands;
-import com.github.roleplaycauldron.brotkrumen.editor.command.EditorSettingsSubcommands;
+import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;

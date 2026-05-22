@@ -1,7 +1,8 @@
 package com.github.roleplaycauldron.brotkrumen;
 
-import com.github.roleplaycauldron.brotkrumen.editor.EditorCommand;
+import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
+import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
 import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
@@ -117,6 +118,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         getServer().getPluginManager().registerEvents(this, this);
         this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService);
+        new EditorWaitingActionBarReminder(editorService).start(this);
         new CoordinatesCommand(this);
         new EditorCommand(this, editorService, graphService);
 

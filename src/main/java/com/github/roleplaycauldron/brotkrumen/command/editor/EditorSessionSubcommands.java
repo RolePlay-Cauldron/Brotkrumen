@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.editor.command;
+package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;

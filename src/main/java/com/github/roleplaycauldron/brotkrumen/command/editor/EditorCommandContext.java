@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.editor.command;
+package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;

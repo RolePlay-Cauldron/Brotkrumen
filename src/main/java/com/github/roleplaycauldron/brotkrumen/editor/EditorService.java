@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * State manager for editor mode.
  */
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.CommentRequired", "PMD.AvoidDuplicateLiterals",
-        "PMD.CyclomaticComplexity"})
+        "PMD.CyclomaticComplexity", "PMD.CouplingBetweenObjects"})
 public class EditorService {
 
     private static final double EDIT_NODE_SELECTION_RADIUS = 1.5D;
@@ -68,6 +68,11 @@ public class EditorService {
 
     public static Set<String> supportedPresets() {
         return SUPPORTED_PRESETS;
+    }
+
+    /* default */
+    static String waitingAnchorActionBarMessage() {
+        return WAITING_FOR_ANCHOR_ACTION_BAR;
     }
 
     public EditorResult startGraphCreation(final UUID playerId, final String graphName, final EditorSettings settings) {
@@ -267,6 +272,21 @@ public class EditorService {
      */
     public boolean isEditing(final UUID playerId) {
         return this.playerEditors.containsKey(playerId);
+    }
+
+    /**
+     * Returns whether an active editor session is waiting for a node append anchor.
+     *
+     * @param playerId editor player id
+     * @return true if the editor session should receive waiting guidance
+     */
+    public boolean isWaitingForAppendAnchor(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        return session != null && session.placementMode == PlacementMode.WAITING_FOR_ANCHOR;
+    }
+
+    /* default */ UUID[] editorPlayerIds() {
+        return playerEditors.keySet().toArray(UUID[]::new);
     }
 
     public EditorResult continuePlacement(final UUID playerId) {
