@@ -102,6 +102,17 @@ public final class MySQLMigration {
                                 + ")"
                 )
                 .addFirstStartupQuery(
+                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_warp` ("
+                                + "`warp_key` VARCHAR(255) NOT NULL, "
+                                + "`target_node_id` CHAR(36) NOT NULL, "
+                                + "`cost` DOUBLE NOT NULL, "
+                                + "`enabled` BOOLEAN NOT NULL DEFAULT TRUE, "
+                                + "`need_permission` BOOLEAN NOT NULL DEFAULT TRUE, "
+                                + "PRIMARY KEY (`warp_key`), "
+                                + "KEY `idx_" + tablePrefix + "_warp_target_node_id` (`target_node_id`)"
+                                + ")"
+                )
+                .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_version` ("
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"

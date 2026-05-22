@@ -139,6 +139,21 @@ public class Graph {
     }
 
     /**
+     * Replaces a node while preserving its graph-local identity and edges.
+     *
+     * @param node node with updated metadata
+     * @return updated node
+     */
+    public Node updateNode(final Node node) {
+        if (node == null || node.graphId() == null || !nodes.containsKey(node.graphId())) {
+            throw new IllegalArgumentException("Cannot update unknown node");
+        }
+        nodes.put(node.graphId(), node);
+        modCount++;
+        return node;
+    }
+
+    /**
      * Get all nodes in the graph.
      *
      * @return a {@link Collection} of all {@link Node}s in the graph

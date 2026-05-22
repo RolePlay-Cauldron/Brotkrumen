@@ -18,6 +18,8 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
@@ -31,10 +33,10 @@ import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConf
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
-import com.github.roleplaycauldron.spellbook.effect.shape.MorphPointStrategies;
-import com.github.roleplaycauldron.spellbook.effect.shape.MorphShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import com.github.roleplaycauldron.spellbook.effect.shape.SphereShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.morph.MorphPointStrategies;
+import com.github.roleplaycauldron.spellbook.effect.shape.morph.MorphShape;
 import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
@@ -78,6 +80,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private GraphServiceImpl graphService;
 
+    private WarpServiceImpl warpService;
+
     /**
      * Default constructor.
      */
@@ -102,10 +106,12 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
+        warpService = new WarpServiceImpl(storage);
         final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
         servicesManager.register(GraphNetworkService.class, graphNetworkService, this, ServicePriority.Normal);
+        servicesManager.register(WarpService.class, warpService, this, ServicePriority.Normal);
 
         log.info("Brotkrumen enabled");
 
@@ -117,7 +123,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         this.executor = new EffectExecutor(this);
 
         getServer().getPluginManager().registerEvents(this, this);
-        this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService);
+        this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService, warpService);
         new EditorWaitingActionBarReminder(editorService).start(this);
         new CoordinatesCommand(this);
         new EditorCommand(this, editorService, graphService);

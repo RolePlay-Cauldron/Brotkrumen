@@ -105,6 +105,19 @@ public final class SQLiteMigration {
                                 + "ON `" + tablePrefix + "_inter_graph_edge` (`target_graph_id`)"
                 )
                 .addFirstStartupQuery(
+                        "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_warp` ("
+                                + "`warp_key` TEXT NOT NULL PRIMARY KEY, "
+                                + "`target_node_id` CHAR(36) NOT NULL, "
+                                + "`cost` DOUBLE NOT NULL, "
+                                + "`enabled` INTEGER NOT NULL DEFAULT 1, "
+                                + "`need_permission` INTEGER NOT NULL DEFAULT 1"
+                                + ")"
+                )
+                .addFirstStartupQuery(
+                        "CREATE INDEX IF NOT EXISTS `idx_" + tablePrefix + "_warp_target_node_id` "
+                                + "ON `" + tablePrefix + "_warp` (`target_node_id`)"
+                )
+                .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_version` ("
                                 + " `version_no` INTEGER NOT NULL,"
                                 + " `applied_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"

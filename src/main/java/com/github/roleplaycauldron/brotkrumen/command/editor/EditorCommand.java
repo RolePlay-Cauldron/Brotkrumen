@@ -35,6 +35,9 @@ public class EditorCommand {
                 .then(EditorPlacementSubcommands.continuePlacement(commandContext))
                 .then(EditorPlacementSubcommands.undo(commandContext))
                 .then(EditorSettingsSubcommands.settings(commandContext))
+                .then(EditorSelectionSubcommands.select(commandContext))
+                .then(EditorSelectionSubcommands.selection(commandContext))
+                .then(EditorWarpSubcommands.warp(commandContext))
                 .build();
     }
 }

@@ -1,18 +1,25 @@
 package com.github.roleplaycauldron.brotkrumen.editor;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bukkit.Location;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
@@ -31,6 +38,8 @@ public class EditorService {
 
     private static final double EDIT_NODE_SELECTION_RADIUS = 1.5D;
 
+    private static final double MIN_WARP_COST = 0.0D;
+
     private static final String WAITING_FOR_ANCHOR_ACTION_BAR =
             "Placement continues after walking through a node. /bkeditor continue also resumes it.";
 
@@ -48,18 +57,25 @@ public class EditorService {
 
     private final GraphService graphService;
 
+    private final WarpService warpService;
+
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
-                         final GraphService graphService) {
+                         final GraphService graphService, final WarpService warpService) {
         this.visualizerRegistry = visualizerRegistry;
         this.plugin = plugin;
         this.loggerFactory = loggerFactory;
         this.effectExecutor = effectExecutor;
         this.graphService = graphService;
+        this.warpService = warpService;
     }
 
     /* default */ EditorService(final GraphService graphService) {
-        this(null, null, null, null, graphService);
+        this(graphService, null);
+    }
+
+    /* default */ EditorService(final GraphService graphService, final WarpService warpService) {
+        this(null, null, null, null, graphService, warpService);
     }
 
     public static boolean isSupportedPreset(final String preset) {
@@ -151,6 +167,111 @@ public class EditorService {
                 .min(Comparator.comparingDouble(node -> distance(node, loc)));
     }
 
+    /**
+     * Selects the closest nearby node without changing placement state.
+     *
+     * @param playerId editor player id
+     * @param loc      selection origin
+     * @return selection result
+     */
+    public EditorResult selectNearbyNode(final UUID playerId, final Location loc) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        return selectExistingNode(session, loc)
+                .map(node -> {
+                    session.selectedNode = node;
+                    session.selectedEdge = null;
+                    return EditorResult.success("Selected node " + node.graphId() + ".");
+                })
+                .orElseGet(() -> EditorResult.failure("No nearby graph node found."));
+    }
+
+    /**
+     * Selects the closest nearby edge without changing placement state.
+     *
+     * @param playerId editor player id
+     * @param loc      selection origin
+     * @return selection result
+     */
+    public EditorResult selectNearbyEdge(final UUID playerId, final Location loc) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        return session.graph.getEdges().stream()
+                .filter(edge -> edgeDistance(session, edge, loc) <= EDIT_NODE_SELECTION_RADIUS)
+                .min(Comparator.comparingDouble(edge -> edgeDistance(session, edge, loc)))
+                .map(edge -> {
+                    session.selectedEdge = edge;
+                    session.selectedNode = null;
+                    return EditorResult.success("Selected edge " + edge.edgeId() + ".");
+                })
+                .orElseGet(() -> EditorResult.failure("No nearby graph edge found."));
+    }
+
+    /**
+     * Reports the selected node or edge.
+     *
+     * @param playerId editor player id
+     * @return inspection result
+     */
+    public EditorResult showSelection(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (session.selectedNode != null) {
+            return EditorResult.success("Selected node " + session.selectedNode.graphId() + ".");
+        }
+        if (session.selectedEdge != null) {
+            return EditorResult.success("Selected edge " + session.selectedEdge.edgeId() + " from "
+                    + session.selectedEdge.source() + " to " + session.selectedEdge.target() + ".");
+        }
+        return EditorResult.failure("No graph element is selected.");
+    }
+
+    /**
+     * Clears the selected graph node or edge without changing placement state.
+     *
+     * @param playerId editor player id
+     * @return clear result
+     */
+    public EditorResult clearSelection(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        session.selectedNode = null;
+        session.selectedEdge = null;
+        return EditorResult.success("Cleared graph selection.");
+    }
+
+    /**
+     * Resolves a teleport destination for the selected graph element.
+     *
+     * @param playerId       editor player id
+     * @param playerLocation current player location, used to keep the selected world instance
+     * @return teleport destination and user-facing result
+     */
+    public SelectionTeleportResult teleportToSelection(final UUID playerId, final Location playerLocation) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return SelectionTeleportResult.failure("You are not editing a graph.");
+        }
+        if (session.selectedNode != null) {
+            return SelectionTeleportResult.success("Teleported to selected node.",
+                    location(playerLocation, session.selectedNode.x(), session.selectedNode.y(), session.selectedNode.z()));
+        }
+        if (session.selectedEdge != null) {
+            final Optional<Location> midpoint = edgeMidpoint(session, session.selectedEdge, playerLocation);
+            return midpoint.map(location -> SelectionTeleportResult.success("Teleported to selected edge.", location))
+                    .orElseGet(() -> SelectionTeleportResult.failure("The selected edge is incomplete."));
+        }
+        return SelectionTeleportResult.failure("No graph element is selected.");
+    }
+
     public EditorResult handleMovement(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -233,6 +354,43 @@ public class EditorService {
         final double deltaY = loc.getY() - node.y();
         final double deltaZ = loc.getZ() - node.z();
         return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+    }
+
+    private double edgeDistance(final EditorSession session, final Edge edge, final Location loc) {
+        final Node source = session.graph.getNodeById(edge.source());
+        final Node target = session.graph.getNodeById(edge.target());
+        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
+            return Double.MAX_VALUE;
+        }
+        final double directionX = target.x() - source.x();
+        final double directionY = target.y() - source.y();
+        final double directionZ = target.z() - source.z();
+        final double lengthSquared = directionX * directionX + directionY * directionY + directionZ * directionZ;
+        final double offset = lengthSquared == 0.0D ? 0.0D
+                : ((loc.getX() - source.x()) * directionX + (loc.getY() - source.y()) * directionY
+                   + (loc.getZ() - source.z()) * directionZ) / lengthSquared;
+        final double pathOffset = Math.max(0.0D, Math.min(1.0D, offset));
+        final double nearestX = source.x() + directionX * pathOffset;
+        final double nearestY = source.y() + directionY * pathOffset;
+        final double nearestZ = source.z() + directionZ * pathOffset;
+        final double deltaX = loc.getX() - nearestX;
+        final double deltaY = loc.getY() - nearestY;
+        final double deltaZ = loc.getZ() - nearestZ;
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+    }
+
+    private Optional<Location> edgeMidpoint(final EditorSession session, final Edge edge, final Location loc) {
+        final Node source = session.graph.getNodeById(edge.source());
+        final Node target = session.graph.getNodeById(edge.target());
+        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
+            return Optional.empty();
+        }
+        return Optional.of(location(loc, (source.x() + target.x()) / 2.0D, (source.y() + target.y()) / 2.0D,
+                (source.z() + target.z()) / 2.0D));
+    }
+
+    private Location location(final Location source, final double targetX, final double targetY, final double targetZ) {
+        return new Location(source.getWorld(), targetX, targetY, targetZ, source.getYaw(), source.getPitch());
     }
 
     public EditorResult finishRouteCreation(final UUID playerId) {
@@ -371,6 +529,200 @@ public class EditorService {
         return EditorResult.success("Placement mode set to " + placementMode.configValue() + ".");
     }
 
+    /**
+     * Creates a default warp targeting the selected node.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @return creation result
+     */
+    public EditorResult createSelectedWarp(final UUID playerId, final String key) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (session.selectedNode == null) {
+            return EditorResult.failure("Select a graph node before creating a selected warp.");
+        }
+        return createWarp(playerId, session, key, session.selectedNode);
+    }
+
+    /**
+     * Creates a default warp targeting a new node at the current player location.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param loc      node location
+     * @return creation result
+     */
+    public EditorResult createWarpHere(final UUID playerId, final String key, final Location loc) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        final Node node = session.graph.addNode(new Node(null, loc));
+        session.selectedNode = node;
+        session.selectedEdge = null;
+        refreshVisualizer(playerId);
+        return createWarp(playerId, session, key, node);
+    }
+
+    private EditorResult createWarp(final UUID playerId, final EditorSession session, final String key,
+                                    final Node target) {
+        final EditorResult check = validateWarp(key);
+        if (!check.success()) {
+            return check;
+        }
+        warpService.saveWarp(new Warp(key, target.graphId(), 1.0D, true, true));
+        session.selectedNode = ensureWarpFlag(session, target);
+        refreshVisualizer(playerId);
+        return EditorResult.success("Created warp " + key + " for node " + target.graphId() + ".");
+    }
+
+    /**
+     * Changes the route cost of a persisted warp.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param cost     new cost
+     * @return update result
+     */
+    public EditorResult updateWarpCost(final UUID playerId, final String key, final double cost) {
+        if (cost < MIN_WARP_COST) {
+            return EditorResult.failure("Warp cost must not be negative.");
+        }
+        return updateWarp(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), cost, warp.enabled(),
+                warp.needPermission()), "cost");
+    }
+
+    /**
+     * Changes the enabled state of a persisted warp.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param enabled  new enabled state
+     * @return update result
+     */
+    public EditorResult updateWarpEnabled(final UUID playerId, final String key, final boolean enabled) {
+        return updateWarp(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), warp.cost(), enabled,
+                warp.needPermission()), "enabled state");
+    }
+
+    /**
+     * Changes the permission requirement of a persisted warp.
+     *
+     * @param playerId       editor player id
+     * @param key            warp key
+     * @param needPermission new permission state
+     * @return update result
+     */
+    public EditorResult updateWarpPermission(final UUID playerId, final String key, final boolean needPermission) {
+        return updateWarp(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), warp.cost(),
+                warp.enabled(), needPermission), "permission requirement");
+    }
+
+    private EditorResult updateWarp(final UUID playerId, final String key,
+                                    final java.util.function.UnaryOperator<Warp> change, final String property) {
+        final EditorResult check = validateWarpOperation(playerId, key);
+        if (!check.success()) {
+            return check;
+        }
+        final Optional<Warp> warp = warpService.getWarp(key);
+        if (warp.isEmpty()) {
+            return EditorResult.failure("No warp with that key exists.");
+        }
+        warpService.saveWarp(change.apply(warp.get()));
+        return EditorResult.success("Updated warp " + key + " " + property + ".");
+    }
+
+    /**
+     * Removes a warp and clears unused target capability metadata.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @return removal result
+     */
+    public EditorResult removeWarp(final UUID playerId, final String key) {
+        final EditorResult check = validateWarpOperation(playerId, key);
+        if (!check.success()) {
+            return check;
+        }
+        final EditorSession session = playerEditors.get(playerId);
+        final Optional<Warp> warp = warpService.getWarp(key);
+        if (warp.isEmpty() || !warpService.removeWarp(key)) {
+            return EditorResult.failure("No warp with that key exists.");
+        }
+        if (warpService.getWarpsTargeting(warp.get().targetNodeId()).isEmpty()) {
+            clearWarpFlag(session, warp.get().targetNodeId());
+            refreshVisualizer(playerId);
+        }
+        return EditorResult.success("Removed warp " + key + ".");
+    }
+
+    /**
+     * Lists warps for the active graph or every managed warp.
+     *
+     * @param playerId editor player id
+     * @param all      whether to include all persisted warps
+     * @return listing result
+     */
+    public EditorResult listWarps(final UUID playerId, final boolean all) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (warpService == null) {
+            return EditorResult.failure("Warp storage is unavailable.");
+        }
+        final Collection<UUID> graphNodeIds = session.graph.getNodes().stream().map(Node::graphId).toList();
+        final Set<Warp> warps = all ? warpService.getManagedWarps() : warpService.getWarpsTargeting(graphNodeIds);
+        if (warps.isEmpty()) {
+            return EditorResult.success(all ? "No persisted warps." : "No warps target the active graph.");
+        }
+        final String scope = all ? "All warps: " : "Active graph warps: ";
+        return EditorResult.success(scope + warps.stream().map(Warp::key).sorted().collect(
+                java.util.stream.Collectors.joining(", ")) + ".");
+    }
+
+    private EditorResult validateWarpOperation(final UUID playerId, final String key) {
+        if (!playerEditors.containsKey(playerId)) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        return validateWarp(key);
+    }
+
+    private EditorResult validateWarp(final String key) {
+        if (warpService == null) {
+            return EditorResult.failure("Warp storage is unavailable.");
+        }
+        return key == null || key.isBlank() ? EditorResult.failure("Please specify a warp key.")
+                : EditorResult.success("");
+    }
+
+    private Node ensureWarpFlag(final EditorSession session, final Node node) {
+        if (node.flags().contains(NodeFlag.WARP)) {
+            return node;
+        }
+        final Set<NodeFlag> flags = node.flags().isEmpty() ? EnumSet.noneOf(NodeFlag.class) : EnumSet.copyOf(node.flags());
+        flags.add(NodeFlag.WARP);
+        return session.graph.updateNode(new Node(node.dbId(), node.graphId(), node.x(), node.y(), node.z(),
+                node.worldId(), flags));
+    }
+
+    private void clearWarpFlag(final EditorSession session, final UUID targetNodeId) {
+        final Node target = session.graph.getNodeById(targetNodeId);
+        if (target == null || !target.flags().contains(NodeFlag.WARP)) {
+            return;
+        }
+        final Set<NodeFlag> flags = new LinkedHashSet<>(target.flags());
+        flags.remove(NodeFlag.WARP);
+        final Node updated = session.graph.updateNode(new Node(target.dbId(), target.graphId(), target.x(), target.y(),
+                target.z(), target.worldId(), flags));
+        if (session.selectedNode != null && session.selectedNode.graphId().equals(targetNodeId)) {
+            session.selectedNode = updated;
+        }
+    }
+
     private void registerVisualizer(final UUID playerId, final Graph graph) {
         if (visualizerRegistry == null) {
             return;
@@ -491,6 +843,23 @@ public class EditorService {
         }
     }
 
+    /**
+     * Selected element teleport result.
+     *
+     * @param result      user-facing result
+     * @param destination teleport destination, or null when rejected
+     */
+    public record SelectionTeleportResult(EditorResult result, Location destination) {
+
+        public static SelectionTeleportResult success(final String message, final Location destination) {
+            return new SelectionTeleportResult(EditorResult.success(message), destination);
+        }
+
+        public static SelectionTeleportResult failure(final String message) {
+            return new SelectionTeleportResult(EditorResult.failure(message), null);
+        }
+    }
+
     private static final class EditorSession {
 
         private final EditorMode mode;
@@ -506,6 +875,10 @@ public class EditorService {
         private boolean continueRequiresNode;
 
         private Node selectedAppendNode;
+
+        private Node selectedNode;
+
+        private Edge selectedEdge;
 
         private Node lastPlacedNode;
 
