@@ -87,3 +87,12 @@ editor:
 
   # Default distance, in blocks, between automatically created editor nodes.
   defaultNodeDistance: 10
+
+  # Default placement mode for new editor sessions: auto, preview, or waiting-for-anchor.
+  defaultPlacementMode: 'auto'
+
+  # When enabled, continuing after undo requires walking through a node before automatic placement resumes.
+  continueRequiresNode: true
+
+  # Temporary editor preview preset selected when a session starts.
+  defaultPreset: 'default'
