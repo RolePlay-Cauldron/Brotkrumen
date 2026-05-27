@@ -21,6 +21,7 @@ import java.util.Deque;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * State manager for editor mode.
  */
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.CommentRequired", "PMD.AvoidDuplicateLiterals",
-        "PMD.CyclomaticComplexity", "PMD.CouplingBetweenObjects"})
+        "PMD.CyclomaticComplexity", "PMD.CouplingBetweenObjects", "PMD.GodClass"})
 public class EditorService {
 
     private static final double EDIT_NODE_SELECTION_RADIUS = 1.5D;
@@ -183,7 +184,8 @@ public class EditorService {
                 .map(node -> {
                     session.selectedNode = node;
                     session.selectedEdge = null;
-                    return EditorResult.success("Selected node " + node.graphId() + ".");
+                    rememberEdgeEndpoint(session, node);
+                    return EditorResult.success(selectedNodeMessage(session, node));
                 })
                 .orElseGet(() -> EditorResult.failure("No nearby graph node found."));
     }
@@ -206,6 +208,7 @@ public class EditorService {
                 .map(edge -> {
                     session.selectedEdge = edge;
                     session.selectedNode = null;
+                    clearEdgeEndpoints(session);
                     return EditorResult.success("Selected edge " + edge.edgeId() + ".");
                 })
                 .orElseGet(() -> EditorResult.failure("No nearby graph edge found."));
@@ -245,6 +248,7 @@ public class EditorService {
         }
         session.selectedNode = null;
         session.selectedEdge = null;
+        clearEdgeEndpoints(session);
         return EditorResult.success("Cleared graph selection.");
     }
 
@@ -342,8 +346,156 @@ public class EditorService {
         return EditorResult.success("Placed node.");
     }
 
+    /**
+     * Creates or replaces an edge relationship between the selected node pair.
+     *
+     * @param playerId editor player id
+     * @param edgeType requested edge type
+     * @return mutation result
+     */
+    public EditorResult createSelectedNodeEdge(final UUID playerId, final EdgeType edgeType) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (edgeType == null) {
+            return EditorResult.failure("Edge type is required.");
+        }
+        if (session.edgeEndpointOne == null || session.edgeEndpointTwo == null) {
+            return EditorResult.failure("Select two graph nodes before creating an edge.");
+        }
+
+        final List<Edge> created = replaceRelationship(session, session.edgeEndpointOne.graphId(),
+                session.edgeEndpointTwo.graphId(), distance(session.edgeEndpointOne, session.edgeEndpointTwo), edgeType,
+                Set.of());
+        session.selectedEdge = created.getFirst();
+        session.selectedNode = null;
+        refreshVisualizer(playerId);
+        return EditorResult.success("Set " + edgeType.configValue() + " edge between selected nodes.");
+    }
+
+    /**
+     * Changes the selected edge relationship type while preserving state flags.
+     *
+     * @param playerId editor player id
+     * @param edgeType requested edge type
+     * @return mutation result
+     */
+    public EditorResult updateSelectedEdgeType(final UUID playerId, final EdgeType edgeType) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (edgeType == null) {
+            return EditorResult.failure("Edge type is required.");
+        }
+        if (session.selectedEdge == null) {
+            return EditorResult.failure("Select a graph edge before changing its type.");
+        }
+
+        final Edge selected = session.selectedEdge;
+        final List<Edge> created = replaceRelationship(session, selected.source(), selected.target(), selected.cost(),
+                edgeType, selected.flags());
+        session.selectedEdge = created.getFirst();
+        refreshVisualizer(playerId);
+        return EditorResult.success("Set selected edge type to " + edgeType.configValue() + ".");
+    }
+
+    /**
+     * Changes the selected edge relationship open/blocked state while preserving edge type.
+     *
+     * @param playerId  editor player id
+     * @param edgeState requested edge state
+     * @return mutation result
+     */
+    public EditorResult updateSelectedEdgeState(final UUID playerId, final EdgeState edgeState) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (edgeState == null) {
+            return EditorResult.failure("Edge state is required.");
+        }
+        if (session.selectedEdge == null) {
+            return EditorResult.failure("Select a graph edge before changing its state.");
+        }
+
+        final Edge selected = session.selectedEdge;
+        final List<Edge> updated = session.graph.updateRelationshipBlocked(selected.source(), selected.target(),
+                edgeState == EdgeState.BLOCKED);
+        session.selectedEdge = updated.stream()
+                .filter(edge -> edge.edgeId().equals(selected.edgeId()))
+                .findFirst()
+                .orElseGet(() -> updated.isEmpty() ? null : updated.getFirst());
+        refreshVisualizer(playerId);
+        return EditorResult.success("Set selected edge state to " + edgeState.configValue() + ".");
+    }
+
+    /**
+     * Removes the selected edge relationship from the working graph.
+     *
+     * @param playerId editor player id
+     * @return removal result
+     */
+    public EditorResult removeSelectedEdge(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (session.selectedEdge == null) {
+            return EditorResult.failure("Select a graph edge before removing it.");
+        }
+
+        final Edge selected = session.selectedEdge;
+        final int removed = session.graph.removeEdgesBetween(selected.source(), selected.target()).size();
+        session.selectedEdge = null;
+        session.selectedNode = null;
+        clearEdgeEndpoints(session);
+        refreshVisualizer(playerId);
+        return EditorResult.success("Removed " + removed + " selected edge record" + (removed == 1 ? "." : "s."));
+    }
+
     private boolean sameWorld(final Node node, final Location loc) {
         return loc.getWorld() != null && Objects.equals(node.worldId(), loc.getWorld().getUID());
+    }
+
+    private void rememberEdgeEndpoint(final EditorSession session, final Node node) {
+        if (session.edgeEndpointOne == null) {
+            session.edgeEndpointOne = node;
+            return;
+        }
+        if (sameNode(session.edgeEndpointOne, node)) {
+            if (session.edgeEndpointTwo != null) {
+                session.edgeEndpointOne = session.edgeEndpointTwo;
+                session.edgeEndpointTwo = node;
+            }
+            return;
+        }
+        if (session.edgeEndpointTwo == null) {
+            session.edgeEndpointTwo = node;
+            return;
+        }
+        if (!sameNode(session.edgeEndpointTwo, node)) {
+            session.edgeEndpointOne = session.edgeEndpointTwo;
+            session.edgeEndpointTwo = node;
+        }
+    }
+
+    private boolean sameNode(final Node first, final Node second) {
+        return first != null && second != null && first.graphId().equals(second.graphId());
+    }
+
+    private void clearEdgeEndpoints(final EditorSession session) {
+        session.edgeEndpointOne = null;
+        session.edgeEndpointTwo = null;
+    }
+
+    private String selectedNodeMessage(final EditorSession session, final Node node) {
+        if (session.edgeEndpointOne != null && session.edgeEndpointTwo != null) {
+            return "Selected node " + node.graphId() + ". Edge endpoints: "
+                    + session.edgeEndpointOne.graphId() + " -> " + session.edgeEndpointTwo.graphId() + ".";
+        }
+        return "Selected node " + node.graphId() + ".";
     }
 
     private double distance(final Node node, final Location loc) {
@@ -354,6 +506,20 @@ public class EditorService {
         final double deltaY = loc.getY() - node.y();
         final double deltaZ = loc.getZ() - node.z();
         return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+    }
+
+    private double distance(final Node first, final Node second) {
+        final double deltaX = first.x() - second.x();
+        final double deltaY = first.y() - second.y();
+        final double deltaZ = first.z() - second.z();
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+    }
+
+    private List<Edge> replaceRelationship(final EditorSession session, final UUID source, final UUID target,
+                                           final double cost, final EdgeType edgeType, final Set<EdgeFlag> flags) {
+        return edgeType == EdgeType.DIRECTED
+                ? List.of(session.graph.replaceDirectedRelationship(source, target, cost, flags))
+                : session.graph.replaceUndirectedRelationship(source, target, cost, flags);
     }
 
     private double edgeDistance(final EditorSession session, final Edge edge, final Location loc) {
@@ -804,6 +970,62 @@ public class EditorService {
         }
     }
 
+    public enum EdgeType {
+        DIRECTED("directed"),
+        UNDIRECTED("undirected");
+
+        private final String serializedValue;
+
+        EdgeType(final String configValue) {
+            this.serializedValue = configValue;
+        }
+
+        public static Optional<EdgeType> parse(final String input) {
+            if (input == null || input.isBlank()) {
+                return Optional.empty();
+            }
+            final String normalized = input.toLowerCase(Locale.ROOT);
+            for (final EdgeType type : values()) {
+                if (type.serializedValue.equals(normalized) || type.name().equalsIgnoreCase(normalized)) {
+                    return Optional.of(type);
+                }
+            }
+            return Optional.empty();
+        }
+
+        public String configValue() {
+            return serializedValue;
+        }
+    }
+
+    public enum EdgeState {
+        OPEN("open"),
+        BLOCKED("blocked");
+
+        private final String serializedValue;
+
+        EdgeState(final String configValue) {
+            this.serializedValue = configValue;
+        }
+
+        public static Optional<EdgeState> parse(final String input) {
+            if (input == null || input.isBlank()) {
+                return Optional.empty();
+            }
+            final String normalized = input.toLowerCase(Locale.ROOT);
+            for (final EdgeState state : values()) {
+                if (state.serializedValue.equals(normalized) || state.name().equalsIgnoreCase(normalized)) {
+                    return Optional.of(state);
+                }
+            }
+            return Optional.empty();
+        }
+
+        public String configValue() {
+            return serializedValue;
+        }
+    }
+
     private enum EditorMode {
         CREATE,
         EDIT
@@ -879,6 +1101,10 @@ public class EditorService {
         private Node selectedNode;
 
         private Edge selectedEdge;
+
+        private Node edgeEndpointOne;
+
+        private Node edgeEndpointTwo;
 
         private Node lastPlacedNode;
 

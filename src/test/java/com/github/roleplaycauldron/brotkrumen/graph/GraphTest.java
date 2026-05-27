@@ -221,4 +221,62 @@ class GraphTest {
         assertNotSame(graph.getNodeById(nodeOne.graphId()), copy.getNodeById(nodeOne.graphId()),
                 "Copy should contain detached node instances");
     }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void relationshipReplacementRewritesPair() {
+        final Graph graph = graphWithTwoNodes();
+        graph.addUndirectedEdge(uuidOne, uuidTwo, 1.0);
+
+        final Edge directed = graph.replaceDirectedRelationship(uuidTwo, uuidOne, 2.0, Set.of(EdgeFlag.BLOCKED));
+
+        assertEquals(1, graph.getEdgesBetween(uuidOne, uuidTwo).size(),
+                "Directed replacement should leave one edge record");
+        assertEquals(uuidTwo, directed.source(), "Directed replacement should preserve requested source");
+        assertEquals(uuidOne, directed.target(), "Directed replacement should preserve requested target");
+        assertTrue(directed.flags().contains(EdgeFlag.DIRECTED), "Replacement should be directed");
+        assertTrue(directed.flags().contains(EdgeFlag.BLOCKED), "Replacement should preserve blocked state");
+        assertFalse(directed.flags().contains(EdgeFlag.UNDIRECTED), "Directed replacement should remove undirected flag");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void undirectedRelationshipReplacementCreatesReciprocalRecords() {
+        final Graph graph = graphWithTwoNodes();
+        graph.addDirectedEdge(uuidOne, uuidTwo, 1.0);
+
+        final List<Edge> edges = graph.replaceUndirectedRelationship(uuidOne, uuidTwo, 3.0, Set.of(EdgeFlag.BLOCKED));
+
+        assertEquals(2, edges.size(), "Undirected replacement should create reciprocal records");
+        assertEquals(2, graph.getEdgesBetween(uuidOne, uuidTwo).size(),
+                "Undirected replacement should leave two pair records");
+        assertTrue(edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.UNDIRECTED)),
+                "Both records should be undirected");
+        assertTrue(edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.BLOCKED)),
+                "Both records should preserve blocked state");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void relationshipBlockedStateUpdatesAllPairRecords() {
+        final Graph graph = graphWithTwoNodes();
+        graph.addUndirectedEdge(uuidOne, uuidTwo, 1.0);
+
+        final List<Edge> blocked = graph.updateRelationshipBlocked(uuidOne, uuidTwo, true);
+        final List<Edge> opened = graph.updateRelationshipBlocked(uuidOne, uuidTwo, false);
+
+        assertTrue(blocked.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.BLOCKED)),
+                "Blocking should mark every record");
+        assertTrue(opened.stream().noneMatch(edge -> edge.flags().contains(EdgeFlag.BLOCKED)),
+                "Opening should remove blocked from every record");
+        assertTrue(opened.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.UNDIRECTED)),
+                "Opening should preserve relationship type");
+    }
+
+    private Graph graphWithTwoNodes() {
+        final Graph graph = new Graph("Test");
+        graph.addNode(new Node(uuidOne, 2, 3, 4, null));
+        graph.addNode(new Node(uuidTwo, 3, 4, 5, null));
+        return graph;
+    }
 }
