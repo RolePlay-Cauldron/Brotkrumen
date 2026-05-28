@@ -122,7 +122,6 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         this.executor = new EffectExecutor(this);
 
-        getServer().getPluginManager().registerEvents(this, this);
         this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService, warpService);
         new EditorWaitingActionBarReminder(editorService).start(this);
         new CoordinatesCommand(this);

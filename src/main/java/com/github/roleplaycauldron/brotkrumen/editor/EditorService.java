@@ -12,6 +12,7 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
+import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bukkit.Location;
 
@@ -60,6 +61,8 @@ public class EditorService {
 
     private final WarpService warpService;
 
+    private final WrappedLogger log;
+
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
                          final GraphService graphService, final WarpService warpService) {
@@ -69,14 +72,8 @@ public class EditorService {
         this.effectExecutor = effectExecutor;
         this.graphService = graphService;
         this.warpService = warpService;
-    }
 
-    /* default */ EditorService(final GraphService graphService) {
-        this(graphService, null);
-    }
-
-    /* default */ EditorService(final GraphService graphService, final WarpService warpService) {
-        this(null, null, null, null, graphService, warpService);
+        this.log = loggerFactory.create(EditorService.class);
     }
 
     public static boolean isSupportedPreset(final String preset) {
@@ -559,6 +556,7 @@ public class EditorService {
         return new Location(source.getWorld(), targetX, targetY, targetZ, source.getYaw(), source.getPitch());
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public EditorResult finishRouteCreation(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -567,16 +565,36 @@ public class EditorService {
 
         unregisterVisualizer(playerId);
         if (plugin == null) {
-            graphService.saveGraph(session.graph);
-            playerEditors.remove(playerId);
+            try {
+                graphService.saveGraph(session.graph);
+                saveWarps(session);
+            } catch (final Exception e) {
+                log.errorF("The graph could not be saved: {}", e.getMessage());
+                return EditorResult.failure("Failed to save the graph, aborting editing");
+            } finally {
+                playerEditors.remove(playerId);
+            }
             return EditorResult.success("Route creation finished.");
         }
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             graphService.saveGraph(session.graph);
+            saveWarps(session);
             playerEditors.remove(playerId);
         });
         return EditorResult.success("Route creation finished.");
+    }
+
+    private void saveWarps(final EditorSession session) {
+        if (warpService == null) {
+            return;
+        }
+        for (final String key : session.pendingDeletions) {
+            warpService.removeWarp(key);
+        }
+        for (final Warp warp : session.pendingWarps.values()) {
+            warpService.saveWarp(warp);
+        }
     }
 
     public EditorResult cancel(final UUID playerId) {
@@ -739,7 +757,8 @@ public class EditorService {
         if (!check.success()) {
             return check;
         }
-        warpService.saveWarp(new Warp(key, target.graphId(), 1.0D, true, true));
+        session.pendingDeletions.remove(key);
+        session.pendingWarps.put(key, new Warp(key, target.graphId(), 1.0D, true, true));
         session.selectedNode = ensureWarpFlag(session, target);
         refreshVisualizer(playerId);
         return EditorResult.success("Created warp " + key + " for node " + target.graphId() + ".");
@@ -793,11 +812,16 @@ public class EditorService {
         if (!check.success()) {
             return check;
         }
-        final Optional<Warp> warp = warpService.getWarp(key);
-        if (warp.isEmpty()) {
+        final EditorSession session = playerEditors.get(playerId);
+        Warp warp = session.pendingWarps.get(key);
+        if (warp == null && !session.pendingDeletions.contains(key)) {
+            warp = warpService.getWarp(key).orElse(null);
+        }
+
+        if (warp == null) {
             return EditorResult.failure("No warp with that key exists.");
         }
-        warpService.saveWarp(change.apply(warp.get()));
+        session.pendingWarps.put(key, change.apply(warp));
         return EditorResult.success("Updated warp " + key + " " + property + ".");
     }
 
@@ -814,15 +838,30 @@ public class EditorService {
             return check;
         }
         final EditorSession session = playerEditors.get(playerId);
-        final Optional<Warp> warp = warpService.getWarp(key);
-        if (warp.isEmpty() || !warpService.removeWarp(key)) {
+        Warp warp = session.pendingWarps.remove(key);
+        if (warp == null && !session.pendingDeletions.contains(key)) {
+            warp = warpService.getWarp(key).orElse(null);
+        }
+
+        if (warp == null) {
             return EditorResult.failure("No warp with that key exists.");
         }
-        if (warpService.getWarpsTargeting(warp.get().targetNodeId()).isEmpty()) {
-            clearWarpFlag(session, warp.get().targetNodeId());
+
+        session.pendingDeletions.add(key);
+        if (warpsTargeting(session, warp.targetNodeId()).isEmpty()) {
+            clearWarpFlag(session, warp.targetNodeId());
             refreshVisualizer(playerId);
         }
         return EditorResult.success("Removed warp " + key + ".");
+    }
+
+    private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
+        final Set<Warp> warps = new LinkedHashSet<>(warpService.getWarpsTargeting(targetNodeId));
+        warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
+        warps.addAll(session.pendingWarps.values().stream()
+                .filter(warp -> warp.targetNodeId().equals(targetNodeId))
+                .toList());
+        return warps;
     }
 
     /**
@@ -841,7 +880,16 @@ public class EditorService {
             return EditorResult.failure("Warp storage is unavailable.");
         }
         final Collection<UUID> graphNodeIds = session.graph.getNodes().stream().map(Node::graphId).toList();
-        final Set<Warp> warps = all ? warpService.getManagedWarps() : warpService.getWarpsTargeting(graphNodeIds);
+        final Set<Warp> warps = new LinkedHashSet<>(all ? warpService.getManagedWarps() : warpService.getWarpsTargeting(graphNodeIds));
+
+        warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
+        for (final Warp pending : session.pendingWarps.values()) {
+            if (all || graphNodeIds.contains(pending.targetNodeId())) {
+                warps.removeIf(w -> w.key().equals(pending.key()));
+                warps.add(pending);
+            }
+        }
+
         if (warps.isEmpty()) {
             return EditorResult.success(all ? "No persisted warps." : "No warps target the active graph.");
         }
@@ -1087,6 +1135,10 @@ public class EditorService {
         private final EditorMode mode;
 
         private final Deque<Node> createdNodes = new LinkedList<>();
+
+        private final Map<String, Warp> pendingWarps = new ConcurrentHashMap<>();
+
+        private final Set<String> pendingDeletions = ConcurrentHashMap.newKeySet();
 
         private final Graph graph;
 

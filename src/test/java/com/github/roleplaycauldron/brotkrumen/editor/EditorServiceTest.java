@@ -8,6 +8,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
+import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
+import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -51,6 +53,12 @@ class EditorServiceTest {
     @Mock
     private Player player;
 
+    @Mock
+    private LoggerFactory loggerFactory;
+
+    @Mock
+    private WrappedLogger logger;
+
     private EditorService service;
 
     private EditorWaitingActionBarReminder reminder;
@@ -58,7 +66,8 @@ class EditorServiceTest {
     @BeforeEach
     void setUp() {
         lenient().when(world.getUID()).thenReturn(WORLD_ID);
-        service = new EditorService(graphService, warpService);
+        lenient().when(loggerFactory.create(any())).thenReturn(logger);
+        service = new EditorService(null, null, loggerFactory, null, graphService, warpService);
         reminder = new EditorWaitingActionBarReminder(service);
     }
 
@@ -377,8 +386,11 @@ class EditorServiceTest {
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
         assertTrue(service.createSelectedWarp(PLAYER_ID, "spawn").success());
 
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 1.0D, true, true));
+        verify(warpService, never()).saveWarp(any());
         assertTrue(service.getWorkingGraph(PLAYER_ID).getNodeById(target.graphId()).flags().contains(NodeFlag.WARP));
+
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 1.0D, true, true));
     }
 
     @Test
@@ -387,18 +399,16 @@ class EditorServiceTest {
 
         assertTrue(service.createWarpHere(PLAYER_ID, "spawn", location(6.0D)).success());
         final Node target = service.getWorkingGraph(PLAYER_ID).getNodes().iterator().next();
-        final Warp warp = new Warp("spawn", target.graphId(), 1.0D, true, true);
-        when(warpService.getWarp("spawn")).thenReturn(Optional.of(warp));
 
         assertTrue(service.updateWarpCost(PLAYER_ID, "spawn", 4.0D).success());
         assertTrue(service.updateWarpEnabled(PLAYER_ID, "spawn", false).success());
         assertTrue(service.updateWarpPermission(PLAYER_ID, "spawn", false).success());
 
-        verify(warpService).saveWarp(warp);
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 4.0D, true, true));
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 1.0D, false, true));
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 1.0D, true, false));
+        verify(warpService, never()).saveWarp(any());
         assertTrue(target.flags().contains(NodeFlag.WARP), "Here warp target should carry the warp flag");
+
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 4.0D, false, false));
     }
 
     @Test
@@ -408,7 +418,6 @@ class EditorServiceTest {
                 new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID, Set.of(NodeFlag.WARP)));
         final Warp removed = new Warp("spawn", target.graphId(), 1.0D, true, true);
         when(warpService.getWarp("spawn")).thenReturn(Optional.of(removed));
-        when(warpService.removeWarp("spawn")).thenReturn(true);
         when(warpService.getWarpsTargeting(target.graphId())).thenReturn(Set.of(
                 new Warp("hub", target.graphId(), 1.0D, true, true)));
 
@@ -423,12 +432,15 @@ class EditorServiceTest {
         final Node target = service.getWorkingGraph(PLAYER_ID).addNode(
                 new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID, Set.of(NodeFlag.WARP)));
         when(warpService.getWarp("spawn")).thenReturn(Optional.of(new Warp("spawn", target.graphId(), 1.0D, true, true)));
-        when(warpService.removeWarp("spawn")).thenReturn(true);
         when(warpService.getWarpsTargeting(target.graphId())).thenReturn(Set.of());
 
         assertTrue(service.removeWarp(PLAYER_ID, "spawn").success());
 
         assertFalse(service.getWorkingGraph(PLAYER_ID).getNodeById(target.graphId()).flags().contains(NodeFlag.WARP));
+        verify(warpService, never()).removeWarp("spawn");
+
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+        verify(warpService).removeWarp("spawn");
     }
 
     @Test
