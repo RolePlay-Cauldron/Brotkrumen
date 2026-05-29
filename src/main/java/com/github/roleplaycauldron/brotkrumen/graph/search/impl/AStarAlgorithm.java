@@ -32,7 +32,7 @@ public class AStarAlgorithm extends AbstractShortestPath {
 
     @Override
     protected boolean isEdgeAllowed(final Graph graph, final Edge edge, final TeleportRules rules) {
-        return !edge.flags().contains(EdgeFlag.TELEPORT);
+        return !edge.flags().contains(EdgeFlag.BLOCKED) && !edge.flags().contains(EdgeFlag.TELEPORT);
     }
 
     @Override

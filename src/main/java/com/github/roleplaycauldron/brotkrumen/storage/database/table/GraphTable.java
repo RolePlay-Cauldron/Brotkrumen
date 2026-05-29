@@ -23,6 +23,7 @@ import java.util.UUID;
  * This class provides methods for performing CRUD operations on graphs and their associated
  * data, such as retrieving, saving, and deleting graph entries.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public class GraphTable {
 
     private final String tableName;
@@ -159,6 +160,32 @@ public class GraphTable {
             createGraph(conProvider, graph);
         } else {
             updateGraph(conProvider, graph);
+        }
+    }
+
+    /**
+     * Checks whether a graph name is already used by another graph.
+     *
+     * @param conProvider database connection provider
+     * @param name        graph name to check
+     * @param graphId     graph id that is allowed to keep this name
+     * @return true if another graph uses the name
+     */
+    public boolean isNameUsedByOtherGraph(final BrotkrumenConnectionProvider conProvider, final String name,
+                                          final int graphId) {
+        final String sql = "SELECT `id` FROM `" + tableName + "` WHERE `name` = ? AND `id` <> ? LIMIT 1";
+
+        try (Connection con = conProvider.getConnection();
+             PreparedStatement statement = con.prepareStatement(sql)) {
+
+            statement.setString(1, name);
+            statement.setInt(2, graphId);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (final SQLException e) {
+            throw new StorageException("Failed to check graph name uniqueness: " + name, e);
         }
     }
 

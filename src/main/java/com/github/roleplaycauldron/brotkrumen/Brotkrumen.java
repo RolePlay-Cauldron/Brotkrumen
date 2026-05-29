@@ -1,5 +1,9 @@
 package com.github.roleplaycauldron.brotkrumen;
 
+import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
+import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
+import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
+import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
@@ -14,6 +18,8 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServic
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphServiceImpl;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
@@ -27,10 +33,10 @@ import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConf
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import com.github.roleplaycauldron.spellbook.effect.location.FixedAnchor;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
-import com.github.roleplaycauldron.spellbook.effect.shape.MorphPointStrategies;
-import com.github.roleplaycauldron.spellbook.effect.shape.MorphShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import com.github.roleplaycauldron.spellbook.effect.shape.SphereShape;
+import com.github.roleplaycauldron.spellbook.effect.shape.morph.MorphPointStrategies;
+import com.github.roleplaycauldron.spellbook.effect.shape.morph.MorphShape;
 import com.github.roleplaycauldron.spellbook.effect.viewer.FixedViewerSource;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
@@ -70,6 +76,12 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     private PathResult pathResult;
 
+    private EditorService editorService;
+
+    private GraphServiceImpl graphService;
+
+    private WarpServiceImpl warpService;
+
     /**
      * Default constructor.
      */
@@ -93,13 +105,14 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage = new Storage(loggerFactory, databaseSection, getDataFolder());
         storage.initialize();
 
-        final GraphServiceImpl graphService = new GraphServiceImpl(storage);
+        graphService = new GraphServiceImpl(storage);
+        warpService = new WarpServiceImpl(storage);
         final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
         servicesManager.register(GraphNetworkService.class, graphNetworkService, this, ServicePriority.Normal);
+        servicesManager.register(WarpService.class, warpService, this, ServicePriority.Normal);
 
-        new CoordinatesCommand(this);
         log.info("Brotkrumen enabled");
 
         createVisualizerTestGraphs();
@@ -109,7 +122,13 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         this.executor = new EffectExecutor(this);
 
+        this.editorService = new EditorService(reg, this, loggerFactory, executor, graphService, warpService);
+        new EditorWaitingActionBarReminder(editorService).start(this);
+        new CoordinatesCommand(this);
+        new EditorCommand(this, editorService, graphService);
+
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
     }
 
     private void createVisualizerTestGraphs() {
@@ -288,5 +307,9 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                 .blockDisplayGraphDesign(graphOne.getGraphId(), BlockDisplayDesignSet.emberPreset())
                 .blockDisplayGraphDesign(graphTwo.getGraphId(), BlockDisplayDesignSet.prismPreset())
                 .build();
+    }
+
+    public GraphService getGraphService() {
+        return graphService;
     }
 }

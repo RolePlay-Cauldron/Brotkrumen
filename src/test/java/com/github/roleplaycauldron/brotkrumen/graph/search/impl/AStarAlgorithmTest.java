@@ -83,9 +83,9 @@ class AStarAlgorithmTest {
         assertNotNull(path, "The path should not be null");
 
         final List<UUID> actual = path.nodes().stream().map(NodeRef::nodeId).toList();
-        final List<UUID> expected = List.of(uuidOne, uuidTwo, uuidThree, uuidSeven);
+        final List<UUID> expected = List.of(uuidOne, uuidFive, uuidFour, uuidSeven);
 
-        assertIterableEquals(expected, actual, "The path should match expected");
+        assertIterableEquals(expected, actual, "A* should not traverse blocked edges");
     }
 
     @Test

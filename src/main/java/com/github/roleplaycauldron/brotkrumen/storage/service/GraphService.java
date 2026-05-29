@@ -18,7 +18,7 @@ public interface GraphService {
      * @param graphId the unique identifier of the graph to retrieve
      * @return an {@code Optional} containing the graph if found, otherwise an empty {@code Optional}
      */
-    Optional<Graph> loadGraphById(int graphId);
+    Optional<Graph> getGraphById(int graphId);
 
     /**
      * Loads a graph with the specified name.
@@ -26,7 +26,7 @@ public interface GraphService {
      * @param name the name of the graph to retrieve
      * @return an {@code Optional} containing the graph if found, otherwise an empty {@code Optional}
      */
-    Optional<Graph> loadGraphByName(String name);
+    Optional<Graph> getGraphByName(String name);
 
     /**
      * Retrieves all stored graphs in the system.
@@ -52,4 +52,9 @@ public interface GraphService {
      * @param graphId the unique identifier of the graph to be deleted
      */
     void deleteGraph(int graphId);
+
+    /**
+     * Invalidates the internal cache, forcing a reload of all graph data from storage.
+     */
+    void invalidateCache();
 }

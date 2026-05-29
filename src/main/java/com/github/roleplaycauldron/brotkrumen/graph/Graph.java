@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * The class representing a graph. It includes the creation of Edges between nodes.
  */
-@SuppressWarnings({"PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class Graph {
     private final int graphId;
 
@@ -65,7 +65,8 @@ public class Graph {
         this.graphId = graphId;
         this.name = name;
         this.nodes = new HashMap<>(nodes);
-        this.adj = new HashMap<>(adjacency);
+        this.adj = adjacency.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> new ArrayList<>(entry.getValue())));
         this.edgesById = new HashMap<>();
         this.modCount = 0L;
 
@@ -138,6 +139,21 @@ public class Graph {
     }
 
     /**
+     * Replaces a node while preserving its graph-local identity and edges.
+     *
+     * @param node node with updated metadata
+     * @return updated node
+     */
+    public Node updateNode(final Node node) {
+        if (node == null || node.graphId() == null || !nodes.containsKey(node.graphId())) {
+            throw new IllegalArgumentException("Cannot update unknown node");
+        }
+        nodes.put(node.graphId(), node);
+        modCount++;
+        return node;
+    }
+
+    /**
      * Get all nodes in the graph.
      *
      * @return a {@link Collection} of all {@link Node}s in the graph
@@ -153,6 +169,96 @@ public class Graph {
      */
     public Collection<Edge> getEdges() {
         return edgesById.values();
+    }
+
+    /**
+     * Returns all local edge records between two graph nodes in either direction.
+     *
+     * @param nodeA first node id
+     * @param nodeB second node id
+     * @return immutable list of matching edge records
+     */
+    public List<Edge> getEdgesBetween(final UUID nodeA, final UUID nodeB) {
+        requireNode(nodeA);
+        requireNode(nodeB);
+        return edgesById.values().stream()
+                .filter(edge -> isBetween(edge, nodeA, nodeB))
+                .toList();
+    }
+
+    /**
+     * Removes all local edge records between two graph nodes in either direction.
+     *
+     * @param nodeA first node id
+     * @param nodeB second node id
+     * @return removed edge records
+     */
+    public List<Edge> removeEdgesBetween(final UUID nodeA, final UUID nodeB) {
+        final List<Edge> edges = getEdgesBetween(nodeA, nodeB);
+        edges.forEach(this::removeEdge);
+        return edges;
+    }
+
+    /**
+     * Replaces all local edge records between two nodes with one directed relationship.
+     *
+     * @param source source node id
+     * @param target target node id
+     * @param cost   edge cost
+     * @param flags  flags to preserve, excluding normalized relationship type flags
+     * @return created directed edge
+     */
+    public Edge replaceDirectedRelationship(final UUID source, final UUID target, final double cost,
+                                            final Set<EdgeFlag> flags) {
+        removeEdgesBetween(source, target);
+        return addDirectedEdge(source, target, cost, relationshipFlags(flags, EdgeFlag.DIRECTED));
+    }
+
+    /**
+     * Replaces all local edge records between two nodes with an undirected relationship.
+     *
+     * @param nodeA first node id
+     * @param nodeB second node id
+     * @param cost  edge cost
+     * @param flags flags to preserve, excluding normalized relationship type flags
+     * @return created reciprocal undirected edges
+     */
+    public List<Edge> replaceUndirectedRelationship(final UUID nodeA, final UUID nodeB, final double cost,
+                                                    final Set<EdgeFlag> flags) {
+        removeEdgesBetween(nodeA, nodeB);
+        return addUndirectedEdge(nodeA, nodeB, cost, relationshipFlags(flags, EdgeFlag.UNDIRECTED));
+    }
+
+    /**
+     * Applies or removes blocked state on every edge record in a local relationship.
+     *
+     * @param nodeA   first node id
+     * @param nodeB   second node id
+     * @param blocked whether the relationship should be blocked
+     * @return updated edge records
+     */
+    public List<Edge> updateRelationshipBlocked(final UUID nodeA, final UUID nodeB, final boolean blocked) {
+        final List<Edge> edges = getEdgesBetween(nodeA, nodeB);
+        final List<Edge> updated = new ArrayList<>(edges.size());
+        for (final Edge edge : edges) {
+            final Set<EdgeFlag> flags = mutableFlags(edge.flags());
+            if (blocked) {
+                flags.add(EdgeFlag.BLOCKED);
+            } else {
+                flags.remove(EdgeFlag.BLOCKED);
+            }
+            final Edge replacement = new Edge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), flags);
+            edgesById.put(replacement.edgeId(), replacement);
+            final List<Edge> sourceEdges = adj.get(replacement.source());
+            if (sourceEdges != null) {
+                sourceEdges.replaceAll(existing -> existing.edgeId().equals(replacement.edgeId()) ? replacement : existing);
+            }
+            updated.add(replacement);
+        }
+        if (!updated.isEmpty()) {
+            modCount++;
+        }
+        return List.copyOf(updated);
     }
 
     /**
@@ -283,6 +389,24 @@ public class Graph {
         return EnumSet.copyOf(flags);
     }
 
+    private boolean isBetween(final Edge edge, final UUID nodeA, final UUID nodeB) {
+        return edge.source().equals(nodeA) && edge.target().equals(nodeB)
+                || edge.source().equals(nodeB) && edge.target().equals(nodeA);
+    }
+
+    private Set<EdgeFlag> relationshipFlags(final Set<EdgeFlag> flags, final EdgeFlag relationshipType) {
+        final Set<EdgeFlag> result = mutableFlags(flags);
+        result.remove(EdgeFlag.DIRECTED);
+        result.remove(EdgeFlag.UNDIRECTED);
+        result.remove(EdgeFlag.INTER_GRAPH);
+        result.add(relationshipType);
+        return result;
+    }
+
+    private Set<EdgeFlag> mutableFlags(final Set<EdgeFlag> flags) {
+        return flags == null || flags.isEmpty() ? EnumSet.noneOf(EdgeFlag.class) : EnumSet.copyOf(flags);
+    }
+
     /**
      * Get all neighbors of a node.
      *
@@ -350,5 +474,25 @@ public class Graph {
      */
     public long getModCount() {
         return modCount;
+    }
+
+    /**
+     * Creates a detached copy of this graph.
+     *
+     * @return copied graph preserving persistent ids and graph-local UUIDs
+     */
+    public Graph copy() {
+        final Map<UUID, Node> copiedNodes = nodes.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    final Node node = entry.getValue();
+                    return new Node(node.dbId(), node.graphId(), node.x(), node.y(), node.z(), node.worldId(), node.flags());
+                }));
+
+        final Map<UUID, List<Edge>> copiedAdjacency = adj.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
+                        .map(edge -> new Edge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), edge.flags()))
+                        .toList()));
+
+        return new Graph(graphId, name, copiedNodes, copiedAdjacency);
     }
 }
