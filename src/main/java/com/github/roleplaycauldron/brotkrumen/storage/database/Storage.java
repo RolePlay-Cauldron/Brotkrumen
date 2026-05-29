@@ -47,6 +47,10 @@ public class Storage {
 
     private BrotkrumenConnectionProvider provider;
 
+    private Engine engine;
+
+    private int schemaVersion;
+
     /**
      * Constructs a new {@code Storage} instance with the specified logger factory and configuration section.
      * Initializes internal fields such as the logger and table prefix based on the provided configuration.
@@ -76,19 +80,22 @@ public class Storage {
         }
         if (provider == null || provider.isClosed()) {
             final Engine engine = Engine.getEngineByName(engineString);
+            this.engine = engine;
             provider = getProvider(engine);
             provider.open();
+            final List<DatabaseVersion> migrationVersions = getDatabaseMigrationVersionList(engine);
 
             final DatabaseUpdater updater = DatabaseUpdater.builder()
                     .logger(loggerFactory.create(DatabaseUpdater.class))
                     .connectionProvider(provider)
-                    .versionRepository(new DefaultVersionRepository(getDatabaseMigrationVersionList(engine)))
+                    .versionRepository(new DefaultVersionRepository(migrationVersions))
                     .versionTable(tablePrefix + "_version",
                             "SELECT MAX(version_no) AS latest_version FROM `" + tablePrefix + "_version`;",
                             "INSERT INTO `" + tablePrefix + "_version` (`version_no`) VALUES (?);")
                     .build();
 
             updater.firstStartup();
+            schemaVersion = migrationVersions.size();
             return;
         }
 
@@ -147,6 +154,24 @@ public class Storage {
      */
     public String getTablePrefix() {
         return tablePrefix;
+    }
+
+    /**
+     * Gets the configured database engine.
+     *
+     * @return database engine, or null before initialization
+     */
+    public Engine getEngine() {
+        return engine;
+    }
+
+    /**
+     * Gets the latest schema version applied during startup.
+     *
+     * @return schema version, or 0 before initialization
+     */
+    public int getSchemaVersion() {
+        return schemaVersion;
     }
 
     private List<DatabaseVersion> getDatabaseMigrationVersionList(final Engine engine) {

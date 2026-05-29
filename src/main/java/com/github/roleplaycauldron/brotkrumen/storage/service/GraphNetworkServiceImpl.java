@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
  */
 public class GraphNetworkServiceImpl implements GraphNetworkService {
 
+    private static final int MINIMUM_NETWORK_GRAPH_COUNT = 2;
+
     private final Storage storage;
 
     private final GraphService graphService;
@@ -73,7 +75,9 @@ public class GraphNetworkServiceImpl implements GraphNetworkService {
             }
 
             final Set<Integer> component = collectComponent(graphId, adjacency, visited);
-            networks.add(buildNetwork(component, graphById, edges));
+            if (component.size() >= MINIMUM_NETWORK_GRAPH_COUNT) {
+                networks.add(buildNetwork(component, graphById, edges));
+            }
         }
 
         return networks;

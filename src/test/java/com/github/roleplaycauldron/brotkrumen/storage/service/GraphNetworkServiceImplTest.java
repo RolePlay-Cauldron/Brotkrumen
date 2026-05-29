@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -70,5 +71,31 @@ class GraphNetworkServiceImplTest {
 
         verify(interGraphEdgeTable).saveEdge(eq(provider), argThat(e -> e.edgeId().equals(edgeId1)));
         verify(interGraphEdgeTable).deleteById(provider, 11);
+    }
+
+    @Test
+    void loadGraphNetworksIgnoresIsolatedGraphs() {
+        when(graphService.getAllGraphs()).thenReturn(Set.of(new Graph(1, "G1"), new Graph(2, "G2")));
+        when(interGraphEdgeTable.getAllEdges(provider)).thenReturn(Set.of());
+
+        assertTrue(service.loadGraphNetworks().isEmpty(), "Isolated graphs should not create generated networks");
+    }
+
+    @Test
+    void loadGraphNetworksRequiresConnectedGraphs() {
+        final Graph graph1 = new Graph(1, "G1");
+        final Graph graph2 = new Graph(2, "G2");
+        final UUID node1 = UUID.randomUUID();
+        final UUID node2 = UUID.randomUUID();
+        graph1.addNode(new Node(node1, 0, 0, 0, null));
+        graph2.addNode(new Node(node2, 0, 0, 0, null));
+        final InterGraphEdge edge = new InterGraphEdge(10, UUID.randomUUID(), new NodeRef(1, node1),
+                new NodeRef(2, node2), 1.0, Set.of(), true);
+        when(graphService.getAllGraphs()).thenReturn(Set.of(graph1, graph2));
+        when(interGraphEdgeTable.getAllEdges(provider)).thenReturn(Set.of(edge));
+
+        final GraphNetwork network = service.loadGraphNetworks().stream().findFirst().orElseThrow();
+
+        assertEquals(2, network.getGraphs().size(), "Connected graphs should create one generated network");
     }
 }

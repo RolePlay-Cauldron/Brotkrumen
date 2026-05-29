@@ -80,6 +80,20 @@ visualizer:
   spawnDistanceBuffer: 16.0
 
 ############
+# Commands #
+############
+
+commands:
+  resolve:
+
+    # Maximum distance, in blocks, used to find the player's nearest graph node.
+    # At runtime this is clamped to visualizer.viewDistance.
+    nearestNodeRadius: 15.0
+
+    # Default visualizer backend used by /bk resolve: particle or block-display.
+    visualizerBackend: 'particle'
+
+############
 #  Editor  #
 ############
 

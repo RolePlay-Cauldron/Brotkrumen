@@ -55,6 +55,20 @@ public class VisualizerRegistry {
     }
 
     /**
+     * Replaces the visualizer for a viewer, shutting down the previous visualizer if one exists.
+     *
+     * @param uuid       viewer uuid
+     * @param visualiser new visualizer
+     */
+    public void replace(final UUID uuid, final Visualizer visualiser) {
+        final Visualizer previous = visualisers.put(uuid, visualiser);
+        if (previous != null) {
+            previous.shutdown();
+        }
+        visualiser.visibilityUpdate();
+    }
+
+    /**
      * Unregisters and shuts down the {@link Visualizer} instance associated with the specified UUID.
      * This method removes the visualizer from the registry and invokes its {@code shutdown()} method to
      * ensure any resources are released and operations are safely terminated.
