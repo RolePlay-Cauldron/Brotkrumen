@@ -10,6 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Algorithms to calculate the shortest path between two nodes
   - `Dijkstra` algorithm
   - `A*` algorithm
+- Visualization modules for graph representation
+- Commands for creating and editing graphs
 ### Changed
 ### Deprecated
 ### Removed
