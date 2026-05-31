@@ -98,4 +98,33 @@ class GraphNetworkServiceImplTest {
 
         assertEquals(2, network.getGraphs().size(), "Connected graphs should create one generated network");
     }
+
+    @Test
+    void loadsAndDeletesEdgesForGraphIds() {
+        final Set<Integer> graphIds = Set.of(1, 2);
+        final InterGraphEdge edge = new InterGraphEdge(10, UUID.randomUUID(),
+                new NodeRef(1, UUID.randomUUID()), new NodeRef(2, UUID.randomUUID()), 1.0, Set.of(), true);
+        when(interGraphEdgeTable.findByGraphIds(provider, graphIds)).thenReturn(Set.of(edge));
+        when(interGraphEdgeTable.deleteByGraphId(provider, 1)).thenReturn(2);
+
+        assertEquals(Set.of(edge), service.loadInterGraphEdges(graphIds),
+                "Targeted edge load should delegate to table graph-id lookup");
+        assertEquals(2, service.deleteInterGraphEdgesForGraph(1),
+                "Targeted edge delete should return table delete count");
+    }
+
+    @Test
+    void savesInterGraphEdgeCollectionWithExistingDbIds() {
+        final UUID edgeId = UUID.randomUUID();
+        final InterGraphEdge existing = new InterGraphEdge(10, edgeId, new NodeRef(1, UUID.randomUUID()),
+                new NodeRef(2, UUID.randomUUID()), 1.0, Set.of(), true);
+        final InterGraphEdge replacement = new InterGraphEdge(edgeId, existing.source(), existing.target(), 2.0,
+                Set.of(), false);
+        when(interGraphEdgeTable.getAllEdges(provider)).thenReturn(Set.of(existing));
+
+        service.saveInterGraphEdges(Set.of(replacement));
+
+        verify(interGraphEdgeTable).saveEdge(eq(provider), argThat(edge -> edge.dbId() == 10
+                && edge.cost() == 2.0 && !edge.enabled()));
+    }
 }

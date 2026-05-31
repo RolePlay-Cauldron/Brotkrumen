@@ -238,15 +238,40 @@ public class Graph {
      * @return updated edge records
      */
     public List<Edge> updateRelationshipBlocked(final UUID nodeA, final UUID nodeB, final boolean blocked) {
-        final List<Edge> edges = getEdgesBetween(nodeA, nodeB);
-        final List<Edge> updated = new ArrayList<>(edges.size());
-        for (final Edge edge : edges) {
-            final Set<EdgeFlag> flags = mutableFlags(edge.flags());
+        return updateRelationshipFlags(nodeA, nodeB, flags -> {
             if (blocked) {
                 flags.add(EdgeFlag.BLOCKED);
             } else {
                 flags.remove(EdgeFlag.BLOCKED);
             }
+        });
+    }
+
+    /**
+     * Applies or removes teleport traversal on every edge record in a local relationship.
+     *
+     * @param nodeA    first node id
+     * @param nodeB    second node id
+     * @param teleport whether the relationship should be teleport traversal
+     * @return updated edge records
+     */
+    public List<Edge> updateRelationshipTeleport(final UUID nodeA, final UUID nodeB, final boolean teleport) {
+        return updateRelationshipFlags(nodeA, nodeB, flags -> {
+            if (teleport) {
+                flags.add(EdgeFlag.TELEPORT);
+            } else {
+                flags.remove(EdgeFlag.TELEPORT);
+            }
+        });
+    }
+
+    private List<Edge> updateRelationshipFlags(final UUID nodeA, final UUID nodeB,
+                                               final java.util.function.Consumer<Set<EdgeFlag>> change) {
+        final List<Edge> edges = getEdgesBetween(nodeA, nodeB);
+        final List<Edge> updated = new ArrayList<>(edges.size());
+        for (final Edge edge : edges) {
+            final Set<EdgeFlag> flags = mutableFlags(edge.flags());
+            change.accept(flags);
             final Edge replacement = new Edge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), flags);
             edgesById.put(replacement.edgeId(), replacement);
             final List<Edge> sourceEdges = adj.get(replacement.source());

@@ -197,6 +197,37 @@ public class GraphNetworkServiceImpl implements GraphNetworkService {
     }
 
     @Override
+    public Set<InterGraphEdge> loadInterGraphEdges(final Collection<Integer> graphIds) {
+        return interGraphEdgeTable.findByGraphIds(storage.getProvider(), graphIds);
+    }
+
+    @Override
+    public void saveInterGraphEdges(final Collection<InterGraphEdge> edges) {
+        if (edges == null || edges.isEmpty()) {
+            return;
+        }
+        final Map<UUID, InterGraphEdge> dbById = interGraphEdgeTable.getAllEdges(storage.getProvider()).stream()
+                .collect(Collectors.toMap(InterGraphEdge::edgeId, edge -> edge));
+        for (final InterGraphEdge edge : edges) {
+            final InterGraphEdge existing = dbById.get(edge.edgeId());
+            interGraphEdgeTable.saveEdge(storage.getProvider(), existing == null ? edge : new InterGraphEdge(
+                    existing.dbId(),
+                    edge.edgeId(),
+                    edge.source(),
+                    edge.target(),
+                    edge.cost(),
+                    edge.flags(),
+                    edge.enabled()
+            ));
+        }
+    }
+
+    @Override
+    public int deleteInterGraphEdgesForGraph(final int graphId) {
+        return interGraphEdgeTable.deleteByGraphId(storage.getProvider(), graphId);
+    }
+
+    @Override
     public void deleteInterGraphEdges(final GraphNetwork network) {
         final Set<InterGraphEdge> dbEdges = interGraphEdgeTable.getAllEdges(storage.getProvider());
         final Set<UUID> networkEdgeIds = network.getInterGraphEdges().stream()

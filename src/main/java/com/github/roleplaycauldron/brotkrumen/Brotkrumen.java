@@ -69,7 +69,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         final EffectExecutor executor = new EffectExecutor(this);
 
-        final EditorService editorService = new EditorService(reg, this, loggerFactory, executor, graphService, warpService);
+        final EditorService editorService = new EditorService(reg, this, loggerFactory, executor, graphService,
+                graphNetworkService, warpService);
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, editorService, graphService);
         new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor);

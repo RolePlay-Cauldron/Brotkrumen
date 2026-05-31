@@ -253,6 +253,39 @@ class VisualGraphSourceTest {
 
     @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void editorWorkspaceSourceIncludesVisibleGraphsAndEdgesOnly() {
+        final Graph active = new Graph(1, "Active");
+        final Graph reference = new Graph(2, "Reference");
+        final Graph hidden = new Graph(3, "Hidden");
+        final UUID activeNode = UUID.randomUUID();
+        final UUID referenceNode = UUID.randomUUID();
+        final UUID hiddenNode = UUID.randomUUID();
+        active.addNode(new Node(activeNode, 0, 0, 0, null));
+        reference.addNode(new Node(referenceNode, 1, 0, 0, null));
+        hidden.addNode(new Node(hiddenNode, 2, 0, 0, null));
+        active.addDirectedEdge(activeNode, activeNode, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final InterGraphEdge visible = new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, activeNode),
+                new NodeRef(2, referenceNode), 1.0D, Set.of(EdgeFlag.INTER_GRAPH), true);
+        final InterGraphEdge hiddenEdge = new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, activeNode),
+                new NodeRef(3, hiddenNode), 1.0D, Set.of(EdgeFlag.INTER_GRAPH), true);
+        final long[] version = {1L};
+        final EditorWorkspaceVisualSource source = new EditorWorkspaceVisualSource(() -> active, () -> List.of(reference),
+                () -> List.of(visible, hiddenEdge), () -> version[0]);
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+        final long before = source.version();
+        version[0]++;
+
+        assertEquals(2, snapshot.nodes().size(), "Active and reference nodes should be visible");
+        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.id().equals(new InterGraphVisualEdgeId(visible.edgeId()))),
+                "Inter-graph edge between visible graphs should be exposed");
+        assertFalse(snapshot.edges().stream().anyMatch(edge -> edge.id().equals(new InterGraphVisualEdgeId(hiddenEdge.edgeId()))),
+                "Inter-graph edge to hidden graph should be excluded");
+        assertNotEquals(before, source.version(), "Workspace source version should include workspace state");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void networkSourceDerivesTeleportNodeRolesWithPrecedence() {
         final Graph graphOne = new Graph(1, "One");
         final Graph graphTwo = new Graph(2, "Two");

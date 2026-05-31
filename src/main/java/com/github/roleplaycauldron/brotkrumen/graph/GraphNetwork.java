@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Aggregates multiple graphs plus inter-graph edges.
  */
-@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods", "PMD.CyclomaticComplexity"})
 public class GraphNetwork {
 
     private final Map<Integer, Graph> graphsByDbId;
@@ -342,6 +342,141 @@ public class GraphNetwork {
             }
             invalidateCache();
         }
+    }
+
+    /**
+     * Replaces all inter-graph edge records between two nodes with one directed relationship.
+     *
+     * @param source source node
+     * @param target target node
+     * @param cost   route cost
+     * @param flags  flags to preserve
+     * @return created edge
+     */
+    public InterGraphEdge replaceDirectedInterGraphRelationship(final NodeRef source, final NodeRef target,
+                                                                final double cost, final Set<EdgeFlag> flags) {
+        removeInterGraphEdgesBetween(source, target);
+        return addDirectedInterGraphEdge(source, target, cost, flags);
+    }
+
+    /**
+     * Replaces all inter-graph edge records between two nodes with reciprocal undirected records.
+     *
+     * @param nodeA first node
+     * @param nodeB second node
+     * @param cost  route cost
+     * @param flags flags to preserve
+     * @return created edges
+     */
+    public List<InterGraphEdge> replaceUndirectedInterGraphRelationship(final NodeRef nodeA, final NodeRef nodeB,
+                                                                        final double cost, final Set<EdgeFlag> flags) {
+        removeInterGraphEdgesBetween(nodeA, nodeB);
+        return addUndirectedInterGraphEdge(nodeA, nodeB, cost, flags);
+    }
+
+    /**
+     * Removes inter-graph edge records between two nodes in either direction.
+     *
+     * @param nodeA first node
+     * @param nodeB second node
+     * @return removed edge count
+     */
+    public int removeInterGraphEdgesBetween(final NodeRef nodeA, final NodeRef nodeB) {
+        int removed = 0;
+        final List<InterGraphEdge> first = outgoingInterEdges.get(nodeA);
+        if (first != null) {
+            final int before = first.size();
+            first.removeIf(edge -> edge.target().equals(nodeB));
+            removed += before - first.size();
+            if (first.isEmpty()) {
+                outgoingInterEdges.remove(nodeA);
+            }
+        }
+        final List<InterGraphEdge> second = outgoingInterEdges.get(nodeB);
+        if (second != null) {
+            final int before = second.size();
+            second.removeIf(edge -> edge.target().equals(nodeA));
+            removed += before - second.size();
+            if (second.isEmpty()) {
+                outgoingInterEdges.remove(nodeB);
+            }
+        }
+        if (removed > 0) {
+            invalidateCache();
+        }
+        return removed;
+    }
+
+    /**
+     * Updates blocked state for every inter-graph edge record between two nodes.
+     *
+     * @param nodeA   first node
+     * @param nodeB   second node
+     * @param blocked blocked state
+     * @return updated edges
+     */
+    public List<InterGraphEdge> updateInterGraphRelationshipBlocked(final NodeRef nodeA, final NodeRef nodeB,
+                                                                    final boolean blocked) {
+        return updateInterGraphRelationshipFlags(nodeA, nodeB, flags -> {
+            if (blocked) {
+                flags.add(EdgeFlag.BLOCKED);
+            } else {
+                flags.remove(EdgeFlag.BLOCKED);
+            }
+        });
+    }
+
+    /**
+     * Updates teleport traversal for every inter-graph edge record between two nodes.
+     *
+     * @param nodeA    first node
+     * @param nodeB    second node
+     * @param teleport teleport state
+     * @return updated edges
+     */
+    public List<InterGraphEdge> updateInterGraphRelationshipTeleport(final NodeRef nodeA, final NodeRef nodeB,
+                                                                     final boolean teleport) {
+        return updateInterGraphRelationshipFlags(nodeA, nodeB, flags -> {
+            if (teleport) {
+                flags.add(EdgeFlag.TELEPORT);
+            } else {
+                flags.remove(EdgeFlag.TELEPORT);
+            }
+        });
+    }
+
+    private List<InterGraphEdge> updateInterGraphRelationshipFlags(final NodeRef nodeA, final NodeRef nodeB,
+                                                                   final java.util.function.Consumer<Set<EdgeFlag>> change) {
+        final List<InterGraphEdge> updated = new ArrayList<>();
+        updateInterGraphEdgesFrom(nodeA, nodeB, change, updated);
+        updateInterGraphEdgesFrom(nodeB, nodeA, change, updated);
+        if (!updated.isEmpty()) {
+            invalidateCache();
+        }
+        return List.copyOf(updated);
+    }
+
+    private void updateInterGraphEdgesFrom(final NodeRef source, final NodeRef target,
+                                           final java.util.function.Consumer<Set<EdgeFlag>> change,
+                                           final List<InterGraphEdge> updated) {
+        final List<InterGraphEdge> edges = outgoingInterEdges.get(source);
+        if (edges == null) {
+            return;
+        }
+        edges.replaceAll(edge -> {
+            if (!edge.target().equals(target)) {
+                return edge;
+            }
+            final Set<EdgeFlag> flags = edge.flags().isEmpty()
+                    ? EnumSet.noneOf(EdgeFlag.class)
+                    : EnumSet.copyOf(edge.flags());
+            change.accept(flags);
+            flags.add(EdgeFlag.INTER_GRAPH);
+            final InterGraphEdge replacement = new InterGraphEdge(edge.dbId(), edge.edgeId(), edge.source(),
+                    edge.target(), edge.cost(), flags, edge.enabled());
+            updated.add(replacement);
+            return replacement;
+        });
     }
 
     /**

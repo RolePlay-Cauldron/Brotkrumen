@@ -1,8 +1,10 @@
 package com.github.roleplaycauldron.brotkrumen.storage.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
+import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 
 import java.util.Collection;
+import java.util.Set;
 
 /**
  * Service for managing GraphNetwork operations.
@@ -24,6 +26,29 @@ public interface GraphNetworkService {
      * @param network network containing inter-graph edges to persist
      */
     void saveInterGraphEdges(GraphNetwork network);
+
+    /**
+     * Loads inter-graph edges whose source or target graph is in the requested set.
+     *
+     * @param graphIds graph database ids
+     * @return matching inter-graph edge records
+     */
+    Set<InterGraphEdge> loadInterGraphEdges(Collection<Integer> graphIds);
+
+    /**
+     * Creates or updates the provided inter-graph edge records.
+     *
+     * @param edges edge records to persist
+     */
+    void saveInterGraphEdges(Collection<InterGraphEdge> edges);
+
+    /**
+     * Deletes all inter-graph edges whose source or target graph is the requested graph.
+     *
+     * @param graphId graph database id
+     * @return number of deleted rows
+     */
+    int deleteInterGraphEdgesForGraph(int graphId);
 
     /**
      * Deletes the inter-graph edges for the provided network.

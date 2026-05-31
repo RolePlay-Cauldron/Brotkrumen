@@ -73,4 +73,14 @@ class WarpServiceImplTest {
                 "Batch target query should keep matching managed warps");
         assertTrue(service.getWarpsTargeting(List.of()).isEmpty(), "Empty target query should not read storage");
     }
+
+    @Test
+    void removesWarpsByTargetNodeIds() {
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        when(warpTable.deleteByTargetNodeIds(provider, List.of(first, second))).thenReturn(2);
+
+        assertEquals(2, service.removeWarpsTargeting(List.of(first, second)),
+                "Batch warp removal should return table delete count");
+    }
 }

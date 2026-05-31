@@ -32,6 +32,9 @@ public final class EditorSelectionSubcommands {
                         commandContext.send(player, commandContext.editorService().showSelection(player.getUniqueId())))))
                 .then(Commands.literal("clear").executes(context -> withPlayer(commandContext, context, player ->
                         commandContext.send(player, commandContext.editorService().clearSelection(player.getUniqueId())))))
+                .then(Commands.literal("connections").executes(context -> withPlayer(commandContext, context, player ->
+                        commandContext.send(player, commandContext.editorService().selectedNodeConnections(
+                                player.getUniqueId())))))
                 .then(Commands.literal("teleport").executes(context -> withPlayer(commandContext, context,
                         player -> teleport(commandContext, player))));
     }

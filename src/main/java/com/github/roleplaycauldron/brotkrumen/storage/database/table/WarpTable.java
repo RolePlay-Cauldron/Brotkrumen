@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -116,6 +117,32 @@ public class WarpTable {
         } catch (final SQLException e) {
             throw new StorageException("Failed to delete warp with key " + key, e);
         }
+    }
+
+    /**
+     * Deletes warps targeting any requested node id.
+     *
+     * @param provider      connection provider
+     * @param targetNodeIds target node ids
+     * @return deleted row count
+     */
+    public int deleteByTargetNodeIds(final BrotkrumenConnectionProvider provider,
+                                     final Collection<UUID> targetNodeIds) {
+        if (targetNodeIds == null || targetNodeIds.isEmpty()) {
+            return 0;
+        }
+        int deleted = 0;
+        for (final UUID targetNodeId : targetNodeIds) {
+            final String sql = "DELETE FROM `" + tableName + "` WHERE `target_node_id` = ?";
+            try (Connection con = provider.getConnection();
+                 PreparedStatement statement = con.prepareStatement(sql)) {
+                statement.setString(1, targetNodeId.toString());
+                deleted += statement.executeUpdate();
+            } catch (final SQLException e) {
+                throw new StorageException("Failed to delete warps for target node " + targetNodeId, e);
+            }
+        }
+        return deleted;
     }
 
     private Set<Warp> query(final BrotkrumenConnectionProvider provider, final String sql, final String error) {

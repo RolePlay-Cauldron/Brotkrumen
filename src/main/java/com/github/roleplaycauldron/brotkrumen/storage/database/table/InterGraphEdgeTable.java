@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -70,6 +71,24 @@ public class InterGraphEdgeTable {
     }
 
     /**
+     * Retrieves edges whose source or target graph belongs to the requested graph ids.
+     *
+     * @param provider connection provider
+     * @param graphIds graph database ids
+     * @return matching edges
+     */
+    public Set<InterGraphEdge> findByGraphIds(final BrotkrumenConnectionProvider provider,
+                                              final Collection<Integer> graphIds) {
+        if (graphIds == null || graphIds.isEmpty()) {
+            return Set.of();
+        }
+        final Set<Integer> ids = Set.copyOf(graphIds);
+        return getAllEdges(provider).stream()
+                .filter(edge -> ids.contains(edge.source().graphDbId()) || ids.contains(edge.target().graphDbId()))
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * Deletes an entry from the database table associated with this instance based on the specified ID.
      *
      * @param provider the connection provider used to establish a connection to the database
@@ -85,6 +104,25 @@ public class InterGraphEdgeTable {
             }
         } catch (final SQLException e) {
             throw new StorageException("Failed to delete inter-graph edge with dbId " + dbId, e);
+        }
+    }
+
+    /**
+     * Deletes edges whose source or target graph matches the requested graph id.
+     *
+     * @param provider connection provider
+     * @param graphId  graph database id
+     * @return deleted row count
+     */
+    public int deleteByGraphId(final BrotkrumenConnectionProvider provider, final int graphId) {
+        final String sql = "DELETE FROM `" + tableName + "` WHERE `source_graph_id` = ? OR `target_graph_id` = ?";
+        try (Connection con = provider.getConnection();
+             PreparedStatement statement = con.prepareStatement(sql)) {
+            statement.setInt(1, graphId);
+            statement.setInt(2, graphId);
+            return statement.executeUpdate();
+        } catch (final SQLException e) {
+            throw new StorageException("Failed to delete inter-graph edges for graph id " + graphId, e);
         }
     }
 
