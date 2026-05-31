@@ -1,10 +1,13 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 
 import java.util.Collection;
@@ -19,10 +22,12 @@ import java.util.stream.Collectors;
 /**
  * Graph-local resolve operations used by `/bk resolve`.
  */
-@SuppressWarnings("PMD.ShortVariable")
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.ShortVariable", "PMD.TooManyMethods"})
 public class ResolveService {
 
     private final GraphService graphService;
+
+    private final GraphNetworkService graphNetworkService;
 
     private final PathFinder pathFinder;
 
@@ -32,7 +37,17 @@ public class ResolveService {
      * @param graphService graph service
      */
     public ResolveService(final GraphService graphService) {
-        this(graphService, new PathFinder());
+        this(graphService, null, new PathFinder());
+    }
+
+    /**
+     * Creates a resolve service.
+     *
+     * @param graphService        graph service
+     * @param graphNetworkService graph network service
+     */
+    public ResolveService(final GraphService graphService, final GraphNetworkService graphNetworkService) {
+        this(graphService, graphNetworkService, new PathFinder());
     }
 
     /**
@@ -42,7 +57,20 @@ public class ResolveService {
      * @param pathFinder   pathfinder
      */
     public ResolveService(final GraphService graphService, final PathFinder pathFinder) {
+        this(graphService, null, pathFinder);
+    }
+
+    /**
+     * Creates a resolve service.
+     *
+     * @param graphService        graph service
+     * @param graphNetworkService graph network service
+     * @param pathFinder          pathfinder
+     */
+    public ResolveService(final GraphService graphService, final GraphNetworkService graphNetworkService,
+                          final PathFinder pathFinder) {
         this.graphService = graphService;
+        this.graphNetworkService = graphNetworkService;
         this.pathFinder = pathFinder;
     }
 
@@ -120,6 +148,112 @@ public class ResolveService {
     }
 
     /**
+     * Finds the nearest node reference across all supplied graphs.
+     *
+     * @param graphs   candidate graphs
+     * @param location player location snapshot
+     * @param radius   maximum distance
+     * @return nearest node reference
+     */
+    public Optional<NodeRef> nearestNodeRef(final Collection<Graph> graphs, final ResolveLocation location,
+                                            final double radius) {
+        final double maxDistanceSquared = radius * radius;
+        return graphs.stream()
+                .flatMap(graph -> graph.getNodes().stream()
+                        .filter(node -> sameWorld(node, location))
+                        .map(node -> new NodeRefDistance(new NodeRef(graph.getGraphId(), node.graphId()),
+                                distanceSquared(node, location))))
+                .filter(distance -> distance.distanceSquared() <= maxDistanceSquared)
+                .min(Comparator.comparingDouble(NodeRefDistance::distanceSquared))
+                .map(NodeRefDistance::ref);
+    }
+
+    /**
+     * Resolves node ids to graph-qualified node references across all graphs.
+     *
+     * @param nodeIds node ids
+     * @return graph-qualified node target resolution
+     */
+    public NodeRefTargetResolution resolveNodeRefTargets(final Collection<UUID> nodeIds) {
+        if (nodeIds == null || nodeIds.isEmpty()) {
+            return NodeRefTargetResolution.failure("Please specify at least one node target.");
+        }
+        final Set<UUID> requested = Set.copyOf(nodeIds);
+        final List<NodeRef> refs = graphService.getAllGraphs().stream()
+                .flatMap(graph -> graph.getNodes().stream()
+                        .filter(node -> requested.contains(node.graphId()))
+                        .map(node -> new NodeRef(graph.getGraphId(), node.graphId())))
+                .toList();
+        if (refs.size() != requested.size()) {
+            return NodeRefTargetResolution.failure("No graph contains the requested node targets.");
+        }
+        return NodeRefTargetResolution.success(refs);
+    }
+
+    /**
+     * Loads persisted graph networks when the service is available.
+     *
+     * @return graph networks
+     */
+    public List<GraphNetwork> loadGraphNetworks() {
+        if (graphNetworkService == null) {
+            return List.of();
+        }
+        return List.copyOf(graphNetworkService.loadGraphNetworks());
+    }
+
+    /**
+     * Finds a graph network containing all required graph ids.
+     *
+     * @param networks candidate networks
+     * @param graphIds required graph ids
+     * @return matching network
+     */
+    public Optional<GraphNetwork> networkContaining(final Collection<GraphNetwork> networks,
+                                                    final Collection<Integer> graphIds) {
+        final Set<Integer> required = Set.copyOf(graphIds);
+        return networks.stream()
+                .filter(network -> required.stream().allMatch(network::hasGraph))
+                .findFirst();
+    }
+
+    /**
+     * Wraps one graph as a graph network for graph-local pathfinding.
+     *
+     * @param graph graph
+     * @return single-graph network
+     */
+    public GraphNetwork singleGraphNetwork(final Graph graph) {
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graph);
+        return network;
+    }
+
+    /**
+     * Finds a graph-network path to any graph-qualified node goal.
+     *
+     * @param network graph network
+     * @param start   start node reference
+     * @param goals   goal node references
+     * @return path result
+     */
+    public PathResult findPath(final GraphNetwork network, final NodeRef start, final Collection<NodeRef> goals) {
+        return pathFinder.findPathResult(network, start, goals, null, TeleportRules.disableTeleports());
+    }
+
+    /**
+     * Finds a graph-network path to any entry point in the target graph.
+     *
+     * @param network       graph network
+     * @param start         start node reference
+     * @param targetGraphId target graph database id
+     * @return path result
+     */
+    public PathResult findPath(final GraphNetwork network, final NodeRef start, final int targetGraphId) {
+        return pathFinder.findPathResult(network, start, targetGraphId, null, TeleportRules.disableTeleports());
+    }
+
+    /**
      * Finds a graph-local path.
      *
      * @param graph graph
@@ -143,6 +277,9 @@ public class ResolveService {
     }
 
     private record NodeDistance(Node node, double distanceSquared) {
+    }
+
+    private record NodeRefDistance(NodeRef ref, double distanceSquared) {
     }
 
     /**
@@ -182,6 +319,44 @@ public class ResolveService {
          */
         public boolean success() {
             return graph != null;
+        }
+    }
+
+    /**
+     * Resolved graph-qualified node targets.
+     *
+     * @param nodeRefs graph-qualified node references
+     * @param error    error message
+     */
+    public record NodeRefTargetResolution(List<NodeRef> nodeRefs, String error) {
+
+        /**
+         * Creates a successful graph-qualified target resolution.
+         *
+         * @param nodeRefs graph-qualified node references
+         * @return result
+         */
+        public static NodeRefTargetResolution success(final List<NodeRef> nodeRefs) {
+            return new NodeRefTargetResolution(List.copyOf(nodeRefs), null);
+        }
+
+        /**
+         * Creates a failed graph-qualified target resolution.
+         *
+         * @param error error message
+         * @return result
+         */
+        public static NodeRefTargetResolution failure(final String error) {
+            return new NodeRefTargetResolution(List.of(), error);
+        }
+
+        /**
+         * Checks if resolution succeeded.
+         *
+         * @return true when all node references were resolved
+         */
+        public boolean success() {
+            return error == null;
         }
     }
 }

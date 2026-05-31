@@ -66,4 +66,17 @@ class GraphServiceImplTest {
                 "Duplicate graph names should be rejected");
         verify(graphTable, never()).saveGraph(provider, graph);
     }
+
+    @Test
+    void saveNewGraphCachesPersistedGraphByGeneratedId() {
+        final Graph newGraph = new Graph("Fresh");
+        final Graph persisted = new Graph(3, "Fresh");
+        when(graphTable.findByName(provider, "Fresh")).thenReturn(Optional.of(persisted));
+
+        service.saveGraph(newGraph);
+
+        assertEquals(3, service.getGraphByName("Fresh").orElseThrow().getGraphId(),
+                "New graph saves should cache the persisted graph with its generated id");
+        verify(graphTable).saveGraph(provider, newGraph);
+    }
 }

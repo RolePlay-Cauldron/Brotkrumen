@@ -18,11 +18,21 @@ public final class EditorDeleteSubcommands {
 
     public static LiteralArgumentBuilder<CommandSourceStack> delete(final EditorCommandContext commandContext) {
         return Commands.literal("delete")
+                .then(Commands.literal("node")
+                        .executes(context -> {
+                            final org.bukkit.entity.Player player = commandContext.player(context);
+                            return player == null ? 0 : commandContext.send(player,
+                                    commandContext.editorService().deleteSelectedNode(player.getUniqueId()));
+                        }))
                 .then(Commands.literal("graph")
                         .then(Commands.argument(GRAPH_ARGUMENT, StringArgumentType.word())
                                 .suggests((context, builder) -> {
+                                    final String remaining = builder.getRemainingLowerCase();
                                     commandContext.graphService().getAllGraphs()
-                                            .forEach(graph -> builder.suggest(graph.getName()));
+                                            .stream()
+                                            .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
+                                            .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
+                                            .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
                                 .executes(context -> {

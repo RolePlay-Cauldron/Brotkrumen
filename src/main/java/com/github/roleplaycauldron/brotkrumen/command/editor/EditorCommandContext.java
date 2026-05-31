@@ -70,6 +70,9 @@ public final class EditorCommandContext {
         if (result.message() != null && !result.message().isBlank()) {
             player.sendMessage(result.message());
         }
+        if (result.component() != null) {
+            player.sendMessage(result.component());
+        }
         if (result.actionBarMessage() != null && !result.actionBarMessage().isBlank()) {
             player.sendActionBar(Component.text(result.actionBarMessage()));
         }

@@ -63,7 +63,7 @@ public final class BkCompletionSupport {
     private static Stream<String> graphSuggestions(final Collection<Graph> graphs, final String filter) {
         return graphs.stream()
                 .sorted(Comparator.comparingInt(Graph::getGraphId))
-                .flatMap(graph -> Stream.of("graph:" + graph.getGraphId(), "graph:" + graph.getName()))
+                .flatMap(graph -> Stream.of("graph:" + graph.getName()))
                 .filter(value -> lower(value).startsWith("graph:" + filter));
     }
 

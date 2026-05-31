@@ -26,8 +26,12 @@ public final class EditorSessionSubcommands {
         return Commands.literal("edit")
                 .then(Commands.argument("graphName", StringArgumentType.word())
                         .suggests((context, builder) -> {
+                            final String remaining = builder.getRemainingLowerCase();
                             commandContext.graphService().getAllGraphs()
-                                    .forEach(graph -> builder.suggest(graph.getName()));
+                                    .stream()
+                                    .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
+                                    .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
+                                    .forEach(builder::suggest);
                             return builder.buildFuture();
                         })
                         .executes(context -> editGraph(commandContext, context)));

@@ -37,7 +37,11 @@ public final class EditorViewSubcommands {
             final EditorCommandContext commandContext) {
         return Commands.argument(GRAPH_ARGUMENT, StringArgumentType.word())
                 .suggests((context, builder) -> {
-                    commandContext.graphService().getAllGraphs().forEach(graph -> builder.suggest(graph.getName()));
+                    final String remaining = builder.getRemainingLowerCase();
+                    commandContext.graphService().getAllGraphs().stream()
+                            .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
+                            .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
+                            .forEach(builder::suggest);
                     return builder.buildFuture();
                 });
     }

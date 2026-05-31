@@ -18,7 +18,10 @@ import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -722,12 +725,12 @@ public class EditorService {
             return EditorResult.failure("You are not editing a graph.");
         }
 
-        unregisterVisualizer(playerId);
         if (plugin == null) {
             try {
                 graphService.saveGraph(session.graph);
                 saveWarps(session);
                 saveInterGraphEdges(session);
+                unregisterVisualizer(playerId);
             } catch (final Exception e) {
                 log.errorF("The graph could not be saved: {}", e.getMessage());
                 return EditorResult.failure("Failed to save the graph, aborting editing");
@@ -738,12 +741,29 @@ public class EditorService {
         }
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            graphService.saveGraph(session.graph);
-            saveWarps(session);
-            saveInterGraphEdges(session);
-            playerEditors.remove(playerId);
+            try {
+                graphService.saveGraph(session.graph);
+                saveWarps(session);
+                saveInterGraphEdges(session);
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    playerEditors.remove(playerId);
+                    unregisterVisualizer(playerId);
+                    final Player player = plugin.getServer().getPlayer(playerId);
+                    if (player != null) {
+                        player.sendMessage("Route creation finished.");
+                    }
+                });
+            } catch (final Exception e) {
+                log.errorF("The graph could not be saved: {}", e.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    final Player player = plugin.getServer().getPlayer(playerId);
+                    if (player != null) {
+                        player.sendMessage("Failed to save the graph: " + e.getMessage());
+                    }
+                });
+            }
         });
-        return EditorResult.success("Route creation finished.");
+        return EditorResult.success("Saving editor session...");
     }
 
     private void saveWarps(final EditorSession session) {
@@ -870,7 +890,7 @@ public class EditorService {
         if (session.selectedNodeRef == null) {
             return EditorResult.failure("Select a graph node before inspecting connections.");
         }
-        final List<String> lines = new ArrayList<>();
+        final List<Component> lines = new ArrayList<>();
         final Graph graph = graphById(session, session.selectedNodeRef.graphDbId());
         if (graph != null) {
             final Set<String> seen = new LinkedHashSet<>();
@@ -898,7 +918,18 @@ public class EditorService {
         if (lines.isEmpty()) {
             return EditorResult.success("Selected node has no known connections.");
         }
-        return EditorResult.success("Selected node connections: " + String.join("; ", lines) + ".");
+        return EditorResult.success(clickableConnections(lines));
+    }
+
+    private Component clickableConnections(final List<Component> lines) {
+        Component result = Component.text("Selected node connections: ");
+        for (int index = 0; index < lines.size(); index++) {
+            if (index > 0) {
+                result = result.append(Component.text("; "));
+            }
+            result = result.append(lines.get(index));
+        }
+        return result.append(Component.text("."));
     }
 
     public EditorResult deletePersistedGraph(final String graphName) {
@@ -920,6 +951,32 @@ public class EditorService {
         return EditorResult.success("Deleted graph " + graph.get().getName() + ", removed " + removedWarps
                 + " warp" + (removedWarps == 1 ? "" : "s") + " and " + removedEdges + " inter-graph edge record"
                 + (removedEdges == 1 ? "" : "s") + ".");
+    }
+
+    public EditorResult deleteSelectedNode(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("You are not editing a graph.");
+        }
+        if (session.selectedNodeRef == null || session.selectedNode == null) {
+            return EditorResult.failure("Select a graph node before deleting it.");
+        }
+        if (session.selectedNodeRef.graphDbId() != session.graph.getGraphId()) {
+            return EditorResult.failure("Only active graph nodes can be deleted.");
+        }
+        final UUID nodeId = session.selectedNode.graphId();
+        session.graph.removeNode(session.selectedNode);
+        session.pendingWarps.values().removeIf(warp -> warp.targetNodeId().equals(nodeId));
+        if (warpService != null) {
+            warpService.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
+        }
+        session.selectedNode = null;
+        session.selectedNodeRef = null;
+        session.selectedEdge = null;
+        session.selectedInterGraphEdge = null;
+        clearEdgeEndpoints(session);
+        refreshVisualizer(playerId);
+        return EditorResult.success("Deleted selected node " + nodeId + ".");
     }
 
     /**
@@ -1344,16 +1401,18 @@ public class EditorService {
         graph.updateNode(new Node(node.dbId(), node.graphId(), node.x(), node.y(), node.z(), node.worldId(), flags));
     }
 
-    private String connectionLine(final EditorSession session, final int graphId, final UUID nodeId,
-                                  final Set<EdgeFlag> flags, final String direction, final String scope) {
+    private Component connectionLine(final EditorSession session, final int graphId, final UUID nodeId,
+                                     final Set<EdgeFlag> flags, final String direction, final String scope) {
         final Node node = node(session, new NodeRef(graphId, nodeId));
         final String location = node == null ? "unknown location"
                 : String.format(Locale.ROOT, "%.1f %.1f %.1f", node.x(), node.y(), node.z());
         final String traversal = flags.contains(EdgeFlag.TELEPORT) ? "teleport" : "normal";
         final String state = flags.contains(EdgeFlag.BLOCKED) ? "blocked" : "open";
         final String edgeDirection = flags.contains(EdgeFlag.UNDIRECTED) ? "undirected" : direction;
-        return scope + " " + edgeDirection + " to " + nodeId + " in graph " + graphLabel(session, graphId)
-                + " at " + location + " [" + traversal + ", " + state + "]";
+        return Component.text(scope + " " + edgeDirection + " to ")
+                .append(Component.text(nodeId.toString()).clickEvent(ClickEvent.copyToClipboard(nodeId.toString())))
+                .append(Component.text(" in graph " + graphLabel(session, graphId)
+                        + " at " + location + " [" + traversal + ", " + state + "]"));
     }
 
     private String graphLabel(final EditorSession session, final NodeRef ref) {
@@ -1552,18 +1611,26 @@ public class EditorService {
      * @param success whether the operation succeeded
      * @param message user-facing message
      */
-    public record EditorResult(boolean success, String message, String actionBarMessage) {
+    public record EditorResult(boolean success, String message, String actionBarMessage, Component component) {
 
         public EditorResult(final boolean success, final String message) {
-            this(success, message, "");
+            this(success, message, "", null);
+        }
+
+        public EditorResult(final boolean success, final Component component) {
+            this(success, "", "", component);
         }
 
         public static EditorResult success(final String message) {
             return new EditorResult(true, message);
         }
 
+        public static EditorResult success(final Component component) {
+            return new EditorResult(true, component);
+        }
+
         public static EditorResult success(final String message, final String actionBarMessage) {
-            return new EditorResult(true, message, actionBarMessage);
+            return new EditorResult(true, message, actionBarMessage, null);
         }
 
         public static EditorResult failure(final String message) {

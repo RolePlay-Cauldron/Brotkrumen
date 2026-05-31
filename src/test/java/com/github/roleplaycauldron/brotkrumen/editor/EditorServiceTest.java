@@ -462,6 +462,22 @@ class EditorServiceTest {
     }
 
     @Test
+    void deleteSelectedNodeRemovesOnlyActiveGraphNode() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        final Node first = graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        final Node second = graph.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
+        graph.addUndirectedEdge(first.graphId(), second.graphId(), 1.0D);
+
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.deleteSelectedNode(PLAYER_ID).success());
+
+        assertNull(graph.getNodeById(first.graphId()), "Selected node should be removed");
+        assertTrue(graph.getEdges().isEmpty(), "Edges connected to the removed node should be removed");
+        assertFalse(service.deleteSelectedNode(PLAYER_ID).success(), "Selection should be cleared after deletion");
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void referenceGraphViewEnablesCrossGraphEdgeAuthoringLifecycle() {
         final Graph active = new Graph(1, "Active");
@@ -479,7 +495,7 @@ class EditorServiceTest {
         assertTrue(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
         assertTrue(service.updateSelectedEdgeTraversal(PLAYER_ID, EditorService.EdgeTraversal.TELEPORT).success());
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
-        assertTrue(service.selectedNodeConnections(PLAYER_ID).message().contains("inter-graph"));
+        assertTrue(service.selectedNodeConnections(PLAYER_ID).component().toString().contains("inter-graph"));
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
 
         verify(graphNetworkService).saveInterGraphEdges(org.mockito.Mockito.<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2

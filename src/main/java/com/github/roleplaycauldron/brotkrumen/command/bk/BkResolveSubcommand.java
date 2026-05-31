@@ -2,7 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
-import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.GuidedPathCompletionVisualizer;
@@ -27,9 +27,12 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-import java.util.HashSet;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * `/bk resolve` command.
@@ -91,7 +94,7 @@ public final class BkResolveSubcommand {
      */
     private CompletableFuture<Suggestions> suggestOnlinePlayers(final SuggestionsBuilder builder) {
         final String remaining = builder.getRemainingLowerCase();
-        final java.util.List<String> names = commandContext.plugin().getServer().getOnlinePlayers().stream()
+        final List<String> names = commandContext.plugin().getServer().getOnlinePlayers().stream()
                 .map(Player::getName)
                 .toList();
         BkCompletionSupport.onlinePlayers(names, remaining).forEach(builder::suggest);
@@ -149,36 +152,62 @@ public final class BkResolveSubcommand {
         if (graph == null) {
             return ResolveResult.failure("No graph found for " + target.graphKey() + ".");
         }
-        final Node start = commandContext.resolveService()
-                .nearestNode(graph, location, options.effectiveNearestNodeRadius())
+        final NodeRef start = commandContext.resolveService()
+                .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("No nearby node found in graph " + graph.getName() + ".");
+            return ResolveResult.failure("No nearby graph node found.");
         }
-        return ResolveResult.graph(graph, options.backend());
+        if (start.graphDbId() == graph.getGraphId()) {
+            return ResolveResult.graph(graph, options.backend());
+        }
+        final List<GraphNetwork> networks = commandContext.resolveService().loadGraphNetworks();
+        final GraphNetwork network = commandContext.resolveService()
+                .networkContaining(networks, List.of(start.graphDbId(), graph.getGraphId()))
+                .orElse(null);
+        if (network == null) {
+            return ResolveResult.failure("No graph network connects your current graph to " + graph.getName() + ".");
+        }
+        final PathResult path = commandContext.resolveService().findPath(network, start, graph.getGraphId());
+        if (path.nodes().isEmpty()) {
+            return ResolveResult.failure("No path found to graph " + graph.getName() + ".");
+        }
+        return ResolveResult.path(network, path, options.backend(), "Showing path to graph " + graph.getName() + ".");
     }
 
     private ResolveResult resolveNodeTargets(final ResolveLocation location,
                                              final ResolveOptions options,
                                              final ResolveTarget target) {
-        final ResolveService.NodeTargetResolution resolution = commandContext.resolveService()
-                .resolveNodeTargets(target.nodeIds());
+        final ResolveService.NodeRefTargetResolution resolution = commandContext.resolveService()
+                .resolveNodeRefTargets(target.nodeIds());
         if (!resolution.success()) {
             return ResolveResult.failure(resolution.error());
         }
-        final Graph graph = resolution.graph();
-        final Node start = commandContext.resolveService()
-                .nearestNode(graph, location, options.effectiveNearestNodeRadius())
+        final NodeRef start = commandContext.resolveService()
+                .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("No nearby node found in graph " + graph.getName() + ".");
+            return ResolveResult.failure("No nearby graph node found.");
+        }
+        final Collection<Integer> requiredGraphIds = Stream.concat(
+                        Stream.of(start.graphDbId()),
+                        resolution.nodeRefs().stream().map(NodeRef::graphDbId))
+                .collect(Collectors.toSet());
+        final GraphNetwork network = requiredGraphIds.size() == 1
+                ? commandContext.resolveService().singleGraphNetwork(
+                commandContext.graphService().getGraphById(start.graphDbId()).orElseThrow())
+                : commandContext.resolveService()
+                .networkContaining(commandContext.resolveService().loadGraphNetworks(), requiredGraphIds)
+                .orElse(null);
+        if (network == null) {
+            return ResolveResult.failure("No graph network connects your current graph to the requested node target.");
         }
         final PathResult path = commandContext.resolveService()
-                .findPath(graph, start.graphId(), new HashSet<>(resolution.nodeIds()));
+                .findPath(network, start, resolution.nodeRefs());
         if (path.nodes().isEmpty()) {
-            return ResolveResult.failure("No path found in graph " + graph.getName() + ".");
+            return ResolveResult.failure("No path found to requested node target.");
         }
-        return ResolveResult.path(graph, path, options.backend());
+        return ResolveResult.path(network, path, options.backend(), "Showing path to requested node target.");
     }
 
     private void finishResolve(final CommandContext<CommandSourceStack> context,
@@ -222,12 +251,10 @@ public final class BkResolveSubcommand {
                                       final long token,
                                       final ResolveOptions options,
                                       final ResolveResult result) {
-        final GraphNetwork network = new GraphNetwork();
-        network.addGraph(result.graph());
         final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.defaults();
         final GuidedPathOptions guidedPathOptions = resolveGuidedPathOptions(options);
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
-                new GraphNetworkVisualSource(network),
+                new GraphNetworkVisualSource(result.network()),
                 result.path(),
                 viewerLocationSource(playerId),
                 guidedPathOptions,
@@ -277,7 +304,7 @@ public final class BkResolveSubcommand {
 
     private int cancelOwnGuidance(final CommandContext<CommandSourceStack> context) {
         final CommandSender sender = context.getSource().getSender();
-        if (!(sender instanceof Player player)) {
+        if (!(sender instanceof final Player player)) {
             commandContext.send(context, "Console must specify a player: /bk resolve cancel <player>.");
             return 0;
         }
@@ -312,22 +339,24 @@ public final class BkResolveSubcommand {
     }
 
     @SuppressWarnings("PMD.CommentDefaultAccessModifier")
-    private record ResolveResult(Graph graph, PathResult path, ResolveBackend backend, String message) {
+    private record ResolveResult(Graph graph, GraphNetwork network, PathResult path, ResolveBackend backend,
+                                 String message) {
 
         static ResolveResult graph(final Graph graph, final ResolveBackend backend) {
-            return new ResolveResult(graph, null, backend, "Showing graph " + graph.getName() + ".");
+            return new ResolveResult(graph, null, null, backend, "Showing graph " + graph.getName() + ".");
         }
 
-        static ResolveResult path(final Graph graph, final PathResult path, final ResolveBackend backend) {
-            return new ResolveResult(graph, path, backend, "Showing path in graph " + graph.getName() + ".");
+        static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
+                                  final String message) {
+            return new ResolveResult(null, network, path, backend, message);
         }
 
         static ResolveResult failure(final String message) {
-            return new ResolveResult(null, null, null, message);
+            return new ResolveResult(null, null, null, null, message);
         }
 
         boolean success() {
-            return graph != null;
+            return graph != null || network != null;
         }
     }
 }

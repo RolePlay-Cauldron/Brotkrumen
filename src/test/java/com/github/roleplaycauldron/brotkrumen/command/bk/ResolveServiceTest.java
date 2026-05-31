@@ -2,12 +2,16 @@ package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -124,6 +128,51 @@ class ResolveServiceTest {
                 .resolveNodeTargets(Set.of(first, second));
 
         assertFalse(result.success(), "Nodes across graphs should be rejected");
+    }
+
+    @Test
+    void resolvesNodeRefsAcrossGraphs() {
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final Graph firstGraph = new Graph(1, "first");
+        firstGraph.addNode(new Node(first, 0.0D, 0.0D, 0.0D, WORLD));
+        final Graph secondGraph = new Graph(2, "second");
+        secondGraph.addNode(new Node(second, 1.0D, 0.0D, 0.0D, WORLD));
+        final GraphService graphService = mock(GraphService.class);
+        when(graphService.getAllGraphs()).thenReturn(Set.of(firstGraph, secondGraph));
+
+        final ResolveService.NodeRefTargetResolution result = new ResolveService(graphService)
+                .resolveNodeRefTargets(Set.of(first, second));
+
+        assertTrue(result.success(), "Node refs across graphs should resolve for network pathing");
+        assertEquals(Set.of(new NodeRef(1, first), new NodeRef(2, second)), Set.copyOf(result.nodeRefs()),
+                "Resolved refs should preserve graph ids");
+    }
+
+    @Test
+    void findsNetworkPathToTargetGraphEntryPoint() {
+        final Graph current = new Graph(1, "current");
+        final Graph target = new Graph(2, "target");
+        final UUID start = UUID.randomUUID();
+        final UUID exit = UUID.randomUUID();
+        final UUID entry = UUID.randomUUID();
+        current.addNode(new Node(start, 0.0D, 0.0D, 0.0D, WORLD));
+        current.addNode(new Node(exit, 1.0D, 0.0D, 0.0D, WORLD));
+        target.addNode(new Node(entry, 2.0D, 0.0D, 0.0D, WORLD));
+        current.addUndirectedEdge(start, exit, 1.0D);
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(current);
+        network.addGraph(target);
+        network.addDirectedInterGraphEdge(new NodeRef(1, exit), new NodeRef(2, entry), 1.0D);
+        final GraphService graphService = mock(GraphService.class);
+        final GraphNetworkService graphNetworkService = mock(GraphNetworkService.class);
+        when(graphNetworkService.loadGraphNetworks()).thenReturn(List.of(network));
+        final ResolveService service = new ResolveService(graphService, graphNetworkService);
+
+        final PathResult path = service.findPath(network, new NodeRef(1, start), 2);
+
+        assertEquals(new NodeRef(2, entry), path.nodes().getLast(),
+                "Target graph path should end at an entry point into the target graph");
     }
 
     @Test
