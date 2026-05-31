@@ -159,7 +159,7 @@ public final class BkResolveSubcommand {
             return ResolveResult.failure("No nearby graph node found.");
         }
         if (start.graphDbId() == graph.getGraphId()) {
-            return ResolveResult.graph(graph, options.backend());
+            return ResolveResult.completedResult();
         }
         final List<GraphNetwork> networks = commandContext.resolveService().loadGraphNetworks();
         final GraphNetwork network = commandContext.resolveService()
@@ -188,6 +188,9 @@ public final class BkResolveSubcommand {
                 .orElse(null);
         if (start == null) {
             return ResolveResult.failure("No nearby graph node found.");
+        }
+        if (resolution.nodeRefs().contains(start)) {
+            return ResolveResult.completedResult();
         }
         final Collection<Integer> requiredGraphIds = Stream.concat(
                         Stream.of(start.graphDbId()),
@@ -224,6 +227,10 @@ public final class BkResolveSubcommand {
         if (!result.success()) {
             commandContext.sessionManager().clearIfCurrent(playerId, token);
             commandContext.send(context, result.message());
+            return;
+        }
+        if (result.completed()) {
+            onGuidedPathCompleted(playerId, token, options);
             return;
         }
         final Visualizer visualizer = result.path() == null
@@ -340,23 +347,28 @@ public final class BkResolveSubcommand {
 
     @SuppressWarnings("PMD.CommentDefaultAccessModifier")
     private record ResolveResult(Graph graph, GraphNetwork network, PathResult path, ResolveBackend backend,
+                                 boolean completed,
                                  String message) {
 
         static ResolveResult graph(final Graph graph, final ResolveBackend backend) {
-            return new ResolveResult(graph, null, null, backend, "Showing graph " + graph.getName() + ".");
+            return new ResolveResult(graph, null, null, backend, false, "Showing graph " + graph.getName() + ".");
         }
 
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
                                   final String message) {
-            return new ResolveResult(null, network, path, backend, message);
+            return new ResolveResult(null, network, path, backend, false, message);
         }
 
         static ResolveResult failure(final String message) {
-            return new ResolveResult(null, null, null, null, message);
+            return new ResolveResult(null, null, null, null, false, message);
+        }
+
+        static ResolveResult completedResult() {
+            return new ResolveResult(null, null, null, null, true, "Resolve guidance complete.");
         }
 
         boolean success() {
-            return graph != null || network != null;
+            return graph != null || network != null || completed;
         }
     }
 }
