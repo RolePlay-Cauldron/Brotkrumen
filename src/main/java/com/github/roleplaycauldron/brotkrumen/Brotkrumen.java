@@ -5,6 +5,7 @@ import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
 import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
@@ -68,6 +69,10 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
+        warpService = new WarpServiceImpl(storage);
+        localization = new Localization(loggerFactory.create(Localization.class), this);
+        saveResource("language/en-us.yml", false);
+        localization.reload();
         final WarpServiceImpl warpService = new WarpServiceImpl(storage);
         final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
 

@@ -1,0 +1,8 @@
+# Brotkrumen Language File
+# Locale: de-de
+
+# Allgemeines
+prefix: "<dark_gray>[<dark_green>Brotkrumen<dark_gray>] <gray>"
+
+# Beispielnachrichten
+welcome: "Willkommen bei Brotkrumen, <player>!"
