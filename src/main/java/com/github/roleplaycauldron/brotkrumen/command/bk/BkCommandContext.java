@@ -30,12 +30,13 @@ import org.bukkit.command.CommandSender;
  * @param effectExecutor      executes visual and gameplay effects.
  * @param resolveService      handles resolve operations, including pathfinding and target resolution.
  * @param targetParser        parses and validates resolve target specifications.
+ * @param sessionManager      tracks pending and active resolve guidance sessions.
  */
 public record BkCommandContext(Brotkrumen plugin, GraphService graphService,
                                GraphNetworkService graphNetworkService, Storage storage,
                                VisualizerRegistry visualizerRegistry, LoggerFactory loggerFactory,
                                EffectExecutor effectExecutor, ResolveService resolveService,
-                               ResolveTargetParser targetParser) {
+                               ResolveTargetParser targetParser, ResolveGuidanceSessionManager sessionManager) {
 
     /**
      * Resolves configuration options for the `/bk resolve` command.

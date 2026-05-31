@@ -93,6 +93,15 @@ commands:
     # Default visualizer backend used by /bk resolve: particle or block-display.
     visualizerBackend: 'particle'
 
+    # Distance, in blocks, used to detect when guided resolve reached the final path node.
+    finishRadius: 4.0
+
+    # Delay, in seconds, before completed guided resolve visualization is removed.
+    finishCleanupDelaySeconds: 5
+
+    # Whether guided resolve marks the final selected path node with a dedicated visual role.
+    goalMarkerEnabled: true
+
 ############
 #  Editor  #
 ############

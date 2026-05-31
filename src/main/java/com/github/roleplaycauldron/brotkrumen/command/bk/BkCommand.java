@@ -36,7 +36,8 @@ public class BkCommand {
                      final VisualizerRegistry visualizerRegistry, final LoggerFactory loggerFactory,
                      final EffectExecutor effectExecutor) {
         this.commandContext = new BkCommandContext(plugin, graphService, graphNetworkService, storage,
-                visualizerRegistry, loggerFactory, effectExecutor, new ResolveService(graphService), new ResolveTargetParser());
+                visualizerRegistry, loggerFactory, effectExecutor, new ResolveService(graphService),
+                new ResolveTargetParser(), new ResolveGuidanceSessionManager(visualizerRegistry));
 
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar()
                 .register(commandTree(), "Brotkrumen runtime commands"));

@@ -30,7 +30,11 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
 
     private final GuidedPathOptions options;
 
+    private final boolean goalMarkerEnabled;
+
     private int progressIndex;
+
+    private boolean completed;
 
     /**
      * Creates a guided path source from a structured path result.
@@ -42,13 +46,30 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
      */
     public GuidedPathVisualGraphSource(final VisualGraphSource delegate, final PathResult result,
                                        final ViewerLocationSource locationSource, final GuidedPathOptions options) {
+        this(delegate, result, locationSource, options, false);
+    }
+
+    /**
+     * Creates a guided path source from a structured path result.
+     *
+     * @param delegate          source to filter
+     * @param result            structured path result
+     * @param locationSource    viewer location source
+     * @param options           guided path options
+     * @param goalMarkerEnabled whether the final path node should use goal marker role
+     */
+    public GuidedPathVisualGraphSource(final VisualGraphSource delegate, final PathResult result,
+                                       final ViewerLocationSource locationSource, final GuidedPathOptions options,
+                                       final boolean goalMarkerEnabled) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         final PathResult safeResult = result == null ? PathResult.empty() : result;
         this.path = safeResult.nodes();
         this.pathRoles = PathVisualRoles.fromSegments(safeResult.segments());
         this.locationSource = locationSource;
         this.options = options == null ? GuidedPathOptions.defaults() : options;
+        this.goalMarkerEnabled = goalMarkerEnabled;
         this.progressIndex = 0;
+        this.completed = false;
     }
 
     @Override
@@ -72,7 +93,11 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
     }
 
     private VisualNode pathNode(final VisualNode node) {
-        return new VisualNode(node.visualNodeId(), node.ref(), node.node(), pathRoles.getOrDefault(node.ref(), VisualNodeRole.DEFAULT));
+        if (goalMarkerEnabled && !path.isEmpty() && node.ref().equals(path.getLast())) {
+            return new VisualNode(node.visualNodeId(), node.ref(), node.node(), VisualNodeRole.GUIDED_PATH_GOAL);
+        }
+        return new VisualNode(node.visualNodeId(), node.ref(), node.node(),
+                pathRoles.getOrDefault(node.ref(), VisualNodeRole.DEFAULT));
     }
 
     @Override
@@ -83,6 +108,7 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
 
     private void advanceProgress(final VisualGraphSnapshot snapshot) {
         if (path.isEmpty() || locationSource == null) {
+            completed = false;
             return;
         }
 
@@ -97,8 +123,13 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
             final VisualNode node = nodes.get(path.get(i));
             if (node != null && isReached(location, node.node())) {
                 progressIndex = i;
-                return;
+                break;
             }
+        }
+
+        final VisualNode finalNode = snapshot.nodesByRef().get(path.getLast());
+        if (finalNode != null && isReached(location, finalNode.node())) {
+            completed = true;
         }
     }
 
@@ -122,12 +153,7 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
     private boolean isVisiblePathEdge(final VisualEdge edge) {
         final int start = Math.max(0, progressIndex - options.lookBehind());
         final int endExclusive = Math.min(path.size(), progressIndex + options.windowSize());
-        for (int i = start; i + 1 < endExclusive; i++) {
-            if (edge.source().equals(path.get(i)) && edge.target().equals(path.get(i + 1))) {
-                return true;
-            }
-        }
-        return false;
+        return PathEdgeMatcher.matchesPathWindow(edge, path, start, endExclusive);
     }
 
     private double activationRadiusSquared() {
@@ -139,6 +165,16 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
         result = (31 * result) + path.hashCode();
         result = (31 * result) + options.hashCode();
         result = (31 * result) + progressIndex;
+        result = (31 * result) + Boolean.hashCode(completed);
         return result;
+    }
+
+    /**
+     * Returns whether the final path node was reached.
+     *
+     * @return true when completed
+     */
+    public boolean complete() {
+        return completed;
     }
 }

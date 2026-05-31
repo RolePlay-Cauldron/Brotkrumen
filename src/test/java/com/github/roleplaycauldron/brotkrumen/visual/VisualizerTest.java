@@ -18,10 +18,13 @@ import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.render.GraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathOptions;
+import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathVisualGraphSource;
+import com.github.roleplaycauldron.brotkrumen.visual.source.SingleGraphVisualSource;
 import com.github.roleplaycauldron.brotkrumen.visual.source.VisualGraphSource;
 import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
 import com.github.roleplaycauldron.spellbook.effect.shape.LineShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.junit.jupiter.api.Test;
 
@@ -29,10 +32,11 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+@SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.CouplingBetweenObjects"})
 class VisualizerTest {
 
     @Test
@@ -148,6 +152,30 @@ class VisualizerTest {
                 () -> assertInstanceOf(LineShape.class, shape(resolver.resolveParticleEdge(explicitEdge).effect()),
                         "Explicit line override should not be replaced")
         );
+    }
+
+    @Test
+    void guidedPathCompletionVisualizerNotifiesOnlyOnce() {
+        final Graph graph = new Graph(1, "Completion");
+        final UUID nodeId = UUID.randomUUID();
+        final NodeRef nodeRef = new NodeRef(1, nodeId);
+        graph.addNode(new Node(nodeId, 0, 0, 0, null));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(graph),
+                new PathResult(List.of(nodeRef), List.of()),
+                () -> new Location(null, 0.5D, 0.5D, 0.5D),
+                new GuidedPathOptions(1, 1.0D, 0),
+                true
+        );
+        final StubRenderer renderer = new StubRenderer();
+        final AtomicInteger callbackCount = new AtomicInteger();
+        final GuidedPathCompletionVisualizer visualizer = new GuidedPathCompletionVisualizer(null, source, renderer,
+                ProfileGraphDesignResolver.defaults(), callbackCount::incrementAndGet);
+
+        visualizer.visibilityUpdate();
+        visualizer.visibilityUpdate();
+
+        assertEquals(1, callbackCount.get(), "Completion callback should run once");
     }
 
     private GraphDesignResolver designs(final Visualizer visualizer) throws ReflectiveOperationException {

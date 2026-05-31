@@ -5,6 +5,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for {@link ResolveService}.
  */
+@SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
 class ResolveServiceTest {
 
     private static final UUID WORLD = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -27,6 +29,30 @@ class ResolveServiceTest {
                 "Radius should be clamped to view distance");
         assertEquals(8.0D, ResolveOptions.effectiveNearestNodeRadius(8.0D, 10.0D),
                 "Radius below view distance should be used as-is");
+    }
+
+    @Test
+    void loadsResolveFinishDefaults() {
+        final ResolveOptions options = ResolveOptions.fromConfig(new YamlConfiguration());
+
+        assertEquals(4.0D, options.finishRadius(), "Finish radius should use default when not configured");
+        assertEquals(5, options.finishCleanupDelaySeconds(), "Cleanup delay should default to 5 seconds");
+        assertTrue(options.goalMarkerEnabled(), "Goal marker should be enabled by default");
+    }
+
+    @Test
+    void loadsResolveFinishOverrides() {
+        final YamlConfiguration config = new YamlConfiguration();
+        config.set("commands.resolve.finishRadius", 6.5D);
+        config.set("commands.resolve.finishCleanupDelaySeconds", 9);
+        config.set("commands.resolve.goalMarkerEnabled", false);
+
+        final ResolveOptions options = ResolveOptions.fromConfig(config);
+
+        assertEquals(6.5D, options.finishRadius(), "Configured finish radius should be loaded");
+        assertEquals(9, options.finishCleanupDelaySeconds(), "Configured cleanup delay should be loaded");
+        assertFalse(options.goalMarkerEnabled(), "Configured goal marker flag should be loaded");
+        assertEquals(180L, options.finishCleanupDelayTicks(), "Cleanup delay should convert to ticks");
     }
 
     @Test

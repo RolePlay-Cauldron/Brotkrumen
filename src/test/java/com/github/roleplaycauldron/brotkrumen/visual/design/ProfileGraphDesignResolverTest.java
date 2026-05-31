@@ -112,6 +112,8 @@ class ProfileGraphDesignResolverTest {
                 "Preset should include intergraph teleport node design");
         assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.WARP),
                 "Preset should include warp node design");
+        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
+                "Preset should include guided goal marker node design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.TELEPORT),
                 "Teleport edge role should fall back to default edge design");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL),
@@ -131,6 +133,8 @@ class ProfileGraphDesignResolverTest {
                 "Particle node presets should expose EffectInstance data");
         assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DEFAULT_LOCAL).effect(),
                 "Particle edge presets should expose EffectInstance data");
+        assertNotNull(BlockDisplayDesignSet.prismPreset().nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
+                "Block-display presets should include guided goal marker node design");
     }
 
     @Test
@@ -200,6 +204,46 @@ class ProfileGraphDesignResolverTest {
         );
     }
 
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void guidedGoalMarkerRoleResolvesAndFallsBack() {
+        final NodeRef ref = new NodeRef(1, UUID.randomUUID());
+        final VisualNode goalNode = visualNode(ref, VisualNodeRole.GUIDED_PATH_GOAL);
+        final ParticleNodeDesign goalParticle = ParticleNodeDesign.sphere(Particle.HAPPY_VILLAGER, 0.8f);
+        final BlockNodeDesign goalBlock = new BlockNodeDesign(Material.SEA_LANTERN, 0.85f);
+        final Map<VisualNodeRole, ParticleNodeDesign> particleFallbackNodes = new EnumMap<>(VisualNodeRole.class);
+        particleFallbackNodes.put(VisualNodeRole.DEFAULT, ParticleNodeDesign.cube(Particle.FLAME, 0.4f));
+        final Map<VisualNodeRole, BlockNodeDesign> blockFallbackNodes = new EnumMap<>(VisualNodeRole.class);
+        blockFallbackNodes.put(VisualNodeRole.DEFAULT, new BlockNodeDesign(Material.STONE, 0.4f));
+        final Map<VisualEdgeRole, ParticleEdgeDesign> fallbackParticleEdges = new EnumMap<>(VisualEdgeRole.class);
+        fallbackParticleEdges.put(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.line(Particle.FLAME, 8));
+        final Map<VisualEdgeRole, BlockEdgeDesign> fallbackBlockEdges = new EnumMap<>(VisualEdgeRole.class);
+        fallbackBlockEdges.put(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(Material.STONE, 0.2f, 0.5D));
+        final ProfileGraphDesignResolver configuredResolver = new ProfileGraphDesignResolver(GraphNetworkDesignProfile.builder()
+                .particleGraphDesign(1, new ParticleDesignSet(Map.of(
+                        VisualNodeRole.DEFAULT, ParticleNodeDesign.cube(Particle.FLAME, 0.4f),
+                        VisualNodeRole.GUIDED_PATH_GOAL, goalParticle
+                ), Map.of(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.line(Particle.FLAME, 8))))
+                .blockDisplayGraphDesign(1, new BlockDisplayDesignSet(Map.of(
+                        VisualNodeRole.DEFAULT, new BlockNodeDesign(Material.STONE, 0.4f),
+                        VisualNodeRole.GUIDED_PATH_GOAL, goalBlock
+                ), Map.of(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(Material.STONE, 0.2f, 0.5D))))
+                .build());
+        final ProfileGraphDesignResolver fallbackResolver = new ProfileGraphDesignResolver(GraphNetworkDesignProfile.builder()
+                .particleGraphDesign(1, new ParticleDesignSet(particleFallbackNodes, fallbackParticleEdges))
+                .blockDisplayGraphDesign(1, new BlockDisplayDesignSet(blockFallbackNodes, fallbackBlockEdges))
+                .build());
+
+        assertEquals(goalParticle, configuredResolver.resolveParticleNode(goalNode),
+                "Configured particle goal marker role should be used");
+        assertEquals(goalBlock, configuredResolver.resolveBlockNode(goalNode),
+                "Configured block-display goal marker role should be used");
+        assertEquals(particleFallbackNodes.get(VisualNodeRole.DEFAULT), fallbackResolver.resolveParticleNode(goalNode),
+                "Missing particle goal marker role should fall back to default node design");
+        assertEquals(blockFallbackNodes.get(VisualNodeRole.DEFAULT), fallbackResolver.resolveBlockNode(goalNode),
+                "Missing block goal marker role should fall back to default node design");
+    }
+
     private VisualNode visualNode(final NodeRef ref) {
         return visualNode(ref, VisualNodeRole.DEFAULT);
     }
@@ -214,6 +258,7 @@ class ProfileGraphDesignResolverTest {
         nodes.put(VisualNodeRole.LOCAL_TELEPORT, ParticleNodeDesign.sphere(particle, 0.5f));
         nodes.put(VisualNodeRole.INTERGRAPH_TELEPORT, ParticleNodeDesign.sphere(particle, 0.55f));
         nodes.put(VisualNodeRole.WARP, ParticleNodeDesign.sphere(particle, 0.6f));
+        nodes.put(VisualNodeRole.GUIDED_PATH_GOAL, ParticleNodeDesign.sphere(particle, 0.65f));
         final Map<VisualEdgeRole, ParticleEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
         edges.put(VisualEdgeRole.DIRECTED_LOCAL, ParticleEdgeDesign.movingPoint(particle, 0.2f));
@@ -232,6 +277,7 @@ class ProfileGraphDesignResolverTest {
         nodes.put(VisualNodeRole.LOCAL_TELEPORT, new BlockNodeDesign(nodeMaterial, 0.5f));
         nodes.put(VisualNodeRole.INTERGRAPH_TELEPORT, new BlockNodeDesign(nodeMaterial, 0.55f));
         nodes.put(VisualNodeRole.WARP, new BlockNodeDesign(nodeMaterial, 0.6f));
+        nodes.put(VisualNodeRole.GUIDED_PATH_GOAL, new BlockNodeDesign(nodeMaterial, 0.65f));
         final Map<VisualEdgeRole, BlockEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
         edges.put(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
         edges.put(VisualEdgeRole.DIRECTED_LOCAL, new BlockEdgeDesign(edgeMaterial, 0.2f, 0.5D));
