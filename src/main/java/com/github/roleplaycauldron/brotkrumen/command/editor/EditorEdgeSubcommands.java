@@ -11,7 +11,6 @@ import org.bukkit.entity.Player;
 /**
  * Builds editor edge mutation subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorEdgeSubcommands {
 
     private static final String TYPE_ARGUMENT = "type";
@@ -23,6 +22,12 @@ public final class EditorEdgeSubcommands {
     private EditorEdgeSubcommands() {
     }
 
+    /**
+     * Builds the edge mutation subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the edge subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> edge(final EditorCommandContext commandContext) {
         return Commands.literal("edge")
                 .then(Commands.literal("connect")
@@ -91,8 +96,17 @@ public final class EditorEdgeSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

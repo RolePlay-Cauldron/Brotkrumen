@@ -12,7 +12,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 /**
  * Shared dependencies and helpers for editor subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorCommandContext {
 
     private static final String DEFAULT_NODE_DISTANCE_CONFIG = "editor.defaultNodeDistance";
@@ -27,10 +26,23 @@ public final class EditorCommandContext {
 
     private final JavaPlugin plugin;
 
+    /**
+     * The service for editor operations.
+     */
     private final EditorService editorOperations;
 
+    /**
+     * The service for graph data.
+     */
     private final GraphService graphs;
 
+    /**
+     * Initializes the editor command context.
+     *
+     * @param plugin        The JavaPlugin instance.
+     * @param editorService The EditorService for editor operations.
+     * @param graphService  The GraphService for graph data.
+     */
     public EditorCommandContext(final JavaPlugin plugin, final EditorService editorService,
                                 final GraphService graphService) {
         this.plugin = plugin;
@@ -38,14 +50,29 @@ public final class EditorCommandContext {
         this.graphs = graphService;
     }
 
+    /**
+     * Retrieves the EditorService instance.
+     *
+     * @return The EditorService instance.
+     */
     public EditorService editorService() {
         return editorOperations;
     }
 
+    /**
+     * Retrieves the GraphService instance.
+     *
+     * @return The GraphService instance.
+     */
     public GraphService graphService() {
         return graphs;
     }
 
+    /**
+     * Retrieves the default editor settings from the plugin configuration.
+     *
+     * @return The default EditorSettings.
+     */
     public EditorService.EditorSettings defaultSettings() {
         final int nodeDistance = Math.max(1, plugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG,
                 FALLBACK_NODE_DISTANCE));
@@ -58,6 +85,12 @@ public final class EditorCommandContext {
                 .normalized();
     }
 
+    /**
+     * Retrieves the Player instance from the command context.
+     *
+     * @param context The command context.
+     * @return The Player instance, or null if the sender is not a player.
+     */
     public Player player(final CommandContext<CommandSourceStack> context) {
         if (context.getSource().getSender() instanceof final Player player) {
             return player;
@@ -66,6 +99,13 @@ public final class EditorCommandContext {
         return null;
     }
 
+    /**
+     * Sends the editor result messages to the player and returns the command success status.
+     *
+     * @param player The player to send messages to.
+     * @param result The EditorResult containing messages and success status.
+     * @return The command success status.
+     */
     public int send(final Player player, final EditorService.EditorResult result) {
         if (result.message() != null && !result.message().isBlank()) {
             player.sendMessage(result.message());

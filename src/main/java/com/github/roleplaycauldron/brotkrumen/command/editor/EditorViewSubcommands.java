@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 /**
  * Builds editor workspace view subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorViewSubcommands {
 
     private static final String GRAPH_ARGUMENT = "graphName";
@@ -18,6 +17,12 @@ public final class EditorViewSubcommands {
     private EditorViewSubcommands() {
     }
 
+    /**
+     * Builds the view subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the view subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> view(final EditorCommandContext commandContext) {
         return Commands.literal("view")
                 .then(Commands.literal("add").then(graphArgument(commandContext)
@@ -53,8 +58,17 @@ public final class EditorViewSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

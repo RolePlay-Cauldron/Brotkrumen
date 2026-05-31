@@ -11,11 +11,20 @@ import org.bukkit.plugin.java.JavaPlugin;
 /**
  * Brigadier command registration for graph editor operations.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public class EditorCommand {
 
+    /**
+     * Context containing dependencies and helpers for the editor command.
+     */
     private final EditorCommandContext commandContext;
 
+    /**
+     * Initializes the editor command and registers it with the plugin lifecycle.
+     *
+     * @param plugin        The JavaPlugin instance.
+     * @param editorService The EditorService for managing editor sessions.
+     * @param graphService  The GraphService for graph data operations.
+     */
     public EditorCommand(final JavaPlugin plugin, final EditorService editorService, final GraphService graphService) {
         this.commandContext = new EditorCommandContext(plugin, editorService, graphService);
 

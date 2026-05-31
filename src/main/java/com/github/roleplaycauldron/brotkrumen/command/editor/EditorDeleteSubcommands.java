@@ -8,7 +8,6 @@ import io.papermc.paper.command.brigadier.Commands;
 /**
  * Builds editor deletion subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorDeleteSubcommands {
 
     private static final String GRAPH_ARGUMENT = "graphName";
@@ -16,6 +15,12 @@ public final class EditorDeleteSubcommands {
     private EditorDeleteSubcommands() {
     }
 
+    /**
+     * Builds the delete subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the delete subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> delete(final EditorCommandContext commandContext) {
         return Commands.literal("delete")
                 .then(Commands.literal("node")

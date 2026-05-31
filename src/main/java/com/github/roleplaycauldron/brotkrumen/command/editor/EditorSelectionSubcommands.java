@@ -10,12 +10,17 @@ import org.bukkit.entity.Player;
 /**
  * Builds selected graph element subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorSelectionSubcommands {
 
     private EditorSelectionSubcommands() {
     }
 
+    /**
+     * Builds the select subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the select subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> select(final EditorCommandContext commandContext) {
         return Commands.literal("select")
                 .then(Commands.literal("node").executes(context -> withPlayer(commandContext, context, player ->
@@ -26,6 +31,12 @@ public final class EditorSelectionSubcommands {
                                 player.getUniqueId(), player.getLocation())))));
     }
 
+    /**
+     * Builds the selection management subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the selection subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> selection(final EditorCommandContext commandContext) {
         return Commands.literal("selection")
                 .then(Commands.literal("show").executes(context -> withPlayer(commandContext, context, player ->
@@ -55,8 +66,17 @@ public final class EditorSelectionSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

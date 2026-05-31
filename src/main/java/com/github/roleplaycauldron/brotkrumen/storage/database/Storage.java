@@ -103,19 +103,13 @@ public class Storage {
     }
 
     private BrotkrumenConnectionProvider getProvider(final Engine engine) {
-        BrotkrumenConnectionProvider provider = null;
-        switch (engine) {
+        return switch (engine) {
             case MYSQL ->
-                    provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "com.mysql.cj.jdbc.Driver");
+                    new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "com.mysql.cj.jdbc.Driver");
             case MARIADB ->
-                    provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "org.mariadb.jdbc.Driver");
-            case SQLITE -> provider = new SQLite(loggerFactory.create(SQLInput.class), dataFolder.getPath());
-        }
-
-        if (provider == null) {
-            throw new StorageException("Unknown database engine");
-        }
-        return provider;
+                    new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "org.mariadb.jdbc.Driver");
+            case SQLITE -> new SQLite(loggerFactory.create(SQLInput.class), dataFolder.getPath());
+        };
     }
 
     /**

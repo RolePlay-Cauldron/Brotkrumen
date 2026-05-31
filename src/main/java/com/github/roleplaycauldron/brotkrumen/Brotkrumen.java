@@ -27,10 +27,19 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class Brotkrumen extends JavaPlugin implements Listener {
 
+    /**
+     * The registry for managing visualizers.
+     */
     private VisualizerRegistry reg;
 
+    /**
+     * The storage handler for database operations.
+     */
     private Storage storage;
 
+    /**
+     * The service for graph-related operations.
+     */
     private GraphServiceImpl graphService;
 
     /**

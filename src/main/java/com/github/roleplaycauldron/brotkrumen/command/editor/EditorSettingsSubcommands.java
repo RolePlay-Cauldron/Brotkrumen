@@ -13,12 +13,17 @@ import org.bukkit.entity.Player;
 /**
  * Builds editor session settings subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorSettingsSubcommands {
 
     private EditorSettingsSubcommands() {
     }
 
+    /**
+     * Builds the settings subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the settings subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> settings(final EditorCommandContext commandContext) {
         return Commands.literal("settings")
                 .then(Commands.literal("show")
@@ -89,8 +94,17 @@ public final class EditorSettingsSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }
