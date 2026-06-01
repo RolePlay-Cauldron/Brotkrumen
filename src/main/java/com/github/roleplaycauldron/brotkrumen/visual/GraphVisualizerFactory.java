@@ -3,6 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.visual;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
+import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
@@ -10,6 +11,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignRe
 import com.github.roleplaycauldron.brotkrumen.visual.render.BlockDisplayGraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.render.GraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.render.ParticleGraphRenderer;
+import com.github.roleplaycauldron.brotkrumen.visual.source.EditorWorkspaceVisualSource;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GraphNetworkVisualSource;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathOptions;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathVisualGraphSource;
@@ -21,7 +23,9 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bukkit.entity.Player;
 
+import java.util.Collection;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Factory methods for source-based graph visualizers.
@@ -154,6 +158,30 @@ public final class GraphVisualizerFactory {
                                            final Graph graph, final UUID viewerId,
                                            final EffectExecutor executor) {
         return visualizer(loggerFactory, graphSource(graph), particleRenderer(plugin, viewerId, executor),
+                ProfileGraphDesignResolver.defaults());
+    }
+
+    /**
+     * Creates a Spellbook particle visualizer for an editor workspace.
+     *
+     * @param plugin           plugin
+     * @param loggerFactory    logger factory
+     * @param activeGraph      active graph supplier
+     * @param referenceGraphs  visible reference graph supplier
+     * @param interGraphEdges  visible inter-graph edges supplier
+     * @param workspaceVersion workspace version supplier
+     * @param viewerId         viewer id
+     * @param executor         effect executor
+     * @return visualizer
+     */
+    public static Visualizer particleEditorWorkspace(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                                     final Supplier<Graph> activeGraph,
+                                                     final Supplier<Collection<Graph>> referenceGraphs,
+                                                     final Supplier<Collection<InterGraphEdge>> interGraphEdges,
+                                                     final Supplier<Long> workspaceVersion,
+                                                     final UUID viewerId, final EffectExecutor executor) {
+        return visualizer(loggerFactory, new EditorWorkspaceVisualSource(activeGraph, referenceGraphs, interGraphEdges,
+                        workspaceVersion), particleRenderer(plugin, viewerId, executor),
                 ProfileGraphDesignResolver.defaults());
     }
 

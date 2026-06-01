@@ -10,29 +10,50 @@ import org.bukkit.entity.Player;
 /**
  * Builds editor lifecycle subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorSessionSubcommands {
 
     private EditorSessionSubcommands() {
     }
 
+    /**
+     * Builds the create subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the create subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> create(final EditorCommandContext commandContext) {
         return Commands.literal("create")
                 .then(Commands.argument("name", StringArgumentType.word())
                         .executes(context -> createGraph(commandContext, context)));
     }
 
+    /**
+     * Builds the edit subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the edit subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> edit(final EditorCommandContext commandContext) {
         return Commands.literal("edit")
                 .then(Commands.argument("graphName", StringArgumentType.word())
                         .suggests((context, builder) -> {
+                            final String remaining = builder.getRemainingLowerCase();
                             commandContext.graphService().getAllGraphs()
-                                    .forEach(graph -> builder.suggest(graph.getName()));
+                                    .stream()
+                                    .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
+                                    .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
+                                    .forEach(builder::suggest);
                             return builder.buildFuture();
                         })
                         .executes(context -> editGraph(commandContext, context)));
     }
 
+    /**
+     * Builds the rename subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the rename subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> rename(final EditorCommandContext commandContext) {
         return Commands.literal("rename")
                 .then(Commands.argument("newName", StringArgumentType.word())
@@ -41,12 +62,24 @@ public final class EditorSessionSubcommands {
                                         StringArgumentType.getString(context, "newName"))))));
     }
 
+    /**
+     * Builds the finish subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the finish subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> finish(final EditorCommandContext commandContext) {
         return Commands.literal("finish")
                 .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
                         commandContext.editorService().finishRouteCreation(player.getUniqueId()))));
     }
 
+    /**
+     * Builds the cancel subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the cancel subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> cancel(final EditorCommandContext commandContext) {
         return Commands.literal("cancel")
                 .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
@@ -74,8 +107,17 @@ public final class EditorSessionSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

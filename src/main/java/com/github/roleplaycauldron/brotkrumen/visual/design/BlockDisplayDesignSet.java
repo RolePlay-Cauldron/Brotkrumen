@@ -35,7 +35,8 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                 nodeDesignMap(new BlockNodeDesign(Material.COAL_BLOCK, 0.45f),
                         new BlockNodeDesign(Material.MAGMA_BLOCK, 0.55f),
                         new BlockNodeDesign(Material.REDSTONE_BLOCK, 0.5f),
-                        new BlockNodeDesign(Material.OBSIDIAN, 0.55f)),
+                        new BlockNodeDesign(Material.OBSIDIAN, 0.55f),
+                        new BlockNodeDesign(Material.GOLD_BLOCK, 0.65f)),
                 edgeDesignMap(
                         new BlockEdgeDesign(Material.ORANGE_WOOL, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.GREEN_STAINED_GLASS, 0.16f, 0.8D),
@@ -57,7 +58,8 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
                 nodeDesignMap(new BlockNodeDesign(Material.LAPIS_BLOCK, 0.45f),
                         new BlockNodeDesign(Material.AMETHYST_BLOCK, 0.55f),
                         new BlockNodeDesign(Material.PURPUR_BLOCK, 0.5f),
-                        new BlockNodeDesign(Material.END_STONE, 0.55f)),
+                        new BlockNodeDesign(Material.END_STONE, 0.55f),
+                        new BlockNodeDesign(Material.SEA_LANTERN, 0.65f)),
                 edgeDesignMap(
                         new BlockEdgeDesign(Material.LIGHT_BLUE_STAINED_GLASS, 0.16f, 0.8D),
                         new BlockEdgeDesign(Material.CYAN_STAINED_GLASS, 0.18f, 0.8D),
@@ -72,12 +74,14 @@ public record BlockDisplayDesignSet(Map<VisualNodeRole, BlockNodeDesign> nodeDes
     private static Map<VisualNodeRole, BlockNodeDesign> nodeDesignMap(final BlockNodeDesign defaultNode,
                                                                       final BlockNodeDesign localTeleportNode,
                                                                       final BlockNodeDesign intergraphTeleportNode,
-                                                                      final BlockNodeDesign warpNode) {
+                                                                      final BlockNodeDesign warpNode,
+                                                                      final BlockNodeDesign guidedGoalNode) {
         final Map<VisualNodeRole, BlockNodeDesign> result = new EnumMap<>(VisualNodeRole.class);
         result.put(VisualNodeRole.DEFAULT, defaultNode);
         result.put(VisualNodeRole.LOCAL_TELEPORT, localTeleportNode);
         result.put(VisualNodeRole.INTERGRAPH_TELEPORT, intergraphTeleportNode);
         result.put(VisualNodeRole.WARP, warpNode);
+        result.put(VisualNodeRole.GUIDED_PATH_GOAL, guidedGoalNode);
         return result;
     }
 

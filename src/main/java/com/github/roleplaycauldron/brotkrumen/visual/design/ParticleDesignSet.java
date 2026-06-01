@@ -35,7 +35,8 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.4f),
                         ParticleNodeDesign.cube(Particle.PORTAL, 0.55f),
                         ParticleNodeDesign.sphere(Particle.REVERSE_PORTAL, 0.55f),
-                        ParticleNodeDesign.sphere(Particle.END_ROD, 0.55f)),
+                        ParticleNodeDesign.sphere(Particle.END_ROD, 0.55f),
+                        ParticleNodeDesign.sphere(Particle.HAPPY_VILLAGER, 0.65f)),
                 edgeDesignMap(ParticleEdgeDesign.line(Particle.FLAME, 20),
                         ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.2f),
                         ParticleEdgeDesign.line(Particle.FLAME, 20),
@@ -56,7 +57,8 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
                 nodeDesignMap(ParticleNodeDesign.sphere(Particle.END_ROD, 0.35f),
                         ParticleNodeDesign.sphere(Particle.PORTAL, 0.45f),
                         ParticleNodeDesign.cube(Particle.REVERSE_PORTAL, 0.5f),
-                        ParticleNodeDesign.sphere(Particle.WITCH, 0.5f)),
+                        ParticleNodeDesign.sphere(Particle.WITCH, 0.5f),
+                        ParticleNodeDesign.sphere(Particle.HAPPY_VILLAGER, 0.65f)),
                 edgeDesignMap(ParticleEdgeDesign.line(Particle.END_ROD, 20),
                         ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
                         ParticleEdgeDesign.line(Particle.END_ROD, 20),
@@ -77,7 +79,8 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.FLAME, 0.45f),
                         ParticleNodeDesign.sphere(Particle.ASH, 0.55f),
                         ParticleNodeDesign.cube(Particle.LAVA, 0.5f),
-                        ParticleNodeDesign.sphere(Particle.PORTAL, 0.55f)),
+                        ParticleNodeDesign.sphere(Particle.PORTAL, 0.55f),
+                        ParticleNodeDesign.sphere(Particle.HAPPY_VILLAGER, 0.65f)),
                 edgeDesignMap(ParticleEdgeDesign.line(Particle.FLAME, 20),
                         ParticleEdgeDesign.movingPoint(Particle.FLAME, 0.2f),
                         ParticleEdgeDesign.line(Particle.FLAME, 20),
@@ -98,7 +101,8 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
                 nodeDesignMap(ParticleNodeDesign.cube(Particle.END_ROD, 0.45f),
                         ParticleNodeDesign.sphere(Particle.PORTAL, 0.55f),
                         ParticleNodeDesign.cube(Particle.REVERSE_PORTAL, 0.5f),
-                        ParticleNodeDesign.sphere(Particle.WITCH, 0.55f)),
+                        ParticleNodeDesign.sphere(Particle.WITCH, 0.55f),
+                        ParticleNodeDesign.sphere(Particle.HAPPY_VILLAGER, 0.65f)),
                 edgeDesignMap(ParticleEdgeDesign.line(Particle.END_ROD, 20),
                         ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.2f),
                         ParticleEdgeDesign.line(Particle.END_ROD, 20),
@@ -112,12 +116,14 @@ public record ParticleDesignSet(Map<VisualNodeRole, ParticleNodeDesign> nodeDesi
     private static Map<VisualNodeRole, ParticleNodeDesign> nodeDesignMap(final ParticleNodeDesign defaultNode,
                                                                          final ParticleNodeDesign localTeleportNode,
                                                                          final ParticleNodeDesign intergraphTeleportNode,
-                                                                         final ParticleNodeDesign warpNode) {
+                                                                         final ParticleNodeDesign warpNode,
+                                                                         final ParticleNodeDesign guidedGoalNode) {
         final Map<VisualNodeRole, ParticleNodeDesign> result = new EnumMap<>(VisualNodeRole.class);
         result.put(VisualNodeRole.DEFAULT, defaultNode);
         result.put(VisualNodeRole.LOCAL_TELEPORT, localTeleportNode);
         result.put(VisualNodeRole.INTERGRAPH_TELEPORT, intergraphTeleportNode);
         result.put(VisualNodeRole.WARP, warpNode);
+        result.put(VisualNodeRole.GUIDED_PATH_GOAL, guidedGoalNode);
         return result;
     }
 

@@ -22,5 +22,10 @@ public enum VisualNodeRole {
     /**
      * Node that is a warp target or route warp entry marker.
      */
-    WARP
+    WARP,
+
+    /**
+     * Selected final goal node of guided resolve path visualization.
+     */
+    GUIDED_PATH_GOAL
 }

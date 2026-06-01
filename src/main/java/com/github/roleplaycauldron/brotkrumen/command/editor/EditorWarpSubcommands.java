@@ -12,7 +12,6 @@ import org.bukkit.entity.Player;
 /**
  * Builds managed warp editor subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorWarpSubcommands {
 
     private static final String KEY_ARGUMENT = "key";
@@ -20,6 +19,12 @@ public final class EditorWarpSubcommands {
     private EditorWarpSubcommands() {
     }
 
+    /**
+     * Builds the warp management subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the warp subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> warp(final EditorCommandContext commandContext) {
         return Commands.literal("warp")
                 .then(create(commandContext, "selected"))
@@ -81,8 +86,17 @@ public final class EditorWarpSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

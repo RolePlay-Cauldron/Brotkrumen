@@ -68,4 +68,9 @@ public class WarpServiceImpl implements WarpService {
     public boolean removeWarp(final String key) {
         return warpTable.deleteByKey(storage.getProvider(), key);
     }
+
+    @Override
+    public int removeWarpsTargeting(final Collection<UUID> targetNodeIds) {
+        return warpTable.deleteByTargetNodeIds(storage.getProvider(), targetNodeIds);
+    }
 }

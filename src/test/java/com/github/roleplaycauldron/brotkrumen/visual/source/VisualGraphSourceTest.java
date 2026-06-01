@@ -12,11 +12,13 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
 import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRoles;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import org.bukkit.Location;
 import org.bukkit.configuration.MemoryConfiguration;
@@ -29,6 +31,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("PMD.CouplingBetweenObjects")
 class VisualGraphSourceTest {
 
     private static NodeRef nodeRef(final UUID nodeId) {
@@ -250,6 +253,39 @@ class VisualGraphSourceTest {
 
     @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void editorWorkspaceSourceIncludesVisibleGraphsAndEdgesOnly() {
+        final Graph active = new Graph(1, "Active");
+        final Graph reference = new Graph(2, "Reference");
+        final Graph hidden = new Graph(3, "Hidden");
+        final UUID activeNode = UUID.randomUUID();
+        final UUID referenceNode = UUID.randomUUID();
+        final UUID hiddenNode = UUID.randomUUID();
+        active.addNode(new Node(activeNode, 0, 0, 0, null));
+        reference.addNode(new Node(referenceNode, 1, 0, 0, null));
+        hidden.addNode(new Node(hiddenNode, 2, 0, 0, null));
+        active.addDirectedEdge(activeNode, activeNode, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final InterGraphEdge visible = new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, activeNode),
+                new NodeRef(2, referenceNode), 1.0D, Set.of(EdgeFlag.INTER_GRAPH), true);
+        final InterGraphEdge hiddenEdge = new InterGraphEdge(UUID.randomUUID(), new NodeRef(1, activeNode),
+                new NodeRef(3, hiddenNode), 1.0D, Set.of(EdgeFlag.INTER_GRAPH), true);
+        final long[] version = {1L};
+        final EditorWorkspaceVisualSource source = new EditorWorkspaceVisualSource(() -> active, () -> List.of(reference),
+                () -> List.of(visible, hiddenEdge), () -> version[0]);
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+        final long before = source.version();
+        version[0]++;
+
+        assertEquals(2, snapshot.nodes().size(), "Active and reference nodes should be visible");
+        assertTrue(snapshot.edges().stream().anyMatch(edge -> edge.id().equals(new InterGraphVisualEdgeId(visible.edgeId()))),
+                "Inter-graph edge between visible graphs should be exposed");
+        assertFalse(snapshot.edges().stream().anyMatch(edge -> edge.id().equals(new InterGraphVisualEdgeId(hiddenEdge.edgeId()))),
+                "Inter-graph edge to hidden graph should be excluded");
+        assertNotEquals(before, source.version(), "Workspace source version should include workspace state");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void networkSourceDerivesTeleportNodeRolesWithPrecedence() {
         final Graph graphOne = new Graph(1, "One");
         final Graph graphTwo = new Graph(2, "Two");
@@ -341,6 +377,24 @@ class VisualGraphSourceTest {
     }
 
     @Test
+    void pathSourceIncludesReverseUndirectedEdge() {
+        final NodeRef first = new NodeRef(1, UUID.randomUUID());
+        final NodeRef second = new NodeRef(1, UUID.randomUUID());
+        final VisualNode firstNode = new VisualNode(new VisualNodeId(first), first, new Node(first.nodeId(), 0, 0, 0, null));
+        final VisualNode secondNode = new VisualNode(new VisualNodeId(second), second, new Node(second.nodeId(), 1, 0, 0, null));
+        final VisualEdge reverseUndirected = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), second, first,
+                VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.UNDIRECTED), VisualEdgeRole.UNDIRECTED_LOCAL);
+        final PathVisualGraphSource source = new PathVisualGraphSource(
+                fixedSnapshotSource(List.of(firstNode, secondNode), List.of(reverseUndirected)),
+                new PathResult(List.of(first, second), List.of())
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertEquals(1, snapshot.edges().size(), "Undirected reverse-order edge should match path adjacency");
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void structuredPathSourceUsesTraversalRolesInsteadOfStoredTeleportMetadata() {
         final Graph graph = new Graph(1, "Path Metadata");
@@ -398,6 +452,50 @@ class VisualGraphSourceTest {
 
         assertEquals(2, snapshot.nodes().size(), "Short path should expose every path node");
         assertEquals(1, snapshot.edges().size(), "Short path should expose its edge");
+    }
+
+    @Test
+    void guidedPathSourceIncludesReverseUndirectedPathEdge() {
+        final NodeRef first = new NodeRef(1, UUID.randomUUID());
+        final NodeRef second = new NodeRef(1, UUID.randomUUID());
+        final VisualNode firstNode = new VisualNode(new VisualNodeId(first), first, new Node(first.nodeId(), 0, 0, 0, null));
+        final VisualNode secondNode = new VisualNode(new VisualNodeId(second), second, new Node(second.nodeId(), 1, 0, 0, null));
+        final VisualEdge reverseUndirected = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), second, first,
+                VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.UNDIRECTED), VisualEdgeRole.UNDIRECTED_LOCAL);
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                fixedSnapshotSource(List.of(firstNode, secondNode), List.of(reverseUndirected)),
+                new PathResult(List.of(first, second), List.of()),
+                () -> null,
+                new GuidedPathOptions(2, 1.0D, 0)
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertEquals(List.of(first, second), snapshot.nodes().stream().map(VisualNode::ref).toList(),
+                "Guided window should still follow path traversal order");
+        assertEquals(1, snapshot.edges().size(),
+                "Undirected path-adjacent edge should match even when canonicalized in reverse");
+    }
+
+    @Test
+    void guidedPathSourceRejectsReverseDirectedPathEdge() {
+        final NodeRef first = new NodeRef(1, UUID.randomUUID());
+        final NodeRef second = new NodeRef(1, UUID.randomUUID());
+        final VisualNode firstNode = new VisualNode(new VisualNodeId(first), first, new Node(first.nodeId(), 0, 0, 0, null));
+        final VisualNode secondNode = new VisualNode(new VisualNodeId(second), second, new Node(second.nodeId(), 1, 0, 0, null));
+        final VisualEdge reverseDirected = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), second, first,
+                VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.DIRECTED), VisualEdgeRole.DIRECTED_LOCAL);
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                fixedSnapshotSource(List.of(firstNode, secondNode), List.of(reverseDirected)),
+                new PathResult(List.of(first, second), List.of()),
+                () -> null,
+                new GuidedPathOptions(2, 1.0D, 0)
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertTrue(snapshot.edges().isEmpty(),
+                "Directed reverse-order edge should not match a forward path segment");
     }
 
     @Test
@@ -467,6 +565,52 @@ class VisualGraphSourceTest {
     }
 
     @Test
+    void guidedPathSourceReportsCompletionAtFinalNode() {
+        final PathFixture fixture = pathFixture();
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 3.5D, 0.5D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(fixture.graph()),
+                new PathResult(fixture.refs(), List.of()),
+                location,
+                new GuidedPathOptions(3, 1.0D, 1)
+        );
+
+        source.snapshot();
+
+        assertTrue(source.complete(), "Reaching the final path node should report completion");
+    }
+
+    @Test
+    void guidedPathSourceDoesNotReportCompletionAtIntermediateNode() {
+        final PathFixture fixture = pathFixture();
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 1.5D, 0.5D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(fixture.graph()),
+                new PathResult(fixture.refs(), List.of()),
+                location,
+                new GuidedPathOptions(3, 1.0D, 1)
+        );
+
+        source.snapshot();
+
+        assertFalse(source.complete(), "Reaching intermediate path nodes should not report completion");
+    }
+
+    @Test
+    void guidedPathSourceDoesNotReportCompletionForEmptyPath() {
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                fixedSnapshotSource(List.of(), List.of()),
+                PathResult.empty(),
+                () -> new Location(null, 0.0D, 0.0D, 0.0D),
+                GuidedPathOptions.defaults()
+        );
+
+        source.snapshot();
+
+        assertFalse(source.complete(), "Empty guided paths should never report completion");
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void guidedPathSourceMarksIntergraphAndWarpSegmentsFromPathResult() {
         final Graph graph = new Graph(1, "Guided Metadata");
@@ -526,6 +670,56 @@ class VisualGraphSourceTest {
                 "Path and guided path should share precedence for overlapping roles");
         assertEquals(nodeRole(pathSnapshot, thirdRef), nodeRole(guidedSnapshot, thirdRef),
                 "Path and guided path should agree on warp target role");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void guidedPathGoalMarkerRoleIsOptionalAndOnlyAppliedToFinalNode() {
+        final Graph graph = new Graph(1, "Goal Marker");
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final UUID third = UUID.randomUUID();
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 1, 0, 0, null));
+        graph.addNode(new Node(third, 2, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        graph.addDirectedEdge(second, third, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
+        final NodeRef thirdRef = new NodeRef(1, third);
+        final PathResult result = new PathResult(List.of(firstRef, secondRef, thirdRef),
+                List.of(new PathSegment(firstRef, secondRef, TraversalKind.INTERGRAPH_TELEPORT, null, null),
+                        new PathSegment(secondRef, thirdRef, TraversalKind.WARP, null, "goal")));
+        final GuidedPathVisualGraphSource markerEnabled = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(graph), result, () -> null, new GuidedPathOptions(4, 1.0D, 0), true);
+        final GuidedPathVisualGraphSource markerDisabled = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(graph), result, () -> null, new GuidedPathOptions(4, 1.0D, 0), false);
+
+        final VisualGraphSnapshot enabledSnapshot = markerEnabled.snapshot();
+        final VisualGraphSnapshot disabledSnapshot = markerDisabled.snapshot();
+
+        assertEquals(VisualNodeRole.INTERGRAPH_TELEPORT, nodeRole(enabledSnapshot, firstRef),
+                "Only the final node should get goal marker styling");
+        assertEquals(VisualNodeRole.WARP, nodeRole(enabledSnapshot, secondRef),
+                "Intermediate traversal role should remain unchanged");
+        assertEquals(VisualNodeRole.GUIDED_PATH_GOAL, nodeRole(enabledSnapshot, thirdRef),
+                "Final node should receive the goal marker role when enabled");
+        assertEquals(VisualNodeRole.WARP, nodeRole(disabledSnapshot, thirdRef),
+                "Final node should use normal traversal role when marker is disabled");
+    }
+
+    private VisualGraphSource fixedSnapshotSource(final List<VisualNode> nodes, final List<VisualEdge> edges) {
+        return new VisualGraphSource() {
+            @Override
+            public VisualGraphSnapshot snapshot() {
+                return new VisualGraphSnapshot(nodes, edges, 1L);
+            }
+
+            @Override
+            public long version() {
+                return 1L;
+            }
+        };
     }
 
     private PathFixture pathFixture() {

@@ -1,0 +1,79 @@
+package com.github.roleplaycauldron.brotkrumen.command.bk;
+
+import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
+import com.mojang.brigadier.context.CommandContext;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import net.kyori.adventure.text.Component;
+import org.bukkit.command.CommandSender;
+
+/**
+ * Represents the context of a command executed within the Brotkrumen plugin. This record provides
+ * access to various services and utilities required to handle command execution effectively.
+ * <p>
+ * The context includes references to the Brotkrumen plugin instance and other core services
+ * such as graph management, network management, storage, visualization, logging, and effect execution.
+ * <p>
+ * Components:
+ *
+ * @param plugin              provides core plugin functionality and access to configurations.
+ * @param graphService        manages graph-related operations such as CRUD operations on graphs.
+ * @param graphNetworkService handles operations related to graph networks, including inter-graph connections.
+ * @param storage             responsible for storage operations, facilitating data persistence.
+ * @param visualizerRegistry  manages visualizations and controls visibility updates for graph entities.
+ * @param loggerFactory       creates logger instances for logging purposes.
+ * @param effectExecutor      executes visual and gameplay effects.
+ * @param resolveService      handles resolve operations, including pathfinding and target resolution.
+ * @param targetParser        parses and validates resolve target specifications.
+ * @param sessionManager      tracks pending and active resolve guidance sessions.
+ */
+public record BkCommandContext(Brotkrumen plugin, GraphService graphService,
+                               GraphNetworkService graphNetworkService, Storage storage,
+                               VisualizerRegistry visualizerRegistry, LoggerFactory loggerFactory,
+                               EffectExecutor effectExecutor, ResolveService resolveService,
+                               ResolveTargetParser targetParser, ResolveGuidanceSessionManager sessionManager) {
+
+    /**
+     * Resolves configuration options for the `/bk resolve` command.
+     *
+     * @return a {@link ResolveOptions} instance populated with values derived from the plugin's configuration.
+     */
+    public ResolveOptions resolveOptions() {
+        return ResolveOptions.fromConfig(plugin.getConfig());
+    }
+
+    /**
+     * Sends a message to the command sender associated with the provided command context.
+     *
+     * @param context the command context containing the sender who will receive the message
+     * @param message the message to be sent to the command sender
+     */
+    public void send(final CommandContext<CommandSourceStack> context, final String message) {
+        sender(context).sendMessage(message);
+    }
+
+    /**
+     * Sends a message to the command sender associated with the provided command context.
+     *
+     * @param context the command context containing the sender who will receive the message
+     * @param message the message to be sent, represented as a {@link Component}
+     */
+    public void send(final CommandContext<CommandSourceStack> context, final Component message) {
+        sender(context).sendMessage(message);
+    }
+
+    /**
+     * Retrieves the command sender associated with the given command context.
+     *
+     * @param context the command context containing the source information
+     * @return the sender associated with the command source in the provided context
+     */
+    private CommandSender sender(final CommandContext<CommandSourceStack> context) {
+        return context.getSource().getSender();
+    }
+}

@@ -47,6 +47,10 @@ public class Storage {
 
     private BrotkrumenConnectionProvider provider;
 
+    private Engine engine;
+
+    private int schemaVersion;
+
     /**
      * Constructs a new {@code Storage} instance with the specified logger factory and configuration section.
      * Initializes internal fields such as the logger and table prefix based on the provided configuration.
@@ -76,19 +80,22 @@ public class Storage {
         }
         if (provider == null || provider.isClosed()) {
             final Engine engine = Engine.getEngineByName(engineString);
+            this.engine = engine;
             provider = getProvider(engine);
             provider.open();
+            final List<DatabaseVersion> migrationVersions = getDatabaseMigrationVersionList(engine);
 
             final DatabaseUpdater updater = DatabaseUpdater.builder()
                     .logger(loggerFactory.create(DatabaseUpdater.class))
                     .connectionProvider(provider)
-                    .versionRepository(new DefaultVersionRepository(getDatabaseMigrationVersionList(engine)))
+                    .versionRepository(new DefaultVersionRepository(migrationVersions))
                     .versionTable(tablePrefix + "_version",
                             "SELECT MAX(version_no) AS latest_version FROM `" + tablePrefix + "_version`;",
                             "INSERT INTO `" + tablePrefix + "_version` (`version_no`) VALUES (?);")
                     .build();
 
             updater.firstStartup();
+            schemaVersion = migrationVersions.size();
             return;
         }
 
@@ -96,19 +103,13 @@ public class Storage {
     }
 
     private BrotkrumenConnectionProvider getProvider(final Engine engine) {
-        BrotkrumenConnectionProvider provider = null;
-        switch (engine) {
+        return switch (engine) {
             case MYSQL ->
-                    provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "com.mysql.cj.jdbc.Driver");
+                    new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "com.mysql.cj.jdbc.Driver");
             case MARIADB ->
-                    provider = new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "org.mariadb.jdbc.Driver");
-            case SQLITE -> provider = new SQLite(loggerFactory.create(SQLInput.class), dataFolder.getPath());
-        }
-
-        if (provider == null) {
-            throw new StorageException("Unknown database engine");
-        }
-        return provider;
+                    new MySQL(configSection, loggerFactory.create(MySQL.class), engine, "org.mariadb.jdbc.Driver");
+            case SQLITE -> new SQLite(loggerFactory.create(SQLInput.class), dataFolder.getPath());
+        };
     }
 
     /**
@@ -147,6 +148,24 @@ public class Storage {
      */
     public String getTablePrefix() {
         return tablePrefix;
+    }
+
+    /**
+     * Gets the configured database engine.
+     *
+     * @return database engine, or null before initialization
+     */
+    public Engine getEngine() {
+        return engine;
+    }
+
+    /**
+     * Gets the latest schema version applied during startup.
+     *
+     * @return schema version, or 0 before initialization
+     */
+    public int getSchemaVersion() {
+        return schemaVersion;
     }
 
     private List<DatabaseVersion> getDatabaseMigrationVersionList(final Engine engine) {

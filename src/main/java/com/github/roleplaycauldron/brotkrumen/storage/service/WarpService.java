@@ -57,4 +57,12 @@ public interface WarpService {
      * @return true when the warp existed
      */
     boolean removeWarp(String key);
+
+    /**
+     * Removes every managed warp targeting any requested node id.
+     *
+     * @param targetNodeIds target node ids
+     * @return number of removed warps
+     */
+    int removeWarpsTargeting(Collection<UUID> targetNodeIds);
 }

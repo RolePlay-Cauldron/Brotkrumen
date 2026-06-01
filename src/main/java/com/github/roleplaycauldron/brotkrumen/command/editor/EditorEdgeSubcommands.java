@@ -11,24 +11,36 @@ import org.bukkit.entity.Player;
 /**
  * Builds editor edge mutation subcommands.
  */
-@SuppressWarnings("PMD.CommentRequired")
 public final class EditorEdgeSubcommands {
 
     private static final String TYPE_ARGUMENT = "type";
 
     private static final String STATE_ARGUMENT = "state";
 
+    private static final String TRAVERSAL_ARGUMENT = "traversal";
+
     private EditorEdgeSubcommands() {
     }
 
+    /**
+     * Builds the edge mutation subcommand.
+     *
+     * @param commandContext The editor command context.
+     * @return The LiteralArgumentBuilder for the edge subcommand.
+     */
     public static LiteralArgumentBuilder<CommandSourceStack> edge(final EditorCommandContext commandContext) {
         return Commands.literal("edge")
-                .then(Commands.literal("set")
-                        .then(edgeTypeArgument().executes(context -> updateEdge(commandContext, context,
-                                EdgeAction.SET))))
-                .then(Commands.literal("type")
-                        .then(edgeTypeArgument().executes(context -> updateEdge(commandContext, context,
-                                EdgeAction.TYPE))))
+                .then(Commands.literal("connect")
+                        .then(edgeTypeArgument().executes(context -> connectEdge(commandContext, context))))
+                .then(Commands.literal("traversal")
+                        .then(Commands.argument(TRAVERSAL_ARGUMENT, StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    for (final EditorService.EdgeTraversal traversal : EditorService.EdgeTraversal.values()) {
+                                        builder.suggest(traversal.configValue());
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> updateEdgeTraversal(commandContext, context))))
                 .then(Commands.literal("state")
                         .then(Commands.argument(STATE_ARGUMENT, StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -53,14 +65,20 @@ public final class EditorEdgeSubcommands {
                 });
     }
 
-    private static int updateEdge(final EditorCommandContext commandContext,
-                                  final CommandContext<CommandSourceStack> context,
-                                  final EdgeAction action) {
+    private static int connectEdge(final EditorCommandContext commandContext,
+                                   final CommandContext<CommandSourceStack> context) {
         final EditorService.EdgeType edgeType = EditorService.EdgeType.parse(
                 StringArgumentType.getString(context, TYPE_ARGUMENT)).orElse(null);
-        return withPlayer(commandContext, context, player -> commandContext.send(player, action == EdgeAction.SET
-                ? commandContext.editorService().createSelectedNodeEdge(player.getUniqueId(), edgeType)
-                : commandContext.editorService().updateSelectedEdgeType(player.getUniqueId(), edgeType)));
+        return withPlayer(commandContext, context, player -> commandContext.send(player,
+                commandContext.editorService().createSelectedNodeEdge(player.getUniqueId(), edgeType)));
+    }
+
+    private static int updateEdgeTraversal(final EditorCommandContext commandContext,
+                                           final CommandContext<CommandSourceStack> context) {
+        final EditorService.EdgeTraversal traversal = EditorService.EdgeTraversal.parse(
+                StringArgumentType.getString(context, TRAVERSAL_ARGUMENT)).orElse(null);
+        return withPlayer(commandContext, context, player -> commandContext.send(player,
+                commandContext.editorService().updateSelectedEdgeTraversal(player.getUniqueId(), traversal)));
     }
 
     private static int updateEdgeState(final EditorCommandContext commandContext,
@@ -78,13 +96,17 @@ public final class EditorEdgeSubcommands {
         return player == null ? 0 : action.run(player);
     }
 
-    private enum EdgeAction {
-        SET,
-        TYPE
-    }
-
+    /**
+     * Functional interface for actions that require a player.
+     */
     @FunctionalInterface
     private interface PlayerAction {
+        /**
+         * Executes the action for the given player.
+         *
+         * @param player The player.
+         * @return The result of the action.
+         */
         int run(Player player);
     }
 }

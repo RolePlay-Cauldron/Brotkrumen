@@ -85,8 +85,12 @@ public class GraphServiceImpl implements GraphService {
             throw new StorageException("A graph with the name '" + graph.getName() + "' already exists");
         }
         graphTable.saveGraph(storage.getProvider(), graph);
-        graphCache.invalidateByFirstKey(graph.getGraphId());
-        graphCache.put(graph);
+        graphCache.invalidateAll();
+        if (graph.getGraphId() > 0) {
+            graphCache.put(graph);
+            return;
+        }
+        loadGraphByName(graph.getName()).ifPresent(graphCache::put);
     }
 
     @Override

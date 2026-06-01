@@ -56,12 +56,7 @@ public class PathVisualGraphSource implements VisualGraphSource {
     }
 
     private boolean isPathEdge(final VisualEdge edge) {
-        for (int i = 0; i + 1 < path.size(); i++) {
-            if (edge.source().equals(path.get(i)) && edge.target().equals(path.get(i + 1))) {
-                return true;
-            }
-        }
-        return false;
+        return PathEdgeMatcher.matchesPathWindow(edge, path, 0, path.size());
     }
 
     private VisualNode pathNode(final VisualNode node) {
