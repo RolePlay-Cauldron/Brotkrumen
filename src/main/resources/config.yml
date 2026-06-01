@@ -1,4 +1,15 @@
 #################
+# Localization  #
+#################
+
+localization:
+
+  # Default locale used for non-player sender feedback.
+  # Format: language tag identifier (examples: en-us, de-de, de-de-dark)
+  # Custom theme variants are supported and resolved as plain tags.
+  defaultLocale: 'en-US'
+
+#################
 #  Data Storage #
 #################
 

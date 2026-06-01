@@ -5,315 +5,295 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-import java.io.File;
-import java.util.Locale;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The Localization class is used to load and manage messages from multiple {@link YamlConfiguration} files.
- * It uses {@link MiniMessage} to format the messages.
+ * Resolves raw localized messages loaded from versioned language files.
  */
 public class Localization {
-    /**
-     * The prefix for all messages.
-     */
-    private static final String PREFIX_STRING = "<dark_gray>[<dark_green>Brotkrumen<dark_gray>] <gray>";
+    private static final String PREFIX_KEY = "prefix";
 
-    /**
-     * The default locale.
-     */
-    private static final Locale DEFAULT_LOCALE = Locale.US; // ToDo load default from config
-
-    /**
-     * The deserialized prefix for all messages.
-     */
-    private final Component prefix;
-
-    /**
-     * The {@link WrappedLogger} for this class.
-     */
-    private final WrappedLogger log;
-
-    /**
-     * The {@link Plugin} used for sync scheduling in {@link #reload()}.
-     */
-    private final Plugin plugin;
-
-    /**
-     * The {@link MiniMessage} for this class.
-     */
     private final MiniMessage miniMessage;
 
-    /**
-     * The messages loaded from the {@link YamlConfiguration} files, mapped by locale.
-     */
-    private final Map<Locale, Map<String, String>> messages;
+    private final LocalizationLoader loader;
+
+    private final String configuredDefaultTag;
+
+    private final Map<String, Map<String, String>> messagesByTag;
+
+    private HealthState state;
 
     /**
-     * The constructor for the Localization class.
+     * Creates a localization resolver and immediately loads language files.
      *
-     * @param log    The {@link WrappedLogger} for this class.
-     * @param plugin The {@link Plugin} used for sync task scheduling.
+     * @param log                  logger
+     * @param plugin               plugin
+     * @param configuredDefaultTag configured default language tag for non-player contexts
      */
-    public Localization(final WrappedLogger log, final Plugin plugin) {
-        this.log = log;
-        this.plugin = plugin;
+    public Localization(final WrappedLogger log, final Plugin plugin, final String configuredDefaultTag) {
         this.miniMessage = MiniMessage.builder().build();
-        this.prefix = miniMessage.deserialize(PREFIX_STRING);
-        this.messages = new ConcurrentHashMap<>();
-        loadMessages();
+        this.loader = new LocalizationLoader(Objects.requireNonNull(log, "log"), Objects.requireNonNull(plugin, "plugin"));
+        this.configuredDefaultTag = LocalizationTags.normalize(configuredDefaultTag);
+        this.messagesByTag = new ConcurrentHashMap<>();
+        this.state = HealthState.FAILED;
+        reload();
     }
 
     /**
-     * Reloads the messages from the {@link YamlConfiguration} files.
+     * Reloads localization files.
      */
-    public void reload() {
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            loadMessages();
-            log.info("Reloaded Messages for " + messages.size() + "language");
-        });
+    public final void reload() {
+        final LocalizationLoader.LoadSnapshot snapshot = loader.load(configuredDefaultTag);
+        this.messagesByTag.clear();
+        this.messagesByTag.putAll(snapshot.messagesByTag());
+        this.state = snapshot.healthState();
     }
 
     /**
-     * Loads the messages from the {@link YamlConfiguration} files in the languages directory.
-     */
-    private void loadMessages() {
-        // ToDo Only load currently needed message-Files and not every message file available
-        // ToDo for per player purposes store the current selected language and preload every in the db (if per Player is really neded)
-        // ToDo If a language is not preloaded, load it on demand if it exists and is chosen.
-        // ToDo if per Player is not necessary, idk what then. This could be a spellbook integration, but we would force them to use MiniMessage.
-        final File langDir = new File(plugin.getDataFolder(), "language");
-        if (!langDir.exists()) {
-            if (langDir.mkdirs()) {
-                log.info("Created languages directory.");
-            } else {
-                log.error("Could not create languages directory.");
-                return;
-            }
-        }
-
-        final File[] files = langDir.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) {
-            return;
-        }
-
-        messages.clear();
-        for (final File file : files) {
-            final String name = file.getName().replace(".yml", "");
-            final Locale locale = Locale.forLanguageTag(name.replace("_", "-"));
-            final YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-            final Map<String, Object> loadedMessages = config.getValues(true);
-            final Map<String, String> localeMessages = new ConcurrentHashMap<>();
-
-            for (final Map.Entry<String, Object> entry : loadedMessages.entrySet()) {
-                if (entry.getValue() instanceof final String stringValue) {
-                    localeMessages.put(entry.getKey(), stringValue);
-                }
-            }
-            messages.put(locale, localeMessages);
-            log.info("Loaded language: " + locale.toLanguageTag() + " (" + localeMessages.size() + " messages)");
-        }
-    }
-
-    /**
-     * Returns the raw message to the key for the default locale.
+     * Returns the last computed localization health state.
      *
-     * @param key The key of the message.
-     * @return The raw message.
+     * @return current localization health state
+     */
+    public HealthState healthState() {
+        return state;
+    }
+
+    /**
+     * Resolves a raw, unformatted message in non-player context.
+     *
+     * @param key message key
+     * @return stripped message
      */
     public String getRawMessageWithoutFormats(final String key) {
-        return getRawMessageWithoutFormats(DEFAULT_LOCALE, key);
+        return miniMessage.stripTags(resolveFromCandidates(nonPlayerCandidateTags(), key));
     }
 
     /**
-     * Returns the raw message to the key for the specified locale.
+     * Resolves a raw, unformatted message for a caller-provided language tag.
      *
-     * @param locale The locale to use.
-     * @param key    The key of the message.
-     * @return The raw message.
+     * @param languageTag tag such as {@code de-de} or {@code de-de-dark}
+     * @param key         message key
+     * @return stripped message
      */
-    public String getRawMessageWithoutFormats(final Locale locale, final String key) {
-        final String message = getRawString(locale, key);
-        return miniMessage.stripTags(message);
+    public String getRawMessageWithoutFormats(final String languageTag, final String key) {
+        return miniMessage.stripTags(resolveFromCandidates(playerCandidateTags(languageTag), key));
     }
 
     /**
-     * Returns the raw message to the key with formats for the default locale.
+     * Resolves a localized message as an Adventure component in non-player context.
      *
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The raw message.
-     */
-    public String getRawMessageWithFormats(final String key, final Map<String, String> replacements) {
-        return getRawMessageWithFormats(DEFAULT_LOCALE, key, replacements);
-    }
-
-    /**
-     * Returns the raw message to the key with formats for the specified locale.
-     *
-     * @param locale       The locale to use.
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The raw message.
-     */
-    public String getRawMessageWithFormats(final Locale locale, final String key, final Map<String, String> replacements) {
-        return miniMessage.serialize(getFormattedMessage(locale, key, replacements));
-    }
-
-    /**
-     * Returns the formatted message to the key for the specified player's locale.
-     *
-     * @param player The player to get the locale from.
-     * @param key    The key of the message.
-     * @return The formatted message.
-     */
-    public Component getFormattedMessage(final Player player, final String key) {
-        return getFormattedMessage(player.locale(), key, Map.of());
-    }
-
-    /**
-     * Returns the formatted message to the key with replacements for the specified player's locale.
-     *
-     * @param player       The player to get the locale from.
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The formatted message.
-     */
-    public Component getFormattedMessage(final Player player, final String key, final Map<String, String> replacements) {
-        return getFormattedMessage(player.locale(), key, replacements);
-    }
-
-    /**
-     * Returns the formatted message to the key for the default locale.
-     *
-     * @param key The key of the message.
-     * @return The formatted message.
+     * @param key message key
+     * @return rendered component
      */
     public Component getFormattedMessage(final String key) {
-        return getFormattedMessage(DEFAULT_LOCALE, key, Map.of());
+        final String rawMessage = resolveFromCandidates(nonPlayerCandidateTags(), key);
+        return deserialize(rawMessage, Map.of());
     }
 
     /**
-     * Returns the formatted message to the key for the specified locale.
+     * Resolves a localized message with MiniMessage replacements in non-player context.
      *
-     * @param locale The locale to use.
-     * @param key    The key of the message.
-     * @return The formatted message.
+     * @param key          message key
+     * @param replacements placeholder replacement map
+     * @return rendered component
      */
-    public Component getFormattedMessage(final Locale locale, final String key) {
-        return getFormattedMessage(locale, key, Map.of());
+    public Component getFormattedMessage(final String key, final Map<String, String> replacements) {
+        final String rawMessage = resolveFromCandidates(nonPlayerCandidateTags(), key);
+        return deserialize(rawMessage, replacements);
     }
 
     /**
-     * Returns the formatted message to the key with replacements for the specified locale.
+     * Resolves a localized message as an Adventure component for a caller-provided language tag.
      *
-     * @param locale       The locale to use.
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The formatted message.
+     * @param languageTag tag such as {@code de-de} or {@code de-de-dark}
+     * @param key         message key
+     * @return rendered component
      */
-    public Component getFormattedMessage(final Locale locale, final String key, final Map<String, String> replacements) {
-        final String message = getRawString(locale, key);
-        if (replacements.isEmpty()) {
-            return miniMessage.deserialize(message);
-        }
-        final TagResolver resolver = TagResolver.resolver(
-                replacements.entrySet().stream()
-                        .map(entry -> Placeholder.parsed(entry.getKey(), entry.getValue()))
-                        .toList()
-        );
-        return miniMessage.deserialize(message, resolver);
+    public Component getFormattedMessage(final String languageTag, final String key) {
+        return getFormattedMessage(languageTag, key, Map.of());
     }
 
     /**
-     * Returns the prefixed message to the key for the specified player's locale.
+     * Resolves a localized message with MiniMessage replacements for a caller-provided language tag.
      *
-     * @param player The player to get the locale from.
-     * @param key    The key of the message.
-     * @return The prefixed message.
+     * @param languageTag  tag such as {@code de-de} or {@code de-de-dark}
+     * @param key          message key
+     * @param replacements placeholder replacement map
+     * @return rendered component
      */
-    public Component getPrefixedMessage(final Player player, final String key) {
-        return prefix.append(getFormattedMessage(player.locale(), key, Map.of()));
+    public Component getFormattedMessage(final String languageTag, final String key,
+                                         final Map<String, String> replacements) {
+        final String rawMessage = resolveFromCandidates(playerCandidateTags(languageTag), key);
+        return deserialize(rawMessage, replacements);
     }
 
     /**
-     * Returns the prefixed message to the key with replacements for the specified player's locale.
+     * Resolves a prefixed localized message in non-player context.
      *
-     * @param player       The player to get the locale from.
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The prefixed message.
-     */
-    public Component getPrefixedMessage(final Player player, final String key, final Map<String, String> replacements) {
-        return prefix.append(getFormattedMessage(player.locale(), key, replacements));
-    }
-
-    /**
-     * Returns the prefixed message to the key for the default locale.
-     *
-     * @param key The key of the message.
-     * @return The prefixed message.
+     * @param key message key
+     * @return prefixed rendered component
      */
     public Component getPrefixedMessage(final String key) {
-        return prefix.append(getFormattedMessage(DEFAULT_LOCALE, key, Map.of()));
+        return getPrefixComponent(nonPlayerCandidateTags()).append(getFormattedMessage(key));
     }
 
     /**
-     * Returns the prefixed message to the key with replacements for the specified locale.
+     * Resolves a prefixed localized message with replacements in non-player context.
      *
-     * @param locale       The locale to use.
-     * @param key          The key of the message.
-     * @param replacements a {@link Map} with the replacements.
-     * @return The prefixed message.
+     * @param key          message key
+     * @param replacements placeholder replacement map
+     * @return prefixed rendered component
      */
-    public Component getPrefixedMessage(final Locale locale, final String key, final Map<String, String> replacements) {
-        return prefix.append(getFormattedMessage(locale, key, replacements));
+    public Component getPrefixedMessage(final String key, final Map<String, String> replacements) {
+        return getPrefixComponent(nonPlayerCandidateTags()).append(getFormattedMessage(key, replacements));
     }
 
     /**
-     * Returns the prefixed {@link Component} from a {@link String}.
+     * Resolves a prefixed localized message for a caller-provided language tag.
      *
-     * @param message The {@link String} to convert.
-     * @return The prefixed message from the {@link String}.
+     * @param languageTag tag such as {@code de-de} or {@code de-de-dark}
+     * @param key         message key
+     * @return prefixed rendered component
      */
-    public Component getPrefixedMessageFromString(final String message) {
-        return prefix.append(miniMessage.deserialize(message));
+    public Component getPrefixedMessage(final String languageTag, final String key) {
+        return getPrefixedMessage(languageTag, key, Map.of());
     }
 
     /**
-     * Returns the {@link Component} from a {@link String}.
+     * Resolves a prefixed localized message with replacements for a caller-provided language tag.
      *
-     * @param message The {@link String} to convert.
-     * @return The {@link Component} from the {@link String}.
+     * @param languageTag  tag such as {@code de-de} or {@code de-de-dark}
+     * @param key          message key
+     * @param replacements placeholder replacement map
+     * @return prefixed rendered component
+     */
+    public Component getPrefixedMessage(final String languageTag, final String key,
+                                        final Map<String, String> replacements) {
+        return getPrefixComponent(playerCandidateTags(languageTag))
+                .append(getFormattedMessage(languageTag, key, replacements));
+    }
+
+    /**
+     * Prefixes an existing component in non-player context.
+     *
+     * @param message message body
+     * @return prefixed message
+     */
+    public Component getPrefixedMessage(final Component message) {
+        return getPrefixComponent(nonPlayerCandidateTags()).append(message);
+    }
+
+    /**
+     * Prefixes an existing component for a caller-provided language tag.
+     *
+     * @param languageTag tag such as {@code de-de} or {@code de-de-dark}
+     * @param message     message body
+     * @return prefixed message
+     */
+    public Component getPrefixedMessage(final String languageTag, final Component message) {
+        return getPrefixComponent(playerCandidateTags(languageTag)).append(message);
+    }
+
+    /**
+     * Parses an arbitrary MiniMessage string in non-player context.
+     *
+     * @param message raw MiniMessage input
+     * @return rendered component
      */
     public Component getMessageFromString(final String message) {
         return miniMessage.deserialize(message);
     }
 
     /**
-     * Internal method to get the raw string for a locale with fallback.
+     * Prefixes an arbitrary MiniMessage string in non-player context.
      *
-     * @param locale The locale.
-     * @param key    The key.
-     * @return The raw string.
+     * @param message raw MiniMessage input
+     * @return prefixed rendered component
      */
-    private String getRawString(final Locale locale, final String key) {
-        final Map<String, String> localeMessages = messages.get(locale);
-        if (localeMessages != null && localeMessages.containsKey(key)) {
-            return localeMessages.get(key);
-        }
+    public Component getPrefixedMessageFromString(final String message) {
+        return getPrefixedMessage(getMessageFromString(message));
+    }
 
-        // Fallback to default locale
-        final Map<String, String> defaultMessages = messages.get(DEFAULT_LOCALE);
-        if (defaultMessages != null && defaultMessages.containsKey(key)) {
-            return defaultMessages.get(key);
-        }
+    /**
+     * Prefixes an arbitrary MiniMessage string for a caller-provided language tag.
+     *
+     * @param languageTag tag such as {@code de-de} or {@code de-de-dark}
+     * @param message     raw MiniMessage input
+     * @return prefixed rendered component
+     */
+    public Component getPrefixedMessageFromString(final String languageTag, final String message) {
+        return getPrefixedMessage(languageTag, getMessageFromString(message));
+    }
 
+    private Set<String> playerCandidateTags(final String requestedTag) {
+        final String normalizedRequested = LocalizationTags.normalize(requestedTag);
+        final Set<String> candidates = new LinkedHashSet<>();
+        candidates.add(normalizedRequested);
+        candidates.add(LocalizationTags.languageOnly(normalizedRequested));
+        candidates.add(configuredDefaultTag);
+        candidates.add(LocalizationTags.languageOnly(configuredDefaultTag));
+        candidates.add(LocalizationTags.HARD_FALLBACK_TAG);
+        return candidates;
+    }
+
+    private Set<String> nonPlayerCandidateTags() {
+        final Set<String> candidates = new LinkedHashSet<>();
+        candidates.add(configuredDefaultTag);
+        candidates.add(LocalizationTags.languageOnly(configuredDefaultTag));
+        candidates.add(LocalizationTags.HARD_FALLBACK_TAG);
+        return candidates;
+    }
+
+    private String resolveFromCandidates(final Set<String> candidates, final String key) {
+        for (final String candidate : candidates) {
+            if (candidate == null || candidate.isBlank()) {
+                continue;
+            }
+            final Map<String, String> localeMessages = messagesByTag.get(candidate);
+            if (localeMessages != null && localeMessages.containsKey(key)) {
+                return localeMessages.get(key);
+            }
+        }
         return "No message to the key: '" + key + "' found";
+    }
+
+    private Component getPrefixComponent(final Set<String> candidates) {
+        final String prefix = resolveFromCandidates(candidates, PREFIX_KEY);
+        return miniMessage.deserialize(prefix);
+    }
+
+    private Component deserialize(final String rawMessage, final Map<String, String> replacements) {
+        final Map<String, String> resolvedReplacements = replacements == null ? Map.of() : replacements;
+        if (resolvedReplacements.isEmpty()) {
+            return miniMessage.deserialize(rawMessage);
+        }
+        final TagResolver resolver = TagResolver.resolver(resolvedReplacements.entrySet().stream()
+                .map(entry -> Placeholder.parsed(entry.getKey(), entry.getValue()))
+                .toList());
+        return miniMessage.deserialize(rawMessage, resolver);
+    }
+
+    /**
+     * Health indicator for runtime localization usage.
+     */
+    public enum HealthState {
+        /**
+         * Localization data is fully loaded and complete.
+         */
+        READY,
+        /**
+         * Localization loaded but with missing or invalid locale resources.
+         */
+        DEGRADED,
+        /**
+         * Localization could not load any usable locale resources.
+         */
+        FAILED
     }
 }

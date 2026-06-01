@@ -1,8 +1,10 @@
 # Brotkrumen Language File
-# Locale: de-de
-
-# Allgemeines
 prefix: "<dark_gray>[<dark_green>Brotkrumen<dark_gray>] <gray>"
+messages:
+  welcome: "Willkommen bei Brotkrumen, <player>!"
 
-# Beispielnachrichten
-welcome: "Willkommen bei Brotkrumen, <player>!"
+#################
+# DO NOT TOUCH! #
+#################
+schemaVersion: 1
+locale: "de-DE"

@@ -44,7 +44,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      */
     private GraphServiceImpl graphService;
 
-    private Metrics metrics;
+    private Localization localization;
 
     /**
      * Default constructor.
@@ -59,6 +59,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
 
         saveDefaultConfig();
+        loadLocalization(loggerFactory, log);
 
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
@@ -69,10 +70,6 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
-        warpService = new WarpServiceImpl(storage);
-        localization = new Localization(loggerFactory.create(Localization.class), this);
-        saveResource("language/en-us.yml", false);
-        localization.reload();
         final WarpServiceImpl warpService = new WarpServiceImpl(storage);
         final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
 
@@ -99,6 +96,29 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         log.info("Brotkrumen enabled");
     }
 
+    private void loadLocalization(final LoggerFactory loggerFactory, final WrappedLogger log) {
+        saveResource("language/en-us.yml", false);
+        saveResource("language/de-de.yml", false);
+
+        this.localization = new Localization(
+                loggerFactory.create(Localization.class),
+                this,
+                configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"), log)
+        );
+    }
+
+    private String configuredDefaultLocaleTag(final String localeTag, final WrappedLogger log) {
+        if (localeTag == null || localeTag.isBlank()) {
+            return "en-us";
+        }
+        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(java.util.Locale.ROOT);
+        if (normalized.isBlank()) {
+            log.error("Invalid localization.defaultLocale '" + localeTag + "', using en-us.");
+            return "en-us";
+        }
+        return normalized;
+    }
+
     @Override
     public void onDisable() {
         if (reg != null) {
@@ -120,5 +140,14 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      */
     public GraphService getGraphService() {
         return graphService;
+    }
+
+    /**
+     * Returns the runtime localization service.
+     *
+     * @return localization service
+     */
+    public Localization getLocalization() {
+        return localization;
     }
 }
