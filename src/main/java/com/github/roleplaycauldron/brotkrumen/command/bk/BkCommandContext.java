@@ -7,10 +7,6 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
-import com.mojang.brigadier.context.CommandContext;
-import io.papermc.paper.command.brigadier.CommandSourceStack;
-import net.kyori.adventure.text.Component;
-import org.bukkit.command.CommandSender;
 
 /**
  * Represents the context of a command executed within the Brotkrumen plugin. This record provides
@@ -45,35 +41,5 @@ public record BkCommandContext(Brotkrumen plugin, GraphService graphService,
      */
     public ResolveOptions resolveOptions() {
         return ResolveOptions.fromConfig(plugin.getConfig());
-    }
-
-    /**
-     * Sends a message to the command sender associated with the provided command context.
-     *
-     * @param context the command context containing the sender who will receive the message
-     * @param message the message to be sent to the command sender
-     */
-    public void send(final CommandContext<CommandSourceStack> context, final String message) {
-        sender(context).sendMessage(message);
-    }
-
-    /**
-     * Sends a message to the command sender associated with the provided command context.
-     *
-     * @param context the command context containing the sender who will receive the message
-     * @param message the message to be sent, represented as a {@link Component}
-     */
-    public void send(final CommandContext<CommandSourceStack> context, final Component message) {
-        sender(context).sendMessage(message);
-    }
-
-    /**
-     * Retrieves the command sender associated with the given command context.
-     *
-     * @param context the command context containing the source information
-     * @return the sender associated with the command source in the provided context
-     */
-    private CommandSender sender(final CommandContext<CommandSourceStack> context) {
-        return context.getSource().getSender();
     }
 }

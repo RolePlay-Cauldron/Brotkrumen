@@ -3,6 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.command.bk;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,11 +33,12 @@ public final class ResolveTargetParser {
      * Parses resolver target tokens.
      *
      * @param tokens target tokens
-     * @return parsed result
+     * @return parsed target
+     * @throws TargetParseException if parsing fails
      */
-    public ParseResult parse(final List<String> tokens) {
+    public ResolveTarget parse(final List<String> tokens) throws TargetParseException {
         if (tokens == null || tokens.isEmpty()) {
-            return ParseResult.failure("Please specify a graph or node target.");
+            throw new TargetParseException("commands.bk.resolve.parse.error.missingTarget");
         }
 
         String graphKey = null;
@@ -47,15 +49,15 @@ public final class ResolveTargetParser {
             }
             final String normalized = token.toLowerCase(Locale.ROOT);
             if (normalized.startsWith(NETWORK_PREFIX)) {
-                return ParseResult.failure("Network targets are not supported by /bk resolve.");
+                throw new TargetParseException("commands.bk.resolve.parse.error.networkNotSupported");
             }
             if (normalized.startsWith(GRAPH_PREFIX) || normalized.startsWith(GRAPH_SHORT_PREFIX)) {
                 if (graphKey != null) {
-                    return ParseResult.failure("Please specify only one graph target.");
+                    throw new TargetParseException("commands.bk.resolve.parse.error.multipleGraphTargets");
                 }
                 graphKey = valueAfterPrefix(token);
                 if (graphKey.isBlank()) {
-                    return ParseResult.failure("Please specify a graph name or id.");
+                    throw new TargetParseException("commands.bk.resolve.parse.error.missingGraphTarget");
                 }
                 continue;
             }
@@ -63,29 +65,30 @@ public final class ResolveTargetParser {
             if (nodeId.isPresent()) {
                 nodeIds.add(nodeId.get());
             } else {
-                return ParseResult.failure("Unknown resolve target token: " + token);
+                throw new TargetParseException("commands.bk.resolve.parse.error.unknownToken", Map.of("token", token));
             }
         }
 
         if (graphKey != null && !nodeIds.isEmpty()) {
-            return ParseResult.failure("Graph and node targets cannot be mixed.");
+            throw new TargetParseException("commands.bk.resolve.parse.error.mixedTargetModes");
         }
         if (graphKey != null) {
-            return ParseResult.success(ResolveTarget.graph(graphKey));
+            return ResolveTarget.graph(graphKey);
         }
         if (!nodeIds.isEmpty()) {
-            return ParseResult.success(ResolveTarget.nodes(nodeIds));
+            return ResolveTarget.nodes(nodeIds);
         }
-        return ParseResult.failure("Please specify a graph or node target.");
+        throw new TargetParseException("commands.bk.resolve.parse.error.missingTarget");
     }
 
     /**
      * Parses a raw target tail.
      *
      * @param rawTargets raw target text
-     * @return parsed result
+     * @return parsed target
+     * @throws TargetParseException if parsing fails
      */
-    public ParseResult parse(final String rawTargets) {
+    public ResolveTarget parse(final String rawTargets) throws TargetParseException {
         if (rawTargets == null || rawTargets.isBlank()) {
             return parse(List.of());
         }
@@ -108,43 +111,5 @@ public final class ResolveTargetParser {
     private String valueAfterPrefix(final String token) {
         final int separator = token.indexOf(':');
         return separator < 0 ? "" : token.substring(separator + 1);
-    }
-
-    /**
-     * Parse result.
-     *
-     * @param target parsed target
-     * @param error  error message
-     */
-    public record ParseResult(ResolveTarget target, String error) {
-
-        /**
-         * Creates a success result.
-         *
-         * @param target parsed target
-         * @return success result
-         */
-        public static ParseResult success(final ResolveTarget target) {
-            return new ParseResult(target, null);
-        }
-
-        /**
-         * Creates a failure result.
-         *
-         * @param error error message
-         * @return failure result
-         */
-        public static ParseResult failure(final String error) {
-            return new ParseResult(null, error);
-        }
-
-        /**
-         * Checks if parsing succeeded.
-         *
-         * @return true when a target was parsed
-         */
-        public boolean success() {
-            return target != null;
-        }
     }
 }

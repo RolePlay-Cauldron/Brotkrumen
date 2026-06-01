@@ -27,7 +27,7 @@ public final class EditorSettingsSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> settings(final EditorCommandContext commandContext) {
         return Commands.literal("settings")
                 .then(Commands.literal("show")
-                        .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().settingsSummary(player.getUniqueId())))))
                 .then(Commands.literal("node-distance")
                         .then(Commands.argument("blocks", IntegerArgumentType.integer(1))
@@ -60,7 +60,7 @@ public final class EditorSettingsSubcommands {
 
     private static int updateNodeDistance(final EditorCommandContext commandContext,
                                           final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updateNodeDistance(player.getUniqueId(),
                         IntegerArgumentType.getInteger(context, "blocks"))));
     }
@@ -69,20 +69,20 @@ public final class EditorSettingsSubcommands {
                                        final CommandContext<CommandSourceStack> context) {
         final String modeName = StringArgumentType.getString(context, "mode");
         final EditorService.PlacementMode mode = EditorService.PlacementMode.parse(modeName).orElse(null);
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updatePlacementMode(player.getUniqueId(), mode)));
     }
 
     private static int updateContinueRequiresNode(final EditorCommandContext commandContext,
                                                   final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updateContinueRequiresNode(player.getUniqueId(),
                         BoolArgumentType.getBool(context, "enabled"))));
     }
 
     private static int updatePreset(final EditorCommandContext commandContext,
                                     final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updatePreset(player.getUniqueId(),
                         StringArgumentType.getString(context, "presetName"))));
     }
@@ -91,7 +91,7 @@ public final class EditorSettingsSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**
@@ -108,3 +108,5 @@ public final class EditorSettingsSubcommands {
         int run(Player player);
     }
 }
+
+

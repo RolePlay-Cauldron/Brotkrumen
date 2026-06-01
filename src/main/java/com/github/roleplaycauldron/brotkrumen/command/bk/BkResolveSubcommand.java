@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.GuidedPathCompletionVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
@@ -29,6 +30,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -42,7 +44,11 @@ public final class BkResolveSubcommand {
 
     private static final String CANCEL_LITERAL = "cancel";
 
-    private static final String PLAYER_ARGUMENT = "player";
+    private static final String PLAYER_LITERAL = "player";
+
+    private static final String PLAYER_ARGUMENT = PLAYER_LITERAL;
+
+    private static final String GRAPH_LITERAL = "graph";
 
     private static final String TARGET_ARGUMENT = "targets";
 
@@ -51,6 +57,8 @@ public final class BkResolveSubcommand {
     private static final long NO_CLEANUP_DELAY_TICKS = 0L;
 
     private final BkCommandContext commandContext;
+
+    private final Localization localization;
 
     /**
      * Initializes an instance of the BkResolveSubcommand class, which is responsible for
@@ -62,9 +70,11 @@ public final class BkResolveSubcommand {
      *                       Brotkrumen plugin. It provides access to necessary services,
      *                       utilities, and execution resources required to build
      *                       and process the resolve subcommand.
+     * @param localization
      */
-    public BkResolveSubcommand(final BkCommandContext commandContext) {
+    public BkResolveSubcommand(final BkCommandContext commandContext, final Localization localization) {
         this.commandContext = commandContext;
+        this.localization = localization;
     }
 
     /**
@@ -118,10 +128,11 @@ public final class BkResolveSubcommand {
         if (player == null) {
             return 0;
         }
-        final ResolveTargetParser.ParseResult parsed = commandContext.targetParser()
-                .parse(StringArgumentType.getString(context, TARGET_ARGUMENT));
-        if (!parsed.success()) {
-            commandContext.send(context, parsed.error());
+        final ResolveTarget target;
+        try {
+            target = commandContext.targetParser().parse(StringArgumentType.getString(context, TARGET_ARGUMENT));
+        } catch (final TargetParseException ex) {
+            sendKey(context, ex.getErrorKey(), ex.getReplacements());
             return 0;
         }
 
@@ -130,8 +141,8 @@ public final class BkResolveSubcommand {
         final ResolveOptions options = commandContext.resolveOptions();
         final long token = commandContext.sessionManager().replaceWithPending(playerId);
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () ->
-                resolveAsync(context, playerId, token, location, options, parsed.target()));
-        commandContext.send(context, "Resolving path for " + player.getName() + "...");
+                resolveAsync(context, playerId, token, location, options, target));
+        sendKey(context, "commands.bk.resolve.status.resolvingPath", Map.of("player", player.getName()));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -150,13 +161,14 @@ public final class BkResolveSubcommand {
                                              final ResolveTarget target) {
         final Graph graph = commandContext.resolveService().resolveGraph(target.graphKey()).orElse(null);
         if (graph == null) {
-            return ResolveResult.failure("No graph found for " + target.graphKey() + ".");
+            return ResolveResult.failure("commands.bk.resolve.error.graphNotFound",
+                    Map.of(GRAPH_LITERAL, target.graphKey()));
         }
         final NodeRef start = commandContext.resolveService()
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("No nearby graph node found.");
+            return ResolveResult.failure("commands.bk.resolve.error.noNearbyNode");
         }
         if (start.graphDbId() == graph.getGraphId()) {
             return ResolveResult.completedResult();
@@ -166,13 +178,16 @@ public final class BkResolveSubcommand {
                 .networkContaining(networks, List.of(start.graphDbId(), graph.getGraphId()))
                 .orElse(null);
         if (network == null) {
-            return ResolveResult.failure("No graph network connects your current graph to " + graph.getName() + ".");
+            return ResolveResult.failure("commands.bk.resolve.error.noNetworkToGraph",
+                    Map.of(GRAPH_LITERAL, graph.getName()));
         }
         final PathResult path = commandContext.resolveService().findPath(network, start, graph.getGraphId());
         if (path.nodes().isEmpty()) {
-            return ResolveResult.failure("No path found to graph " + graph.getName() + ".");
+            return ResolveResult.failure("commands.bk.resolve.error.noPathToGraph",
+                    Map.of(GRAPH_LITERAL, graph.getName()));
         }
-        return ResolveResult.path(network, path, options.backend(), "Showing path to graph " + graph.getName() + ".");
+        return ResolveResult.path(network, path, options.backend(), "commands.bk.resolve.status.showingPathToGraph",
+                Map.of(GRAPH_LITERAL, graph.getName()));
     }
 
     private ResolveResult resolveNodeTargets(final ResolveLocation location,
@@ -181,13 +196,13 @@ public final class BkResolveSubcommand {
         final ResolveService.NodeRefTargetResolution resolution = commandContext.resolveService()
                 .resolveNodeRefTargets(target.nodeIds());
         if (!resolution.success()) {
-            return ResolveResult.failure(resolution.error());
+            return ResolveResult.failure(resolution.errorKey(), resolution.replacements());
         }
         final NodeRef start = commandContext.resolveService()
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("No nearby graph node found.");
+            return ResolveResult.failure("commands.bk.resolve.error.noNearbyNode");
         }
         if (resolution.nodeRefs().contains(start)) {
             return ResolveResult.completedResult();
@@ -203,14 +218,14 @@ public final class BkResolveSubcommand {
                 .networkContaining(commandContext.resolveService().loadGraphNetworks(), requiredGraphIds)
                 .orElse(null);
         if (network == null) {
-            return ResolveResult.failure("No graph network connects your current graph to the requested node target.");
+            return ResolveResult.failure("commands.bk.resolve.error.noNetworkToNodeTarget");
         }
         final PathResult path = commandContext.resolveService()
                 .findPath(network, start, resolution.nodeRefs());
         if (path.nodes().isEmpty()) {
-            return ResolveResult.failure("No path found to requested node target.");
+            return ResolveResult.failure("commands.bk.resolve.error.noPathToNodeTarget");
         }
-        return ResolveResult.path(network, path, options.backend(), "Showing path to requested node target.");
+        return ResolveResult.path(network, path, options.backend(), "commands.bk.resolve.status.showingPathToNodeTarget");
     }
 
     private void finishResolve(final CommandContext<CommandSourceStack> context,
@@ -226,7 +241,7 @@ public final class BkResolveSubcommand {
         }
         if (!result.success()) {
             commandContext.sessionManager().clearIfCurrent(playerId, token);
-            commandContext.send(context, result.message());
+            sendKey(context, result.messageKey(), result.replacements());
             return;
         }
         if (result.completed()) {
@@ -241,7 +256,7 @@ public final class BkResolveSubcommand {
             return;
         }
         commandContext.visualizerRegistry().replace(playerId, visualizer);
-        commandContext.send(context, result.message());
+        sendKey(context, result.messageKey(), result.replacements());
     }
 
     private Visualizer graphVisualizer(final UUID playerId,
@@ -298,7 +313,7 @@ public final class BkResolveSubcommand {
         }
         final Player player = commandContext.plugin().getServer().getPlayer(playerId);
         if (player != null) {
-            player.sendMessage("Resolve guidance complete.");
+            player.sendMessage(localization.getPrefixedMessage("commands.bk.resolve.status.guidanceComplete"));
         }
         final long cleanupDelayTicks = options.finishCleanupDelayTicks();
         if (cleanupDelayTicks <= NO_CLEANUP_DELAY_TICKS) {
@@ -312,7 +327,7 @@ public final class BkResolveSubcommand {
     private int cancelOwnGuidance(final CommandContext<CommandSourceStack> context) {
         final CommandSender sender = context.getSource().getSender();
         if (!(sender instanceof final Player player)) {
-            commandContext.send(context, "Console must specify a player: /bk resolve cancel <player>.");
+            sendKey(context, "commands.bk.resolve.error.consoleMustSpecifyPlayer");
             return 0;
         }
         return cancelGuidanceForPlayer(context, player);
@@ -329,9 +344,9 @@ public final class BkResolveSubcommand {
     private int cancelGuidanceForPlayer(final CommandContext<CommandSourceStack> context, final Player player) {
         final boolean cancelled = commandContext.sessionManager().cancel(player.getUniqueId());
         if (cancelled) {
-            commandContext.send(context, "Cancelled resolve guidance for " + player.getName() + ".");
+            sendKey(context, "commands.bk.resolve.status.cancelledForPlayer", Map.of(PLAYER_LITERAL, player.getName()));
         } else {
-            commandContext.send(context, "No active resolve guidance for " + player.getName() + ".");
+            sendKey(context, "commands.bk.resolve.error.noActiveGuidanceForPlayer", Map.of(PLAYER_LITERAL, player.getName()));
         }
         return Command.SINGLE_SUCCESS;
     }
@@ -340,34 +355,116 @@ public final class BkResolveSubcommand {
         final String playerName = StringArgumentType.getString(context, PLAYER_ARGUMENT);
         final Player player = commandContext.plugin().getServer().getPlayerExact(playerName);
         if (player == null) {
-            commandContext.send(context, "Player " + playerName + " is not online.");
+            sendKey(context, "commands.bk.resolve.error.playerNotOnline", Map.of("player", playerName));
         }
         return player;
     }
 
-    @SuppressWarnings("PMD.CommentDefaultAccessModifier")
-    private record ResolveResult(Graph graph, GraphNetwork network, PathResult path, ResolveBackend backend,
+    private void sendKey(final CommandContext<CommandSourceStack> context, final String key) {
+        context.getSource().getSender().sendMessage(localization.getPrefixedMessage(key));
+    }
+
+    private void sendKey(final CommandContext<CommandSourceStack> context,
+                         final String key,
+                         final Map<String, String> replacements) {
+        context.getSource().getSender().sendMessage(localization.getPrefixedMessage(key, replacements));
+    }
+
+    /**
+     * Internal resolution result.
+     */
+    private record ResolveResult(Graph graph, GraphNetwork network, PathResult path,
+                                 ResolveBackend backend,
                                  boolean completed,
-                                 String message) {
+                                 String messageKey,
+                                 Map<String, String> replacements) {
 
+        /**
+         * Creates a successful graph resolution.
+         *
+         * @param graph   resolved graph
+         * @param backend visual backend
+         * @return result
+         */
+        /* default */
         static ResolveResult graph(final Graph graph, final ResolveBackend backend) {
-            return new ResolveResult(graph, null, null, backend, false, "Showing graph " + graph.getName() + ".");
+            return new ResolveResult(graph, null, null, backend, false,
+                    "commands.bk.resolve.status.showingGraph", Map.of(GRAPH_LITERAL, graph.getName()));
         }
 
+        /**
+         * Creates a successful path resolution.
+         *
+         * @param network    graph network
+         * @param path       path result
+         * @param backend    visual backend
+         * @param messageKey status message key
+         * @return result
+         */
+        /* default */
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
-                                  final String message) {
-            return new ResolveResult(null, network, path, backend, false, message);
+                                  final String messageKey) {
+            return new ResolveResult(null, network, path, backend, false, messageKey, Map.of());
         }
 
-        static ResolveResult failure(final String message) {
-            return new ResolveResult(null, null, null, null, false, message);
+        /**
+         * Creates a successful path resolution with replacements.
+         *
+         * @param network      graph network
+         * @param path         path result
+         * @param backend      visual backend
+         * @param messageKey   status message key
+         * @param replacements message replacements
+         * @return result
+         */
+        /* default */
+        static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
+                                  final String messageKey, final Map<String, String> replacements) {
+            return new ResolveResult(null, network, path, backend, false, messageKey,
+                    replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
+        /**
+         * Creates a failed resolution.
+         *
+         * @param messageKey error message key
+         * @return result
+         */
+        /* default */
+        static ResolveResult failure(final String messageKey) {
+            return new ResolveResult(null, null, null, null, false, messageKey, Map.of());
+        }
+
+        /**
+         * Creates a failed resolution with replacements.
+         *
+         * @param messageKey   error message key
+         * @param replacements message replacements
+         * @return result
+         */
+        /* default */
+        static ResolveResult failure(final String messageKey, final Map<String, String> replacements) {
+            return new ResolveResult(null, null, null, null, false, messageKey,
+                    replacements == null ? Map.of() : Map.copyOf(replacements));
+        }
+
+        /**
+         * Creates a completed resolution (already at destination).
+         *
+         * @return result
+         */
+        /* default */
         static ResolveResult completedResult() {
-            return new ResolveResult(null, null, null, null, true, "Resolve guidance complete.");
+            return new ResolveResult(null, null, null, null, true,
+                    "commands.bk.resolve.status.guidanceComplete", Map.of());
         }
 
-        boolean success() {
+        /**
+         * Checks if resolution succeeded.
+         *
+         * @return true when resolved
+         */
+        /* default */ boolean success() {
             return graph != null || network != null || completed;
         }
     }

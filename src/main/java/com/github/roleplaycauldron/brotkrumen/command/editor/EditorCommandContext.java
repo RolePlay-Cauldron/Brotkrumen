@@ -2,10 +2,8 @@ package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
-import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
-import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,7 +22,7 @@ public final class EditorCommandContext {
 
     private static final int FALLBACK_NODE_DISTANCE = 10;
 
-    private final JavaPlugin plugin;
+    private final JavaPlugin javaPlugin;
 
     /**
      * The service for editor operations.
@@ -45,7 +43,7 @@ public final class EditorCommandContext {
      */
     public EditorCommandContext(final JavaPlugin plugin, final EditorService editorService,
                                 final GraphService graphService) {
-        this.plugin = plugin;
+        this.javaPlugin = plugin;
         this.editorOperations = editorService;
         this.graphs = graphService;
     }
@@ -69,18 +67,27 @@ public final class EditorCommandContext {
     }
 
     /**
+     * Returns the plugin instance used by this command context.
+     *
+     * @return plugin instance
+     */
+    public JavaPlugin plugin() {
+        return javaPlugin;
+    }
+
+    /**
      * Retrieves the default editor settings from the plugin configuration.
      *
      * @return The default EditorSettings.
      */
     public EditorService.EditorSettings defaultSettings() {
-        final int nodeDistance = Math.max(1, plugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG,
+        final int nodeDistance = Math.max(1, javaPlugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG,
                 FALLBACK_NODE_DISTANCE));
         final EditorService.PlacementMode placementMode = EditorService.PlacementMode.parse(
-                        plugin.getConfig().getString(DEFAULT_PLACEMENT_MODE_CONFIG, "auto"))
+                        javaPlugin.getConfig().getString(DEFAULT_PLACEMENT_MODE_CONFIG, "auto"))
                 .orElse(EditorService.PlacementMode.AUTO);
-        final boolean continueRequiresNode = plugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
-        final String preset = plugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
+        final boolean continueRequiresNode = javaPlugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
+        final String preset = javaPlugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
         return new EditorService.EditorSettings(nodeDistance, placementMode, continueRequiresNode, preset)
                 .normalized();
     }
@@ -95,27 +102,6 @@ public final class EditorCommandContext {
         if (context.getSource().getSender() instanceof final Player player) {
             return player;
         }
-        context.getSource().getSender().sendMessage("Only players can use the graph editor.");
         return null;
-    }
-
-    /**
-     * Sends the editor result messages to the player and returns the command success status.
-     *
-     * @param player The player to send messages to.
-     * @param result The EditorResult containing messages and success status.
-     * @return The command success status.
-     */
-    public int send(final Player player, final EditorService.EditorResult result) {
-        if (result.message() != null && !result.message().isBlank()) {
-            player.sendMessage(result.message());
-        }
-        if (result.component() != null) {
-            player.sendMessage(result.component());
-        }
-        if (result.actionBarMessage() != null && !result.actionBarMessage().isBlank()) {
-            player.sendActionBar(Component.text(result.actionBarMessage()));
-        }
-        return result.success() ? Command.SINGLE_SUCCESS : 0;
     }
 }

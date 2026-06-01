@@ -65,9 +65,9 @@ final class LocalizationLoader {
 
     private LocaleData parseLocaleFile(final File file) {
         final YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-        final int schemaVersion = config.getInt("schemaVersion", -1);
+        final int schemaVersion = config.getInt("schema_version", -1);
         if (schemaVersion != SUPPORTED_SCHEMA_VERSION) {
-            log.error(INVALID_FILE_PREFIX + file.getName() + "': unsupported schemaVersion=" + schemaVersion);
+            log.error(INVALID_FILE_PREFIX + file.getName() + "': unsupported schema_version=" + schemaVersion);
             return null;
         }
 

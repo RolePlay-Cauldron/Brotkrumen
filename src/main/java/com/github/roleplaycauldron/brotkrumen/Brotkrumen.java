@@ -24,6 +24,8 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Locale;
+
 /**
  * Starting point of the plugin.
  */
@@ -44,13 +46,26 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      */
     private GraphServiceImpl graphService;
 
+    /**
+     * The runtime localization service.
+     */
     private Localization localization;
+
+    /**
+     * The metrics service for plugin statistics.
+     */
+    private Metrics metrics;
 
     /**
      * Default constructor.
      */
     public Brotkrumen() {
         super();
+    }
+
+    /* default */
+    static String localeResourcePath(final String localeTag) {
+        return "language/" + localeTag.toLowerCase(Locale.ROOT) + ".yml";
     }
 
     @Override
@@ -87,7 +102,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                 graphNetworkService, warpService);
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, editorService, graphService);
-        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor);
+        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor, localization);
 
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
 
@@ -97,21 +112,28 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     }
 
     private void loadLocalization(final LoggerFactory loggerFactory, final WrappedLogger log) {
-        saveResource("language/en-us.yml", false);
-        saveResource("language/de-de.yml", false);
+        final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"), log);
+        saveConfiguredDefaultLocaleResource(defaultLocaleTag);
 
         this.localization = new Localization(
                 loggerFactory.create(Localization.class),
                 this,
-                configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"), log)
+                defaultLocaleTag
         );
+    }
+
+    /* default */ void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {
+        final String resourcePath = localeResourcePath(defaultLocaleTag);
+        if (getResource(resourcePath) != null) {
+            saveResource(resourcePath, false);
+        }
     }
 
     private String configuredDefaultLocaleTag(final String localeTag, final WrappedLogger log) {
         if (localeTag == null || localeTag.isBlank()) {
             return "en-us";
         }
-        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(java.util.Locale.ROOT);
+        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(Locale.ROOT);
         if (normalized.isBlank()) {
             log.error("Invalid localization.defaultLocale '" + localeTag + "', using en-us.");
             return "en-us";

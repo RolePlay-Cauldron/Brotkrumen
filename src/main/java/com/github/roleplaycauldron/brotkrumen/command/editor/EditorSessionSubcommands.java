@@ -57,7 +57,7 @@ public final class EditorSessionSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> rename(final EditorCommandContext commandContext) {
         return Commands.literal("rename")
                 .then(Commands.argument("newName", StringArgumentType.word())
-                        .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().renameActiveGraph(player.getUniqueId(),
                                         StringArgumentType.getString(context, "newName"))))));
     }
@@ -70,7 +70,7 @@ public final class EditorSessionSubcommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> finish(final EditorCommandContext commandContext) {
         return Commands.literal("finish")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().finishRouteCreation(player.getUniqueId()))));
     }
 
@@ -82,20 +82,20 @@ public final class EditorSessionSubcommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> cancel(final EditorCommandContext commandContext) {
         return Commands.literal("cancel")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().cancel(player.getUniqueId()))));
     }
 
     private static int createGraph(final EditorCommandContext commandContext,
                                    final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().startGraphCreation(player.getUniqueId(),
                         StringArgumentType.getString(context, "name"), commandContext.defaultSettings())));
     }
 
     private static int editGraph(final EditorCommandContext commandContext,
                                  final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().startGraphEdit(player.getUniqueId(),
                         StringArgumentType.getString(context, "graphName"), commandContext.defaultSettings())));
     }
@@ -104,7 +104,7 @@ public final class EditorSessionSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**

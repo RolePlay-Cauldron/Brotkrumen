@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
@@ -19,6 +20,8 @@ public class BkCommand {
 
     private final BkCommandContext commandContext;
 
+    private final Localization localization;
+
     /**
      * Constructs a BkCommand instance, initializing the runtime command framework for the Brotkrumen plugin.
      * This class handles the registration and management of Brigadier commands related to public Brotkrumen operations.
@@ -30,14 +33,16 @@ public class BkCommand {
      * @param visualizerRegistry  the registry managing visualizers for rendering or displaying graphical representations
      * @param loggerFactory       the logger factory responsible for creating and managing loggers for various components
      * @param effectExecutor      the executor for managing and executing visual or gameplay effects
+     * @param localization        localization service for sender feedback rendering
      */
     public BkCommand(final Brotkrumen plugin, final GraphService graphService,
                      final GraphNetworkService graphNetworkService, final Storage storage,
                      final VisualizerRegistry visualizerRegistry, final LoggerFactory loggerFactory,
-                     final EffectExecutor effectExecutor) {
+                     final EffectExecutor effectExecutor, final Localization localization) {
         this.commandContext = new BkCommandContext(plugin, graphService, graphNetworkService, storage,
                 visualizerRegistry, loggerFactory, effectExecutor, new ResolveService(graphService, graphNetworkService),
                 new ResolveTargetParser(), new ResolveGuidanceSessionManager(visualizerRegistry));
+        this.localization = localization;
 
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar()
                 .register(commandTree(), "Brotkrumen runtime commands"));
@@ -45,9 +50,9 @@ public class BkCommand {
 
     private LiteralCommandNode<CommandSourceStack> commandTree() {
         return Commands.literal("bk")
-                .then(new BkVersionSubcommand(commandContext).version())
-                .then(new BkListSubcommands(commandContext).list())
-                .then(new BkResolveSubcommand(commandContext).resolve())
+                .then(new BkVersionSubcommand(commandContext, localization).version())
+                .then(new BkListSubcommands(commandContext, localization).list())
+                .then(new BkResolveSubcommand(commandContext, localization).resolve())
                 .build();
     }
 }

@@ -28,7 +28,7 @@ class LocalizationTest {
 
     private static String validLocaleContent(final String locale, final String prefix, final String welcomeText) {
         return """
-                schemaVersion: 1
+                schema_version: 1
                 locale: "%s"
                 prefix: "%s"
                 messages:

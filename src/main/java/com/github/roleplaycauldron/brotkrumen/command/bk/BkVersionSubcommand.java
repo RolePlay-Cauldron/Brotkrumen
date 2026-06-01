@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Engine;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -11,6 +12,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * `/bk version` command.
@@ -19,14 +21,18 @@ public final class BkVersionSubcommand {
 
     private final BkCommandContext commandContext;
 
+    private final Localization localization;
+
     /**
      * Initializes a new instance of the BkVersionSubcommand class.
      *
      * @param commandContext the context of the `/bk version` command, providing access to various
      *                       services and utilities required for command handling
+     * @param localization
      */
-    public BkVersionSubcommand(final BkCommandContext commandContext) {
+    public BkVersionSubcommand(final BkCommandContext commandContext, final Localization localization) {
         this.commandContext = commandContext;
+        this.localization = localization;
     }
 
     /**
@@ -52,18 +58,22 @@ public final class BkVersionSubcommand {
         final String diagnostics = BkOutputFormatter.diagnostics(pluginVersion, server, "none", storageType,
                 schemaVersion, onlinePlayers, maxPlayers);
 
-        final Component message = Component.text("Brotkrumen " + pluginVersion)
-                .hoverEvent(HoverEvent.showText(Component.text("Click to copy Brotkrumen diagnostics")))
+        final Component message = localization.getPrefixedMessage("commands.bk.version.title",
+                        Map.of("version", pluginVersion))
+                .hoverEvent(HoverEvent.showText(localization.getFormattedMessage(
+                        "commands.bk.version.hover.copyDiagnostics")))
                 .clickEvent(ClickEvent.copyToClipboard(diagnostics))
                 .append(Component.newline())
-                .append(Component.text("Server: " + server))
+                .append(localization.getFormattedMessage("commands.bk.version.line.server", Map.of("server", server)))
                 .append(Component.newline())
-                .append(Component.text("Hooks: none"))
+                .append(localization.getFormattedMessage("commands.bk.version.line.hooks", Map.of("hooks", "none")))
                 .append(Component.newline())
-                .append(Component.text("Storage: " + storageType + " schema " + schemaVersion))
+                .append(localization.getFormattedMessage("commands.bk.version.line.storage",
+                        Map.of("storage", storageType, "schema_version", String.valueOf(schemaVersion))))
                 .append(Component.newline())
-                .append(Component.text("Online players: " + onlinePlayers + "/" + maxPlayers));
-        commandContext.send(context, message);
+                .append(localization.getFormattedMessage("commands.bk.version.line.online_players",
+                        Map.of("online_players", String.valueOf(onlinePlayers), "max_players", String.valueOf(maxPlayers))));
+        context.getSource().getSender().sendMessage(message);
         return Command.SINGLE_SUCCESS;
     }
 }
