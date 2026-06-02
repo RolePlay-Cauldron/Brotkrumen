@@ -16,6 +16,7 @@ import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
@@ -41,6 +42,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      * The service for graph-related operations.
      */
     private GraphServiceImpl graphService;
+
+    private Metrics metrics;
 
     /**
      * Default constructor.
@@ -86,6 +89,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
 
+        metrics = new Metrics(this, 31_750);
+
         log.info("Brotkrumen enabled");
     }
 
@@ -98,6 +103,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         if (storage != null) {
             storage.shutdown();
         }
+
+        metrics.shutdown();
     }
 
     /**

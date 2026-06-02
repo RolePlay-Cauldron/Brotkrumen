@@ -73,6 +73,12 @@
     </dependency>
     <!-- only dependencies from maven central that are no MC Plugins-->
     <dependency>
+      <groupId>org.bstats</groupId>
+      <artifactId>bstats-bukkit</artifactId>
+      <version>3.2.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP</artifactId>
       <version>7.0.2</version>
@@ -246,6 +252,12 @@
                   </includes>
                 </filter>
                 <filter>
+                  <artifact>org.bstats</artifact>
+                  <includes>
+                    <include>org/bstats/**</include>
+                  </includes>
+                </filter>
+                <filter>
                   <artifact>org.mariadb.jdbc</artifact>
                   <includes>
                     <include>org/mariadb/jdbc/**</include>
@@ -257,6 +269,12 @@
                   <pattern>com.github.roleplaycauldron.spellbook</pattern>
                   <shadedPattern>
                     ${project.groupId.refactored}.${project.artifactId}.dependencies.com.github.roleplay-cauldron.spellbook
+                  </shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.bstats</pattern>
+                  <shadedPattern>
+                    ${project.groupId.refactored}.${project.artifactId}.dependencies.org.bstats
                   </shadedPattern>
                 </relocation>
                 <relocation>
