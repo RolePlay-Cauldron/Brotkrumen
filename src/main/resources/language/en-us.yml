@@ -1,0 +1,105 @@
+# Brotkrumen Language File
+prefix: "<#64748B>[<gradient:#38BDF8:#6366F1>Brotkrumen</gradient><#64748B>] <#CBD5E1>"
+
+messages:
+  # Placeholder conventions for command feedback:
+  # <player>, <graph>, <entries>, <token>, <hooks>, <storage>, <schema_version>,
+  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <value>, <key>
+
+  commands:
+    common:
+      playerOnlyEditor: "<#F43F5E>Only players can use the graph editor."
+
+    bk:
+      version:
+        title: "<#22C55E>Brotkrumen <#38BDF8><version></#38BDF8>"
+        hover:
+          copyDiagnostics: "<#CBD5E1>Click to copy Brotkrumen diagnostics."
+        line:
+          server: "<#CBD5E1>Server: <#38BDF8><server></#38BDF8>"
+          hooks: "<#CBD5E1>Hooks: <#38BDF8><hooks></#38BDF8>"
+          storage: "<#CBD5E1>Storage: <#38BDF8><storage></#38BDF8> <#CBD5E1>schema <#38BDF8><schema_version></#38BDF8>"
+          online_players: "<#CBD5E1>Online players: <#38BDF8><online_players></#38BDF8>/<#38BDF8><max_players></#38BDF8>"
+
+      list:
+        graph:
+          empty: "<#FACC15>No graphs exist."
+          entries: "<#CBD5E1>Graphs: <#38BDF8><entries></#38BDF8>"
+        network:
+          empty: "<#FACC15>No networks exist."
+          entries: "<#CBD5E1>Networks: <#38BDF8><entries></#38BDF8>"
+
+      resolve:
+        status:
+          resolvingPath: "<#CBD5E1>Resolving path for <#38BDF8><player></#38BDF8>..."
+          showingGraph: "<#22C55E>Showing graph <#38BDF8><graph></#38BDF8>."
+          showingPathToGraph: "<#22C55E>Showing path to graph <#38BDF8><graph></#38BDF8>."
+          showingPathToNodeTarget: "<#22C55E>Showing path to requested node target."
+          guidanceComplete: "<#22C55E>Resolve guidance complete."
+          cancelledForPlayer: "<#FACC15>Cancelled resolve guidance for <#38BDF8><player></#38BDF8>."
+
+        error:
+          graphNotFound: "<#F43F5E>No graph found for <#38BDF8><graph></#38BDF8>."
+          noNearbyNode: "<#F43F5E>No nearby graph node found."
+          noNetworkToGraph: "<#F43F5E>No graph network connects your current graph to <#38BDF8><graph></#38BDF8>."
+          noPathToGraph: "<#F43F5E>No path found to graph <#38BDF8><graph></#38BDF8>."
+          noNetworkToNodeTarget: "<#F43F5E>No graph network connects your current graph to the requested node target."
+          noPathToNodeTarget: "<#F43F5E>No path found to requested node target."
+          consoleMustSpecifyPlayer: "<#F43F5E>Console must specify a player: <#38BDF8>/bk resolve cancel <player></#38BDF8>."
+          noActiveGuidanceForPlayer: "<#F43F5E>No active resolve guidance for <#38BDF8><player></#38BDF8>."
+          playerNotOnline: "<#F43F5E>Player <#38BDF8><player></#38BDF8> is not online."
+
+        parse:
+          error:
+            missingTarget: "<#F43F5E>Please specify a graph or node target."
+            networkNotSupported: "<#F43F5E>Network targets are not supported by /bk resolve."
+            multipleGraphTargets: "<#F43F5E>Please specify only one graph target."
+            missingGraphTarget: "<#F43F5E>Please specify a graph name or id."
+            unknownToken: "<#F43F5E>Unknown resolve target token: <#38BDF8><token></#38BDF8>"
+            mixedTargetModes: "<#F43F5E>Graph and node targets cannot be mixed."
+
+        service:
+          error:
+            noNodeTargets: "<#F43F5E>Please specify at least one node target."
+            nodeTargetsDifferentGraphs: "<#F43F5E>Node targets must be in the same graph."
+            nodeTargetsMissingInGraph: "<#F43F5E>All node targets must exist in one graph."
+            nodeTargetsNotFound: "<#F43F5E>No graph contains the requested node targets."
+
+    bkeditor:
+      # Service-result keys reserved for editor command and subcommand feedback.
+      common:
+        notEditing: "<#F43F5E>You are not editing a graph."
+        graphNameRequired: "<#F43F5E>Please specify a graph name."
+        graphAlreadyExists: "<#F43F5E>A graph with that name already exists."
+        graphNotFound: "<#F43F5E>No graph with that name exists."
+        alreadyEditing: "<#F43F5E>You are already editing a graph."
+        settingsRequired: "<#F43F5E>Editor settings are required."
+        unknownPreset: "<#F43F5E>Unknown editor preset."
+        nodeDistancePositive: "<#F43F5E>Node distance must be greater than zero."
+        noSelection: "<#F43F5E>No graph element is selected."
+        noNearbyNode: "<#F43F5E>No nearby graph node found."
+        noNearbyEdge: "<#F43F5E>No nearby graph edge found."
+        warpStorageUnavailable: "<#F43F5E>Warp storage is unavailable."
+        warpKeyRequired: "<#F43F5E>Please specify a warp key."
+
+      status:
+        sessionStartedCreate: "<#22C55E>Editor started. <#CBD5E1>Tracing steps for graph <#38BDF8><graph></#38BDF8>."
+        sessionStartedEdit: "<#22C55E>Editor started. <#CBD5E1>Editing graph <#38BDF8><graph></#38BDF8>. Walk through an existing node to append nodes."
+        graphRenamed: "<#22C55E>Graph renamed. <#CBD5E1>Active graph is now <#38BDF8><graph></#38BDF8>."
+        previewEnabled: "<#22C55E>Preview mode enabled."
+        nodePlaced: "<#22C55E>Node placed."
+        nodeAddedAuto: "<#22C55E>Node added. <#CBD5E1>Automatic graph tracing continues."
+        guidanceWaitingAnchorActionbar: "<#FACC15>Placement paused. <#CBD5E1>Walk through a node or use <#38BDF8>/bkeditor continue</#38BDF8>."
+        continueWaitingNode: "<#FACC15>Waiting for node. <#CBD5E1>Walk through a node to continue placement."
+        continueResumed: "<#22C55E>Automatic placement resumed."
+        settingsSummary: "<#CBD5E1>Settings: <#38BDF8><value></#38BDF8>"
+        warpListEmpty: "<#FACC15>No persisted warps."
+        warpListActiveEmpty: "<#FACC15>No warps target the active graph."
+        warpListAll: "<#CBD5E1>All warps: <#38BDF8><entries></#38BDF8>."
+        warpListActive: "<#CBD5E1>Active graph warps: <#38BDF8><entries></#38BDF8>."
+
+#################
+# DO NOT TOUCH! #
+#################
+schema_version: 1
+locale: "en-US"

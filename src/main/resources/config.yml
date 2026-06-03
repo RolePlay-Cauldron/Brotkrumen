@@ -1,6 +1,17 @@
-#################
-#  Data Storage #
-#################
+################
+# Localization #
+################
+
+localization:
+
+  # Default locale used for non-player sender feedback.
+  # Format: language tag identifier (examples: en-us, de-de, de-de-dark)
+  # Custom theme variants are supported and resolved as plain tags.
+  defaultLocale: 'en-US'
+
+################
+# Data Storage #
+################
 
 # The desired storage-method for the plugin data.
 data:
@@ -65,9 +76,9 @@ data:
     # Controls the maximum number of ms that the plugin will wait for a connection from the pool before timing out.
     connectionTimeout: 5000 # 5 seconds
 
-################
-#  Visualizer  #
-################
+##############
+# Visualizer #
+##############
 
 visualizer:
 

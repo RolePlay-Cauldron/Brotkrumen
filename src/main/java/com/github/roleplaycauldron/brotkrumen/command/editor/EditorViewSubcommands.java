@@ -26,15 +26,15 @@ public final class EditorViewSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> view(final EditorCommandContext commandContext) {
         return Commands.literal("view")
                 .then(Commands.literal("add").then(graphArgument(commandContext)
-                        .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().addReferenceGraph(player.getUniqueId(),
                                         StringArgumentType.getString(context, GRAPH_ARGUMENT)))))))
                 .then(Commands.literal("remove").then(graphArgument(commandContext)
-                        .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().removeReferenceGraph(player.getUniqueId(),
                                         StringArgumentType.getString(context, GRAPH_ARGUMENT)))))))
                 .then(Commands.literal("clear").executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player, commandContext.editorService().clearReferenceGraphs(
+                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().clearReferenceGraphs(
                                 player.getUniqueId())))));
     }
 
@@ -55,7 +55,7 @@ public final class EditorViewSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**
@@ -72,3 +72,5 @@ public final class EditorViewSubcommands {
         int run(Player player);
     }
 }
+
+

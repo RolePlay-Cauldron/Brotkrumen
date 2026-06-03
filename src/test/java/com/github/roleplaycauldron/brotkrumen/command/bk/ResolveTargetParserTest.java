@@ -10,65 +10,61 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for {@link ResolveTargetParser}.
  */
-@SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
 class ResolveTargetParserTest {
 
     private final ResolveTargetParser parser = new ResolveTargetParser();
 
     @Test
-    void parsesLongGraphTarget() {
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of("graph:sternchen"));
+    void parsesLongGraphTarget() throws TargetParseException {
+        final ResolveTarget target = parser.parse(List.of("graph:sternchen"));
 
-        assertTrue(result.success(), "Graph target should parse");
-        assertEquals(ResolveTarget.Mode.GRAPH, result.target().mode(), "Mode should be graph");
-        assertEquals("sternchen", result.target().graphKey(), "Graph key should be preserved");
+        assertEquals(ResolveTarget.Mode.GRAPH, target.mode(), "Mode should be graph");
+        assertEquals("sternchen", target.graphKey(), "Graph key should be preserved");
     }
 
     @Test
-    void parsesShortGraphTarget() {
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of("g:12"));
+    void parsesShortGraphTarget() throws TargetParseException {
+        final ResolveTarget target = parser.parse(List.of("g:12"));
 
-        assertTrue(result.success(), "Short graph target should parse");
-        assertEquals("12", result.target().graphKey(), "Graph id should be preserved");
+        assertEquals("12", target.graphKey(), "Graph id should be preserved");
     }
 
     @Test
-    void parsesNodeListWithLongAndShortPrefixes() {
+    void parsesNodeListWithLongAndShortPrefixes() throws TargetParseException {
         final UUID first = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
         final UUID second = UUID.fromString("18a6d815-2c26-4fde-8179-e74baca4bb4e");
 
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of("node:" + first, "n:" + second));
+        final ResolveTarget target = parser.parse(List.of("node:" + first, "n:" + second));
 
-        assertTrue(result.success(), "Node targets should parse");
-        assertEquals(ResolveTarget.Mode.NODE_LIST, result.target().mode(), "Mode should be node list");
-        assertEquals(List.of(first, second), result.target().nodeIds(), "Node ids should be preserved");
+        assertEquals(ResolveTarget.Mode.NODE_LIST, target.mode(), "Mode should be node list");
+        assertEquals(List.of(first, second), target.nodeIds(), "Node ids should be preserved");
     }
 
     @Test
     void rejectsMixedGraphAndNodeTargets() {
         final UUID nodeId = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
 
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of("graph:sternchen", "node:" + nodeId));
+        final TargetParseException exception = assertThrows(TargetParseException.class,
+                () -> parser.parse(List.of("graph:sternchen", "node:" + nodeId)));
 
-        assertFalse(result.success(), "Mixed targets should fail");
-        assertEquals("Graph and node targets cannot be mixed.", result.error(), "Error should explain ambiguity");
+        assertEquals("commands.bk.resolve.parse.error.mixedTargetModes", exception.getErrorKey(),
+                "Error key should explain ambiguity");
     }
 
     @Test
     void rejectsNetworkTargets() {
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of("network:main"));
+        final TargetParseException exception = assertThrows(TargetParseException.class,
+                () -> parser.parse(List.of("network:main")));
 
-        assertFalse(result.success(), "Network target should fail");
-        assertEquals("Network targets are not supported by /bk resolve.", result.error(),
-                "Error should explain unsupported target");
+        assertEquals("commands.bk.resolve.parse.error.networkNotSupported", exception.getErrorKey(),
+                "Error key should explain unsupported target");
     }
 
     @Test
     void rejectsBareUuidTargets() {
         final UUID nodeId = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
 
-        final ResolveTargetParser.ParseResult result = parser.parse(List.of(nodeId.toString()));
-
-        assertFalse(result.success(), "Bare UUID targets should fail");
+        assertThrows(TargetParseException.class,
+                () -> parser.parse(List.of(nodeId.toString())), "Should reject bare UUID");
     }
 }

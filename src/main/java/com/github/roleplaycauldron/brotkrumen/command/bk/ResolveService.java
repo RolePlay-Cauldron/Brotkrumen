@@ -13,6 +13,7 @@ import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -121,7 +122,7 @@ public class ResolveService {
      */
     public NodeTargetResolution resolveNodeTargets(final Collection<UUID> nodeIds) {
         if (nodeIds == null || nodeIds.isEmpty()) {
-            return NodeTargetResolution.failure("Please specify at least one node target.");
+            return NodeTargetResolution.failure("commands.bk.resolve.service.error.noNodeTargets");
         }
         final Set<UUID> requested = Set.copyOf(nodeIds);
         Graph containingGraph = null;
@@ -134,15 +135,15 @@ public class ResolveService {
                 continue;
             }
             if (containingGraph != null) {
-                return NodeTargetResolution.failure("Node targets must be in the same graph.");
+                return NodeTargetResolution.failure("commands.bk.resolve.service.error.nodeTargetsDifferentGraphs");
             }
             containingGraph = graph;
             if (present.size() != requested.size()) {
-                return NodeTargetResolution.failure("All node targets must exist in one graph.");
+                return NodeTargetResolution.failure("commands.bk.resolve.service.error.nodeTargetsMissingInGraph");
             }
         }
         if (containingGraph == null) {
-            return NodeTargetResolution.failure("No graph contains the requested node targets.");
+            return NodeTargetResolution.failure("commands.bk.resolve.service.error.nodeTargetsNotFound");
         }
         return NodeTargetResolution.success(containingGraph, List.copyOf(requested));
     }
@@ -176,7 +177,7 @@ public class ResolveService {
      */
     public NodeRefTargetResolution resolveNodeRefTargets(final Collection<UUID> nodeIds) {
         if (nodeIds == null || nodeIds.isEmpty()) {
-            return NodeRefTargetResolution.failure("Please specify at least one node target.");
+            return NodeRefTargetResolution.failure("commands.bk.resolve.service.error.noNodeTargets");
         }
         final Set<UUID> requested = Set.copyOf(nodeIds);
         final List<NodeRef> refs = graphService.getAllGraphs().stream()
@@ -185,7 +186,7 @@ public class ResolveService {
                         .map(node -> new NodeRef(graph.getGraphId(), node.graphId())))
                 .toList();
         if (refs.size() != requested.size()) {
-            return NodeRefTargetResolution.failure("No graph contains the requested node targets.");
+            return NodeRefTargetResolution.failure("commands.bk.resolve.service.error.nodeTargetsNotFound");
         }
         return NodeRefTargetResolution.success(refs);
     }
@@ -285,11 +286,13 @@ public class ResolveService {
     /**
      * Resolved node targets.
      *
-     * @param graph   graph containing all targets
-     * @param nodeIds node ids
-     * @param error   error message
+     * @param graph        graph containing all targets
+     * @param nodeIds      node ids
+     * @param errorKey     error message
+     * @param replacements message replacements
      */
-    public record NodeTargetResolution(Graph graph, List<UUID> nodeIds, String error) {
+    public record NodeTargetResolution(Graph graph, List<UUID> nodeIds, String errorKey,
+                                       Map<String, String> replacements) {
 
         /**
          * Creates a successful resolution.
@@ -299,17 +302,17 @@ public class ResolveService {
          * @return result
          */
         public static NodeTargetResolution success(final Graph graph, final List<UUID> nodeIds) {
-            return new NodeTargetResolution(graph, List.copyOf(nodeIds), null);
+            return new NodeTargetResolution(graph, List.copyOf(nodeIds), null, Map.of());
         }
 
         /**
          * Creates a failed resolution.
          *
-         * @param error error message
+         * @param errorKey error message
          * @return result
          */
-        public static NodeTargetResolution failure(final String error) {
-            return new NodeTargetResolution(null, List.of(), error);
+        public static NodeTargetResolution failure(final String errorKey) {
+            return new NodeTargetResolution(null, List.of(), errorKey, Map.of());
         }
 
         /**
@@ -325,10 +328,12 @@ public class ResolveService {
     /**
      * Resolved graph-qualified node targets.
      *
-     * @param nodeRefs graph-qualified node references
-     * @param error    error message
+     * @param nodeRefs     graph-qualified node references
+     * @param errorKey     error message
+     * @param replacements message replacements
      */
-    public record NodeRefTargetResolution(List<NodeRef> nodeRefs, String error) {
+    public record NodeRefTargetResolution(List<NodeRef> nodeRefs, String errorKey,
+                                          Map<String, String> replacements) {
 
         /**
          * Creates a successful graph-qualified target resolution.
@@ -337,17 +342,17 @@ public class ResolveService {
          * @return result
          */
         public static NodeRefTargetResolution success(final List<NodeRef> nodeRefs) {
-            return new NodeRefTargetResolution(List.copyOf(nodeRefs), null);
+            return new NodeRefTargetResolution(List.copyOf(nodeRefs), null, Map.of());
         }
 
         /**
          * Creates a failed graph-qualified target resolution.
          *
-         * @param error error message
+         * @param errorKey error message
          * @return result
          */
-        public static NodeRefTargetResolution failure(final String error) {
-            return new NodeRefTargetResolution(List.of(), error);
+        public static NodeRefTargetResolution failure(final String errorKey) {
+            return new NodeRefTargetResolution(List.of(), errorKey, Map.of());
         }
 
         /**
@@ -356,7 +361,7 @@ public class ResolveService {
          * @return true when all node references were resolved
          */
         public boolean success() {
-            return error == null;
+            return errorKey == null;
         }
     }
 }

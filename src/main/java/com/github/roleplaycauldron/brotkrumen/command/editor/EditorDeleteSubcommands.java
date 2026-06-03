@@ -26,7 +26,9 @@ public final class EditorDeleteSubcommands {
                 .then(Commands.literal("node")
                         .executes(context -> {
                             final org.bukkit.entity.Player player = commandContext.player(context);
-                            return player == null ? 0 : commandContext.send(player,
+                            return player == null
+                                    ? EditorCommandFeedback.playerOnly(commandContext, context)
+                                    : EditorCommandFeedback.send(commandContext, player,
                                     commandContext.editorService().deleteSelectedNode(player.getUniqueId()));
                         }))
                 .then(Commands.literal("graph")
@@ -42,9 +44,12 @@ public final class EditorDeleteSubcommands {
                                 })
                                 .executes(context -> {
                                     final org.bukkit.entity.Player player = commandContext.player(context);
-                                    return player == null ? 0 : commandContext.send(player,
+                                    return player == null
+                                            ? EditorCommandFeedback.playerOnly(commandContext, context)
+                                            : EditorCommandFeedback.send(commandContext, player,
                                             commandContext.editorService().deletePersistedGraph(
                                                     StringArgumentType.getString(context, GRAPH_ARGUMENT)));
                                 })));
     }
 }
+

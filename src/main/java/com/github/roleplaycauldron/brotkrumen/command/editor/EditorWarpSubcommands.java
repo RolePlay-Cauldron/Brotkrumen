@@ -30,7 +30,7 @@ public final class EditorWarpSubcommands {
                 .then(create(commandContext, "selected"))
                 .then(create(commandContext, "here"))
                 .then(Commands.literal("remove").then(key(KEY_ARGUMENT).executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player, commandContext.editorService().removeWarp(
+                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().removeWarp(
                                 player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT)))))))
                 .then(list(commandContext))
                 .then(set(commandContext));
@@ -40,7 +40,7 @@ public final class EditorWarpSubcommands {
                                                                      final String kind) {
         return Commands.literal(kind).then(key(KEY_ARGUMENT).executes(context -> withPlayer(commandContext, context, player -> {
             final String key = StringArgumentType.getString(context, KEY_ARGUMENT);
-            return commandContext.send(player, "here".equals(kind)
+            return EditorCommandFeedback.send(commandContext, player, "here".equals(kind)
                     ? commandContext.editorService().createWarpHere(player.getUniqueId(), key, player.getLocation())
                     : commandContext.editorService().createSelectedWarp(player.getUniqueId(), key));
         })));
@@ -48,10 +48,10 @@ public final class EditorWarpSubcommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> list(final EditorCommandContext commandContext) {
         return Commands.literal("list")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().listWarps(player.getUniqueId(), false))))
                 .then(Commands.literal("all").executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player,
+                        player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().listWarps(player.getUniqueId(), true)))));
     }
 
@@ -59,17 +59,17 @@ public final class EditorWarpSubcommands {
         return Commands.literal("set")
                 .then(Commands.literal("cost").then(key(KEY_ARGUMENT).then(Commands.argument("cost",
                         DoubleArgumentType.doubleArg(0.0D)).executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player, commandContext.editorService().updateWarpCost(
+                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpCost(
                                 player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
                                 DoubleArgumentType.getDouble(context, "cost"))))))))
                 .then(Commands.literal("enabled").then(key(KEY_ARGUMENT).then(Commands.argument("enabled",
                         BoolArgumentType.bool()).executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player, commandContext.editorService().updateWarpEnabled(
+                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpEnabled(
                                 player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
                                 BoolArgumentType.getBool(context, "enabled"))))))))
                 .then(Commands.literal("permission").then(key(KEY_ARGUMENT).then(Commands.argument("required",
                         BoolArgumentType.bool()).executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player, commandContext.editorService().updateWarpPermission(
+                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpPermission(
                                 player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
                                 BoolArgumentType.getBool(context, "required"))))))));
     }
@@ -83,7 +83,7 @@ public final class EditorWarpSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**
@@ -100,3 +100,5 @@ public final class EditorWarpSubcommands {
         int run(Player player);
     }
 }
+
+

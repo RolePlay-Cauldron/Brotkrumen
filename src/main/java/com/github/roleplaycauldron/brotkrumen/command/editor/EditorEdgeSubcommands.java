@@ -51,7 +51,7 @@ public final class EditorEdgeSubcommands {
                                 })
                                 .executes(context -> updateEdgeState(commandContext, context))))
                 .then(Commands.literal("remove").executes(context -> withPlayer(commandContext, context,
-                        player -> commandContext.send(player,
+                        player -> EditorCommandFeedback.send(commandContext, player,
                                 commandContext.editorService().removeSelectedEdge(player.getUniqueId())))));
     }
 
@@ -69,7 +69,7 @@ public final class EditorEdgeSubcommands {
                                    final CommandContext<CommandSourceStack> context) {
         final EditorService.EdgeType edgeType = EditorService.EdgeType.parse(
                 StringArgumentType.getString(context, TYPE_ARGUMENT)).orElse(null);
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().createSelectedNodeEdge(player.getUniqueId(), edgeType)));
     }
 
@@ -77,7 +77,7 @@ public final class EditorEdgeSubcommands {
                                            final CommandContext<CommandSourceStack> context) {
         final EditorService.EdgeTraversal traversal = EditorService.EdgeTraversal.parse(
                 StringArgumentType.getString(context, TRAVERSAL_ARGUMENT)).orElse(null);
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updateSelectedEdgeTraversal(player.getUniqueId(), traversal)));
     }
 
@@ -85,7 +85,7 @@ public final class EditorEdgeSubcommands {
                                        final CommandContext<CommandSourceStack> context) {
         final EditorService.EdgeState edgeState = EditorService.EdgeState.parse(
                 StringArgumentType.getString(context, STATE_ARGUMENT)).orElse(null);
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().updateSelectedEdgeState(player.getUniqueId(), edgeState)));
     }
 
@@ -93,7 +93,7 @@ public final class EditorEdgeSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**
@@ -110,3 +110,5 @@ public final class EditorEdgeSubcommands {
         int run(Player player);
     }
 }
+
+

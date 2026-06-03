@@ -5,6 +5,7 @@ import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
 import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
@@ -22,6 +23,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Locale;
 
 /**
  * Starting point of the plugin.
@@ -43,6 +46,14 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      */
     private GraphServiceImpl graphService;
 
+    /**
+     * The runtime localization service.
+     */
+    private Localization localization;
+
+    /**
+     * The metrics service for plugin statistics.
+     */
     private Metrics metrics;
 
     /**
@@ -52,12 +63,18 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         super();
     }
 
+    /* default */
+    static String localeResourcePath(final String localeTag) {
+        return "language/" + localeTag.toLowerCase(Locale.ROOT) + ".yml";
+    }
+
     @Override
     public void onEnable() {
         final LoggerFactory loggerFactory = new LoggerFactory(getSLF4JLogger());
         final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
 
         saveDefaultConfig();
+        loadLocalization(loggerFactory, log);
 
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
@@ -85,13 +102,43 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                 graphNetworkService, warpService);
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, editorService, graphService);
-        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor);
+        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor, localization);
 
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
 
         metrics = new Metrics(this, 31_750);
 
         log.info("Brotkrumen enabled");
+    }
+
+    private void loadLocalization(final LoggerFactory loggerFactory, final WrappedLogger log) {
+        final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"), log);
+        saveConfiguredDefaultLocaleResource(defaultLocaleTag);
+
+        this.localization = new Localization(
+                loggerFactory.create(Localization.class),
+                this,
+                defaultLocaleTag
+        );
+    }
+
+    /* default */ void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {
+        final String resourcePath = localeResourcePath(defaultLocaleTag);
+        if (getResource(resourcePath) != null) {
+            saveResource(resourcePath, false);
+        }
+    }
+
+    private String configuredDefaultLocaleTag(final String localeTag, final WrappedLogger log) {
+        if (localeTag == null || localeTag.isBlank()) {
+            return "en-us";
+        }
+        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            log.error("Invalid localization.defaultLocale '" + localeTag + "', using en-us.");
+            return "en-us";
+        }
+        return normalized;
     }
 
     @Override
@@ -115,5 +162,14 @@ public class Brotkrumen extends JavaPlugin implements Listener {
      */
     public GraphService getGraphService() {
         return graphService;
+    }
+
+    /**
+     * Returns the runtime localization service.
+     *
+     * @return localization service
+     */
+    public Localization getLocalization() {
+        return localization;
     }
 }

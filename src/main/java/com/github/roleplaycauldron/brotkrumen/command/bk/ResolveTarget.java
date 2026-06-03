@@ -18,7 +18,8 @@ public record ResolveTarget(Mode mode, String graphKey, List<UUID> nodeIds) {
      * @param graphKey graph name or id
      * @return graph target
      */
-    public static ResolveTarget graph(final String graphKey) {
+    /* default */
+    static ResolveTarget graph(final String graphKey) {
         return new ResolveTarget(Mode.GRAPH, graphKey, List.of());
     }
 
@@ -28,7 +29,8 @@ public record ResolveTarget(Mode mode, String graphKey, List<UUID> nodeIds) {
      * @param nodeIds node ids
      * @return node target
      */
-    public static ResolveTarget nodes(final List<UUID> nodeIds) {
+    /* default */
+    static ResolveTarget nodes(final List<UUID> nodeIds) {
         return new ResolveTarget(Mode.NODE_LIST, null, List.copyOf(nodeIds));
     }
 

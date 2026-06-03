@@ -1,0 +1,95 @@
+# Brotkrumen Language File
+prefix: "<#64748B>[<gradient:#38BDF8:#6366F1>Brotkrumen</gradient><#64748B>] <#CBD5E1>"
+
+messages:
+  # Platzhalter-Konventionen für Command-Feedback:
+  # <player>, <graph>, <entries>, <token>, <hooks>, <storage>, <schema_version>,
+  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <value>, <key>
+  commands:
+    common:
+      playerOnlyEditor: "<#F43F5E>Nur Spieler können den Graph-Editor verwenden."
+    bk:
+      version:
+        title: "<#22C55E>Brotkrumen <#38BDF8><version></#38BDF8>"
+        hover:
+          copyDiagnostics: "<#CBD5E1>Klicke, um Brotkrumen-Diagnosen zu kopieren."
+        line:
+          server: "<#CBD5E1>Server: <#38BDF8><server></#38BDF8>"
+          hooks: "<#CBD5E1>Hooks: <#38BDF8><hooks></#38BDF8>"
+          storage: "<#CBD5E1>Speicher: <#38BDF8><storage></#38BDF8> <#CBD5E1>Schema <#38BDF8><schema_version></#38BDF8>"
+          online_players: "<#CBD5E1>Spieler online: <#38BDF8><online_players></#38BDF8>/<#38BDF8><max_players></#38BDF8>"
+      list:
+        graph:
+          empty: "<#FACC15>Keine Graphen vorhanden."
+          entries: "<#CBD5E1>Graphen: <#38BDF8><entries></#38BDF8>"
+        network:
+          empty: "<#FACC15>Keine Netzwerke vorhanden."
+          entries: "<#CBD5E1>Netzwerke: <#38BDF8><entries></#38BDF8>"
+      resolve:
+        status:
+          resolvingPath: "<#CBD5E1>Pfad für <#38BDF8><player></#38BDF8> wird aufgelöst..."
+          showingGraph: "<#22C55E>Graph <#38BDF8><graph></#38BDF8> wird angezeigt."
+          showingPathToGraph: "<#22C55E>Pfad zum Graph <#38BDF8><graph></#38BDF8> wird angezeigt."
+          showingPathToNodeTarget: "<#22C55E>Pfad zum angeforderten Knoten-Ziel wird angezeigt."
+          guidanceComplete: "<#22C55E>Resolve-Hinweis abgeschlossen."
+          cancelledForPlayer: "<#FACC15>Resolve-Hinweis für <#38BDF8><player></#38BDF8> abgebrochen."
+        error:
+          graphNotFound: "<#F43F5E>Kein Graph für <#38BDF8><graph></#38BDF8> gefunden."
+          noNearbyNode: "<#F43F5E>Kein naher Graph-Knoten gefunden."
+          noNetworkToGraph: "<#F43F5E>Kein Graph-Netzwerk verbindet deinen aktuellen Graphen mit <#38BDF8><graph></#38BDF8>."
+          noPathToGraph: "<#F43F5E>Kein Pfad zu Graph <#38BDF8><graph></#38BDF8> gefunden."
+          noNetworkToNodeTarget: "<#F43F5E>Kein Graph-Netzwerk verbindet deinen aktuellen Graphen mit dem angeforderten Knoten-Ziel."
+          noPathToNodeTarget: "<#F43F5E>Kein Pfad zum angeforderten Knoten-Ziel gefunden."
+          consoleMustSpecifyPlayer: "<#F43F5E>Die Konsole muss einen Spieler angeben: <#38BDF8>/bk resolve cancel <player></#38BDF8>."
+          noActiveGuidanceForPlayer: "<#F43F5E>Kein aktiver Resolve-Hinweis für <#38BDF8><player></#38BDF8>."
+          playerNotOnline: "<#F43F5E>Spieler <#38BDF8><player></#38BDF8> ist nicht online."
+        parse:
+          error:
+            missingTarget: "<#F43F5E>Bitte gib ein Graph- oder Knoten-Ziel an."
+            networkNotSupported: "<#F43F5E>Netzwerk-Ziele werden von /bk resolve nicht unterstützt."
+            multipleGraphTargets: "<#F43F5E>Bitte gib nur ein Graph-Ziel an."
+            missingGraphTarget: "<#F43F5E>Bitte gib einen Graph-Namen oder eine ID an."
+            unknownToken: "<#F43F5E>Unbekanntes Resolve-Ziel-Token: <#38BDF8><token></#38BDF8>"
+            mixedTargetModes: "<#F43F5E>Graph- und Knoten-Ziele können nicht gemischt werden."
+        service:
+          error:
+            noNodeTargets: "<#F43F5E>Bitte gib mindestens ein Knoten-Ziel an."
+            nodeTargetsDifferentGraphs: "<#F43F5E>Knoten-Ziele müssen im selben Graph liegen."
+            nodeTargetsMissingInGraph: "<#F43F5E>Alle Knoten-Ziele müssen in einem Graph existieren."
+            nodeTargetsNotFound: "<#F43F5E>Kein Graph enthält die angeforderten Knoten-Ziele."
+    bkeditor:
+      common:
+        notEditing: "<#F43F5E>Du bearbeitest keinen Graph."
+        graphNameRequired: "<#F43F5E>Bitte gib einen Graph-Namen an."
+        graphAlreadyExists: "<#F43F5E>Ein Graph mit diesem Namen existiert bereits."
+        graphNotFound: "<#F43F5E>Kein Graph mit diesem Namen vorhanden."
+        alreadyEditing: "<#F43F5E>Du bearbeitest bereits einen Graph."
+        settingsRequired: "<#F43F5E>Editor-Einstellungen sind erforderlich."
+        unknownPreset: "<#F43F5E>Unbekanntes Editor-Preset."
+        nodeDistancePositive: "<#F43F5E>Der Knotenabstand muss grösser als null sein."
+        noSelection: "<#F43F5E>Kein Graph-Element ist ausgewählt."
+        noNearbyNode: "<#F43F5E>Kein naher Graph-Knoten gefunden."
+        noNearbyEdge: "<#F43F5E>Keine nahe Graph-Kante gefunden."
+        warpStorageUnavailable: "<#F43F5E>Warp-Speicher ist nicht verfügbar."
+        warpKeyRequired: "<#F43F5E>Bitte gib einen Warp-Key an."
+      status:
+        sessionStartedCreate: "<#22C55E>Editor gestartet. <#CBD5E1>Schritte für Graph <#38BDF8><graph></#38BDF8> werden aufgezeichnet."
+        sessionStartedEdit: "<#22C55E>Editor gestartet. <#CBD5E1>Graph <#38BDF8><graph></#38BDF8> wird bearbeitet. Laufe durch einen vorhandenen Knoten, um Knoten anzuhängen."
+        graphRenamed: "<#22C55E>Graph umbenannt. <#CBD5E1>Aktiver Graph ist jetzt <#38BDF8><graph></#38BDF8>."
+        previewEnabled: "<#22C55E>Vorschau-Modus aktiviert."
+        nodePlaced: "<#22C55E>Knoten platziert."
+        nodeAddedAuto: "<#22C55E>Knoten hinzugefügt. <#CBD5E1>Automatische Graph-Aufzeichnung läuft weiter."
+        guidanceWaitingAnchorActionbar: "<#FACC15>Platzierung pausiert. <#CBD5E1>Laufe durch einen Knoten oder nutze <#38BDF8>/bkeditor continue</#38BDF8>."
+        continueWaitingNode: "<#FACC15>Warte auf Knoten. <#CBD5E1>Laufe durch einen Knoten, um die Platzierung fortzusetzen."
+        continueResumed: "<#22C55E>Automatische Platzierung fortgesetzt."
+        settingsSummary: "<#CBD5E1>Einstellungen: <#38BDF8><value></#38BDF8>"
+        warpListEmpty: "<#FACC15>Keine gespeicherten Warps."
+        warpListActiveEmpty: "<#FACC15>Keine Warps zielen auf den aktiven Graph."
+        warpListAll: "<#CBD5E1>Alle Warps: <#38BDF8><entries></#38BDF8>."
+        warpListActive: "<#CBD5E1>Warps des aktiven Graphen: <#38BDF8><entries></#38BDF8>."
+
+#################
+# DO NOT TOUCH! #
+#################
+schema_version: 1
+locale: "de-DE"

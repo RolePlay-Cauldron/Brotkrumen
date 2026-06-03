@@ -14,6 +14,10 @@ import java.util.stream.Collectors;
 @SuppressWarnings("PMD.UseObjectForClearerAPI")
 public final class BkOutputFormatter {
 
+    private static final String NO_GRAPHS_EXIST = "No graphs exist.";
+
+    private static final String NO_NETWORKS_EXIST = "No networks exist.";
+
     private BkOutputFormatter() {
     }
 
@@ -48,7 +52,7 @@ public final class BkOutputFormatter {
      */
     public static String graphs(final Collection<Graph> graphs) {
         if (graphs.isEmpty()) {
-            return "No graphs exist.";
+            return NO_GRAPHS_EXIST;
         }
         return "Graphs: " + graphs.stream()
                 .sorted(Comparator.comparingInt(Graph::getGraphId))
@@ -64,7 +68,7 @@ public final class BkOutputFormatter {
      */
     public static String networks(final Collection<GraphNetwork> networks) {
         if (networks.isEmpty()) {
-            return "No networks exist.";
+            return NO_NETWORKS_EXIST;
         }
         final AtomicInteger index = new AtomicInteger(1);
         return networks.stream()

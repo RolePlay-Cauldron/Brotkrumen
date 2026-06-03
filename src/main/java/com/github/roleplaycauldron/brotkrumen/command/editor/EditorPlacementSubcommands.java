@@ -23,7 +23,7 @@ public final class EditorPlacementSubcommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> preview(final EditorCommandContext commandContext) {
         return Commands.literal("preview")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().preview(player.getUniqueId()))));
     }
 
@@ -35,7 +35,7 @@ public final class EditorPlacementSubcommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> place(final EditorCommandContext commandContext) {
         return Commands.literal("place")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().placeNode(player.getUniqueId(), player.getLocation()))));
     }
 
@@ -48,7 +48,7 @@ public final class EditorPlacementSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> continuePlacement(
             final EditorCommandContext commandContext) {
         return Commands.literal("continue")
-                .executes(context -> withPlayer(commandContext, context, player -> commandContext.send(player,
+                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                         commandContext.editorService().continuePlacement(player.getUniqueId()))));
     }
 
@@ -69,7 +69,7 @@ public final class EditorPlacementSubcommands {
     private static int undo(final EditorCommandContext commandContext,
                             final CommandContext<CommandSourceStack> context,
                             final int amount) {
-        return withPlayer(commandContext, context, player -> commandContext.send(player,
+        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
                 commandContext.editorService().undo(player.getUniqueId(), amount)));
     }
 
@@ -77,7 +77,7 @@ public final class EditorPlacementSubcommands {
                                   final CommandContext<CommandSourceStack> context,
                                   final PlayerAction action) {
         final Player player = commandContext.player(context);
-        return player == null ? 0 : action.run(player);
+        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
     }
 
     /**
@@ -94,3 +94,5 @@ public final class EditorPlacementSubcommands {
         int run(Player player);
     }
 }
+
+
