@@ -1,16 +1,16 @@
-package com.github.roleplaycauldron.brotkrumen.command.bk;
+package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
 import org.bukkit.configuration.file.FileConfiguration;
 
 /**
  * Configuration for `/bk resolve`.
  *
- * @param nearestNodeRadius        configured radius before clamping
- * @param viewDistance             visualizer view distance
- * @param backend                  configured visualizer backend
- * @param finishRadius             completion radius for guided resolve finish detection
+ * @param nearestNodeRadius         configured radius before clamping
+ * @param viewDistance              visualizer view distance
+ * @param backend                   configured visualizer backend
+ * @param finishRadius              completion radius for guided resolve finish detection
  * @param finishCleanupDelaySeconds delay after completion before resolve guidance cleanup
- * @param goalMarkerEnabled        whether guided resolve highlights the final goal node
+ * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,
                              double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled) {

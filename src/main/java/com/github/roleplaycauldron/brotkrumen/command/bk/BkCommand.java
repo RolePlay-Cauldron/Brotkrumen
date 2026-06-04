@@ -1,6 +1,10 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.BkResolveSubcommand;
+import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveGuidanceSessionManager;
+import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveService;
+import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveTargetParser;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;

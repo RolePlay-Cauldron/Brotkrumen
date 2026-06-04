@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.command.bk;
+package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import org.junit.jupiter.api.Test;

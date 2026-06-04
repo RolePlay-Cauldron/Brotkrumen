@@ -1,5 +1,7 @@
-package com.github.roleplaycauldron.brotkrumen.command.bk;
+package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
+import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommandContext;
+import com.github.roleplaycauldron.brotkrumen.command.bk.BkCompletionSupport;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;

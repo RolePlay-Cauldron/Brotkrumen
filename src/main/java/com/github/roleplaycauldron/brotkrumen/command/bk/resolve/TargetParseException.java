@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.command.bk;
+package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
 import java.io.Serial;
 import java.util.Map;
