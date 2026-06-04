@@ -32,9 +32,14 @@ import java.util.Locale;
 public class Brotkrumen extends JavaPlugin implements Listener {
 
     /**
-     * The registry for managing visualizers.
+     * The logger factory for creating loggers.
      */
-    private VisualizerRegistry reg;
+    private LoggerFactory loggerFactory;
+
+    /**
+     * The service for warp-related operations.
+     */
+    private WrappedLogger log;
 
     /**
      * The storage handler for database operations.
@@ -42,14 +47,24 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private Storage storage;
 
     /**
-     * The service for graph-related operations.
+     * The registry for managing visualizers.
      */
-    private GraphServiceImpl graphService;
+    private VisualizerRegistry reg;
 
     /**
      * The runtime localization service.
      */
     private Localization localization;
+
+    /**
+     * The service for graph-related operations.
+     */
+    private GraphServiceImpl graphService;
+
+    /**
+     * The service for graph network-related operations.
+     */
+    private GraphNetworkServiceImpl graphNetworkService;
 
     /**
      * The metrics service for plugin statistics.
@@ -70,11 +85,11 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        final LoggerFactory loggerFactory = new LoggerFactory(getSLF4JLogger());
-        final WrappedLogger log = loggerFactory.create(Brotkrumen.class);
+        this.loggerFactory = new LoggerFactory(getSLF4JLogger());
+        this.log = loggerFactory.create(Brotkrumen.class);
 
         saveDefaultConfig();
-        loadLocalization(loggerFactory, log);
+        loadLocalization(loggerFactory);
 
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
@@ -85,8 +100,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage.initialize();
 
         graphService = new GraphServiceImpl(storage);
+        graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final WarpServiceImpl warpService = new WarpServiceImpl(storage);
-        final GraphNetworkServiceImpl graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
 
         final ServicesManager servicesManager = getServer().getServicesManager();
         servicesManager.register(GraphService.class, graphService, this, ServicePriority.Normal);
@@ -97,48 +112,15 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         reg.startVisibilityUpdates();
 
         final EffectExecutor executor = new EffectExecutor(this);
-
         final EditorService editorService = new EditorService(reg, this, loggerFactory, executor, graphService,
                 graphNetworkService, warpService);
-        new EditorWaitingActionBarReminder(editorService).start(this);
-        new EditorCommand(this, editorService, graphService);
-        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor, localization);
 
-        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
+        registerCommands(executor, editorService);
+        registerListeners(editorService);
 
         metrics = new Metrics(this, 31_750);
 
         log.info("Brotkrumen enabled");
-    }
-
-    private void loadLocalization(final LoggerFactory loggerFactory, final WrappedLogger log) {
-        final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"), log);
-        saveConfiguredDefaultLocaleResource(defaultLocaleTag);
-
-        this.localization = new Localization(
-                loggerFactory.create(Localization.class),
-                this,
-                defaultLocaleTag
-        );
-    }
-
-    /* default */ void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {
-        final String resourcePath = localeResourcePath(defaultLocaleTag);
-        if (getResource(resourcePath) != null) {
-            saveResource(resourcePath, false);
-        }
-    }
-
-    private String configuredDefaultLocaleTag(final String localeTag, final WrappedLogger log) {
-        if (localeTag == null || localeTag.isBlank()) {
-            return "en-us";
-        }
-        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(Locale.ROOT);
-        if (normalized.isBlank()) {
-            log.error("Invalid localization.defaultLocale '" + localeTag + "', using en-us.");
-            return "en-us";
-        }
-        return normalized;
     }
 
     @Override
@@ -154,14 +136,44 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         metrics.shutdown();
     }
 
-    /**
-     * Retrieves the GraphService instance used for graph-related operations.
-     *
-     * @return the GraphService instance, which provides an interface for managing
-     * CRUD operations, retrieving, saving, and deleting graph data.
-     */
-    public GraphService getGraphService() {
-        return graphService;
+    private void loadLocalization(final LoggerFactory loggerFactory) {
+        final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"));
+        saveConfiguredDefaultLocaleResource(defaultLocaleTag);
+
+        this.localization = new Localization(
+                loggerFactory.create(Localization.class),
+                this,
+                defaultLocaleTag
+        );
+    }
+
+    private void registerCommands(final EffectExecutor executor, final EditorService editorService) {
+        new EditorWaitingActionBarReminder(editorService).start(this);
+        new EditorCommand(this, editorService, graphService);
+        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor, localization);
+    }
+
+    private void registerListeners(final EditorService editorService) {
+        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
+    }
+
+    private void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {
+        final String resourcePath = localeResourcePath(defaultLocaleTag);
+        if (getResource(resourcePath) != null) {
+            saveResource(resourcePath, false);
+        }
+    }
+
+    private String configuredDefaultLocaleTag(final String localeTag) {
+        if (localeTag == null || localeTag.isBlank()) {
+            return "en-us";
+        }
+        final String normalized = localeTag.trim().replace('_', '-').toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            log.error("Invalid localization.defaultLocale '" + localeTag + "', using en-us.");
+            return "en-us";
+        }
+        return normalized;
     }
 
     /**
