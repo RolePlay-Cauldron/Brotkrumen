@@ -4,8 +4,8 @@
 
 localization:
 
-  # Default locale used for non-player sender feedback.
-  # Format: language tag identifier (examples: en-us, de-de, de-de-dark)
+  # Default locale used for player and console feedback.
+  # Format: language tag identifier (examples: en-us, de-de)
   # Custom theme variants are supported and resolved as plain tags.
   defaultLocale: 'en-US'
 
@@ -18,10 +18,10 @@ data:
 
   # Possible options:
   #
-  # |    Flat-file / local database - no extra configuration needed
+  # | Flat-file / local database - no extra configuration needed
   # | => SQLite
   #
-  # |    Remote databases - requires connection information. You can configure them below in the data section.
+  # | Remote databases - requires connection information. You can configure them below in the data section.
   # | => MySQL
   # | => MariaDB
   #
@@ -69,7 +69,7 @@ data:
     maximumLifetime: 1800000 # 30 Minutes
 
     # Controls how often the pool will 'ping' a connection to prevent it from going into timeout.
-    # The value should be less than maximum-lifetime and greater than 30000 (30 seconds).
+    # The value should be less than maximum-lifetime and greater than 30,000 (30 seconds).
     # Setting the value to zero will disable the keepalive functionality.
     keepAliveTime: 0
 
@@ -90,6 +90,8 @@ visualizer:
   # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
   spawnDistanceBuffer: 16.0
 
+  ## ToDo Config for how many nodes behind will get shown (min 0, default 1)
+
 ############
 # Commands #
 ############
@@ -101,7 +103,7 @@ commands:
     # At runtime this is clamped to visualizer.viewDistance.
     nearestNodeRadius: 15.0
 
-    # Default visualizer backend used by /bk resolve: particle or block-display.
+    # Default visualizer backends used by /bk resolve: particle or block-display.
     visualizerBackend: 'particle'
 
     # Distance, in blocks, used to detect when guided resolve reached the final path node.
@@ -113,9 +115,11 @@ commands:
     # Whether guided resolve marks the final selected path node with a dedicated visual role.
     goalMarkerEnabled: true
 
-############
-#  Editor  #
-############
+    ## ToDo new settings for goal. Chat message, sound, title, subtitle?
+
+##########
+# Editor #
+##########
 
 editor:
 
@@ -125,8 +129,18 @@ editor:
   # Default placement mode for new editor sessions: auto, preview, or waiting-for-anchor.
   defaultPlacementMode: 'auto'
 
+  ## ToDo Config for placement mode when editing a graph and not creating a new one (default preview)
+
+  ## ToDo Config option to place nodes on ground even if the player is in the air (default false)
+
   # When enabled, continuing after undo requires walking through a node before automatic placement resumes.
   continueRequiresNode: true
 
   # Temporary editor preview preset selected when a session starts.
-  defaultPreset: 'default'
+  defaultPreset: 'default' ## ToDo think of a better way to do this. Maybe add a list of presets to the comments too.
+
+## ToDo new section for TP -> Enable / Disable tp, auto teleport?
+## ToDo AutoTeleport: Time
+## ToDo Enable / Disable local TP
+## ToDo Enable / Disable Warps
+## ToDo Send Message for Teleports?
