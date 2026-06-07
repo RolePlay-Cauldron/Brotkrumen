@@ -5,6 +5,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
@@ -169,7 +170,7 @@ class ResolveServiceTest {
         when(graphNetworkService.loadGraphNetworks()).thenReturn(List.of(network));
         final ResolveService service = new ResolveService(graphService, graphNetworkService);
 
-        final PathResult path = service.findPath(network, new NodeRef(1, start), 2);
+        final PathResult path = service.findPath(network, new NodeRef(1, start), 2, TeleportRules.disableTeleports());
 
         assertEquals(new NodeRef(2, entry), path.nodes().getLast(),
                 "Target graph path should end at an entry point into the target graph");
@@ -187,7 +188,7 @@ class ResolveServiceTest {
         graph.addEdge(start, middle, 1.0D, Set.of(EdgeFlag.UNDIRECTED));
         graph.addEdge(middle, goal, 1.0D, Set.of(EdgeFlag.UNDIRECTED));
 
-        final PathResult result = new ResolveService(mock(GraphService.class)).findPath(graph, start, Set.of(goal));
+        final PathResult result = new ResolveService(mock(GraphService.class)).findPath(graph, start, Set.of(goal), TeleportRules.disableTeleports());
 
         assertFalse(result.nodes().isEmpty(), "Path should be found");
         assertEquals(goal, result.nodes().getLast().nodeId(), "Path should end at requested goal");

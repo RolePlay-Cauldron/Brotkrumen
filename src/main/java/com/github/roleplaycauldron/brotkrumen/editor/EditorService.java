@@ -71,7 +71,7 @@ public class EditorService {
 
     private final GraphNetworkService graphNetworkService;
 
-    private final WarpService warpService;
+    private final WarpService warpServiceInstance;
 
     private final WrappedLogger log;
 
@@ -91,7 +91,7 @@ public class EditorService {
         this.effectExecutor = effectExecutor;
         this.graphService = graphService;
         this.graphNetworkService = graphNetworkService;
-        this.warpService = warpService;
+        this.warpServiceInstance = warpService;
 
         this.log = loggerFactory.create(EditorService.class);
     }
@@ -107,6 +107,15 @@ public class EditorService {
     /* default */
     static String waitingAnchorActionBarMessage() {
         return WAITING_FOR_ANCHOR_ACTION_BAR;
+    }
+
+    /**
+     * Gets the warp service used by the editor.
+     *
+     * @return warp service
+     */
+    public WarpService warpService() {
+        return warpServiceInstance;
     }
 
     public EditorResult startGraphCreation(final UUID playerId, final String graphName, final EditorSettings settings) {
@@ -767,14 +776,14 @@ public class EditorService {
     }
 
     private void saveWarps(final EditorSession session) {
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return;
         }
         for (final String key : session.pendingDeletions) {
-            warpService.removeWarp(key);
+            warpServiceInstance.removeWarp(key);
         }
         for (final Warp warp : session.pendingWarps.values()) {
-            warpService.saveWarp(warp);
+            warpServiceInstance.saveWarp(warp);
         }
     }
 
@@ -943,7 +952,7 @@ public class EditorService {
         if (active) {
             return EditorResult.failure("That graph is currently open in an editor session.");
         }
-        final int removedWarps = warpService == null ? 0 : warpService.removeWarpsTargeting(
+        final int removedWarps = warpServiceInstance == null ? 0 : warpServiceInstance.removeWarpsTargeting(
                 graph.get().getNodes().stream().map(Node::graphId).toList());
         final int removedEdges = graphNetworkService == null ? 0 : graphNetworkService.deleteInterGraphEdgesForGraph(graphId);
         graphService.deleteGraph(graphId);
@@ -967,8 +976,8 @@ public class EditorService {
         final UUID nodeId = session.selectedNode.graphId();
         session.graph.removeNode(session.selectedNode);
         session.pendingWarps.values().removeIf(warp -> warp.targetNodeId().equals(nodeId));
-        if (warpService != null) {
-            warpService.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
+        if (warpServiceInstance != null) {
+            warpServiceInstance.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
         }
         session.selectedNode = null;
         session.selectedNodeRef = null;
@@ -1193,7 +1202,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.get(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpService.getWarp(key).orElse(null);
+            warp = warpServiceInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1218,7 +1227,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.remove(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpService.getWarp(key).orElse(null);
+            warp = warpServiceInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1234,7 +1243,7 @@ public class EditorService {
     }
 
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
-        final Set<Warp> warps = new LinkedHashSet<>(warpService.getWarpsTargeting(targetNodeId));
+        final Set<Warp> warps = new LinkedHashSet<>(warpServiceInstance.getWarpsTargeting(targetNodeId));
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         warps.addAll(session.pendingWarps.values().stream()
                 .filter(warp -> warp.targetNodeId().equals(targetNodeId))
@@ -1254,11 +1263,11 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         final Collection<UUID> graphNodeIds = session.graph.getNodes().stream().map(Node::graphId).toList();
-        final Set<Warp> warps = new LinkedHashSet<>(all ? warpService.getManagedWarps() : warpService.getWarpsTargeting(graphNodeIds));
+        final Set<Warp> warps = new LinkedHashSet<>(all ? warpServiceInstance.getManagedWarps() : warpServiceInstance.getWarpsTargeting(graphNodeIds));
 
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         for (final Warp pending : session.pendingWarps.values()) {
@@ -1284,7 +1293,7 @@ public class EditorService {
     }
 
     private EditorResult validateWarp(final String key) {
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         return key == null || key.isBlank() ? EditorResult.failure("commands.bkeditor.common.warpKeyRequired")

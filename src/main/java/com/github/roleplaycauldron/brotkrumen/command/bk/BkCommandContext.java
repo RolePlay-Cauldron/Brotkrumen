@@ -8,6 +8,7 @@ import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveTargetPa
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
@@ -24,6 +25,7 @@ import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
  * @param plugin              provides core plugin functionality and access to configurations.
  * @param graphService        manages graph-related operations such as CRUD operations on graphs.
  * @param graphNetworkService handles operations related to graph networks, including inter-graph connections.
+ * @param warpService         manages warp-related operations.
  * @param storage             responsible for storage operations, facilitating data persistence.
  * @param visualizerRegistry  manages visualizations and controls visibility updates for graph entities.
  * @param loggerFactory       creates logger instances for logging purposes.
@@ -33,7 +35,8 @@ import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
  * @param sessionManager      tracks pending and active resolve guidance sessions.
  */
 public record BkCommandContext(Brotkrumen plugin, GraphService graphService,
-                               GraphNetworkService graphNetworkService, Storage storage,
+                               GraphNetworkService graphNetworkService, WarpService warpService,
+                               Storage storage,
                                VisualizerRegistry visualizerRegistry, LoggerFactory loggerFactory,
                                EffectExecutor effectExecutor, ResolveService resolveService,
                                ResolveTargetParser targetParser, ResolveGuidanceSessionManager sessionManager) {

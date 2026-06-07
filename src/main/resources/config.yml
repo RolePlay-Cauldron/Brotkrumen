@@ -115,6 +115,20 @@ commands:
     # Whether guided resolve marks the final selected path node with a dedicated visual role.
     goalMarkerEnabled: true
 
+    # Default teleport rules for /bk resolve.
+    # Supported presets:
+    # - DISABLED: No teleportation allowed.
+    # - LOCAL_TP_ONLY: Only teleports within the same graph are allowed.
+    # - WARPS_ONLY: Only globally callable warps are allowed.
+    # - INTERGRAPH_TP_ONLY: Only teleports between different graphs are allowed.
+    #
+    # Combinations (case-insensitive, can be partial):
+    # - LOCAL_INTERGRAPH_TP: Allows both local and inter-graph teleports.
+    # - LOCAL_TP_WARP: Allows both local teleports and warps.
+    # - INTERGRAPH_WARP: Allows both inter-graph teleports and warps.
+    # - LOCAL_INTERGRAPH_WARP: Allows all teleportation types.
+    teleportRules: 'DISABLED'
+
     ## ToDo new settings for goal. Chat message, sound, title, subtitle?
 
 ##########

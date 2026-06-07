@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
  * The rules for teleportation.
  */
 public class TeleportRules {
+    private static final String PRESET_DISABLED = "DISABLED";
 
     private final boolean enableWarps;
 
@@ -42,6 +44,38 @@ public class TeleportRules {
      */
     public static TeleportRules disableTeleports() {
         return new TeleportRules(false, false, false, new ArrayList<>());
+    }
+
+    /**
+     * Creates a {@link TeleportRules} object with the same warps as this one but with different enablement flags.
+     *
+     * @param local      {@code true} if local teleports are enabled
+     * @param interGraph {@code true} if intergraph teleports are enabled
+     * @param warps      {@code true} if globally callable warps are enabled
+     * @return the new {@link TeleportRules} object
+     */
+    public TeleportRules withRules(final boolean local, final boolean interGraph, final boolean warps) {
+        return new TeleportRules(local, interGraph, warps, this.warps);
+    }
+
+    /**
+     * Parses a teleport rule string and returns a new {@link TeleportRules} object based on this one.
+     *
+     * @param rules the rule string to parse
+     * @return the new {@link TeleportRules} object, or this object if the rule string is invalid
+     */
+    public TeleportRules parse(final String rules) {
+        if (rules == null || rules.isBlank()) {
+            return this;
+        }
+        final String normalized = rules.trim().toUpperCase(Locale.ROOT);
+        if (PRESET_DISABLED.equals(normalized)) {
+            return withRules(false, false, false);
+        }
+        final boolean local = normalized.contains("LOCAL");
+        final boolean interGraph = normalized.contains("INTERGRAPH");
+        final boolean warps = normalized.contains("WARP");
+        return withRules(local, interGraph, warps);
     }
 
     /**

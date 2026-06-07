@@ -23,6 +23,10 @@ public final class ResolveTargetParser {
 
     private static final String NETWORK_PREFIX = "network:";
 
+    private static final String TELEPORT_PREFIX = "teleport:";
+
+    private static final String TELEPORT_SHORT_PREFIX = "tp:";
+
     /**
      * Creates a parser.
      */
@@ -42,6 +46,7 @@ public final class ResolveTargetParser {
         }
 
         String graphKey = null;
+        String teleportRules = null;
         final List<UUID> nodeIds = new ArrayList<>();
         for (final String token : tokens) {
             if (token == null || token.isBlank()) {
@@ -50,6 +55,16 @@ public final class ResolveTargetParser {
             final String normalized = token.toLowerCase(Locale.ROOT);
             if (normalized.startsWith(NETWORK_PREFIX)) {
                 throw new TargetParseException("commands.bk.resolve.parse.error.networkNotSupported");
+            }
+            if (normalized.startsWith(TELEPORT_PREFIX) || normalized.startsWith(TELEPORT_SHORT_PREFIX)) {
+                if (teleportRules != null) {
+                    throw new TargetParseException("commands.bk.resolve.parse.error.multipleTeleportRules");
+                }
+                teleportRules = valueAfterPrefix(token);
+                if (teleportRules.isBlank()) {
+                    throw new TargetParseException("commands.bk.resolve.parse.error.missingTeleportRules");
+                }
+                continue;
             }
             if (normalized.startsWith(GRAPH_PREFIX) || normalized.startsWith(GRAPH_SHORT_PREFIX)) {
                 if (graphKey != null) {
@@ -73,10 +88,10 @@ public final class ResolveTargetParser {
             throw new TargetParseException("commands.bk.resolve.parse.error.mixedTargetModes");
         }
         if (graphKey != null) {
-            return ResolveTarget.graph(graphKey);
+            return ResolveTarget.graph(graphKey, teleportRules);
         }
         if (!nodeIds.isEmpty()) {
-            return ResolveTarget.nodes(nodeIds);
+            return ResolveTarget.nodes(nodeIds, teleportRules);
         }
         throw new TargetParseException("commands.bk.resolve.parse.error.missingTarget");
     }

@@ -150,7 +150,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private void registerCommands(final EffectExecutor executor, final EditorService editorService) {
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, editorService, graphService);
-        new BkCommand(this, graphService, graphNetworkService, storage, reg, loggerFactory, executor, localization);
+        new BkCommand(this, graphService, graphNetworkService, editorService.warpService(), storage, reg, loggerFactory, executor, localization);
     }
 
     private void registerListeners(final EditorService editorService) {

@@ -236,10 +236,12 @@ public class ResolveService {
      * @param network graph network
      * @param start   start node reference
      * @param goals   goal node references
+     * @param rules   teleport rules
      * @return path result
      */
-    public PathResult findPath(final GraphNetwork network, final NodeRef start, final Collection<NodeRef> goals) {
-        return pathFinder.findPathResult(network, start, goals, null, TeleportRules.disableTeleports());
+    public PathResult findPath(final GraphNetwork network, final NodeRef start, final Collection<NodeRef> goals,
+                               final TeleportRules rules) {
+        return pathFinder.findPathResult(network, start, goals, null, rules);
     }
 
     /**
@@ -248,10 +250,12 @@ public class ResolveService {
      * @param network       graph network
      * @param start         start node reference
      * @param targetGraphId target graph database id
+     * @param rules         teleport rules
      * @return path result
      */
-    public PathResult findPath(final GraphNetwork network, final NodeRef start, final int targetGraphId) {
-        return pathFinder.findPathResult(network, start, targetGraphId, null, TeleportRules.disableTeleports());
+    public PathResult findPath(final GraphNetwork network, final NodeRef start, final int targetGraphId,
+                               final TeleportRules rules) {
+        return pathFinder.findPathResult(network, start, targetGraphId, null, rules);
     }
 
     /**
@@ -260,10 +264,12 @@ public class ResolveService {
      * @param graph graph
      * @param start start node
      * @param goals goal node ids
+     * @param rules teleport rules
      * @return path result
      */
-    public PathResult findPath(final Graph graph, final UUID start, final Set<UUID> goals) {
-        return pathFinder.findPathResult(graph, start, goals, null, TeleportRules.disableTeleports());
+    public PathResult findPath(final Graph graph, final UUID start, final Set<UUID> goals,
+                               final TeleportRules rules) {
+        return pathFinder.findPathResult(graph, start, goals, null, rules);
     }
 
     private boolean sameWorld(final Node node, final ResolveLocation location) {

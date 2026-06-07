@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 /**
  * Completion helpers for `/bk`.
  */
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
 public final class BkCompletionSupport {
 
     private BkCompletionSupport() {
@@ -60,11 +60,103 @@ public final class BkCompletionSupport {
                 .toList();
     }
 
+    /**
+     * Creates resolve target suggestions for the current token in a greedy target tail.
+     *
+     * @param graphs     available graphs
+     * @param rawTargets raw target tail
+     * @return target suggestions
+     */
+    public static List<String> resolveTargetTail(final Collection<Graph> graphs, final String rawTargets) {
+        final String targets = rawTargets == null ? "" : rawTargets;
+        final int tokenStart = currentTokenStart(targets);
+        final String currentToken = targets.substring(tokenStart);
+        final String completed = targets.substring(0, tokenStart).trim();
+        final List<String> completedTokens = completed.isBlank()
+                ? List.of()
+                : List.of(completed.split("\\s+"));
+        return resolveTargetToken(graphs, completedTokens, currentToken);
+    }
+
+    /**
+     * Finds the start offset of the current token in a raw target tail.
+     *
+     * @param rawTargets raw target tail
+     * @return current token start offset
+     */
+    public static int currentTokenStart(final String rawTargets) {
+        final String targets = rawTargets == null ? "" : rawTargets;
+        for (int index = targets.length() - 1; index >= 0; index--) {
+            if (Character.isWhitespace(targets.charAt(index))) {
+                return index + 1;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Creates teleport rule suggestions without prefixes.
+     *
+     * @param remaining typed prefix
+     * @return rule suggestions
+     */
+    public static List<String> teleportRulesOnly(final String remaining) {
+        final String prefix = lower(remaining);
+        return Stream.of("DISABLED", "LOCAL_TP_ONLY", "WARPS_ONLY", "INTERGRAPH_TP_ONLY",
+                        "LOCAL_INTERGRAPH_TP", "LOCAL_TP_WARP", "INTERGRAPH_WARP", "LOCAL_INTERGRAPH_WARP")
+                .filter(value -> lower(value).startsWith(prefix))
+                .sorted()
+                .toList();
+    }
+
+    private static List<String> resolveTargetToken(final Collection<Graph> graphs,
+                                                   final List<String> completedTokens,
+                                                   final String currentToken) {
+        final String current = lower(currentToken);
+        final boolean hasGraph = completedTokens.stream().anyMatch(BkCompletionSupport::isGraphToken);
+        final boolean hasNode = completedTokens.stream().anyMatch(BkCompletionSupport::isNodeToken);
+        final boolean hasTeleport = completedTokens.stream().anyMatch(BkCompletionSupport::isTeleportToken);
+        if (isTeleportToken(current) || hasGraph || hasNode) {
+            return resolvePostTargetToken(graphs, current, hasGraph, hasNode, hasTeleport);
+        }
+        return resolveTargets(graphs, current);
+    }
+
+    private static List<String> resolvePostTargetToken(final Collection<Graph> graphs,
+                                                       final String current,
+                                                       final boolean hasGraph,
+                                                       final boolean hasNode,
+                                                       final boolean hasTeleport) {
+        if (hasTeleport) {
+            return List.of();
+        }
+        if (current.isBlank()) {
+            return hasGraph ? List.of("teleport:") : List.of("node:", "teleport:");
+        }
+        if (isTeleportToken(current)) {
+            return teleportRuleTargets(current);
+        }
+        if (hasNode && !hasGraph) {
+            return resolveTargets(graphs, current).stream()
+                    .filter(BkCompletionSupport::isNodeToken)
+                    .toList();
+        }
+        return List.of();
+    }
+
+    private static List<String> teleportRuleTargets(final String current) {
+        final String value = current.substring(current.indexOf(':') + 1);
+        return teleportRulesOnly(value).stream()
+                .map(rule -> "teleport:" + rule)
+                .toList();
+    }
+
     private static Stream<String> graphSuggestions(final Collection<Graph> graphs, final String filter) {
         return graphs.stream()
                 .sorted(Comparator.comparingInt(Graph::getGraphId))
-                .flatMap(graph -> Stream.of("graph:" + graph.getName()))
-                .filter(value -> lower(value).startsWith("graph:" + filter));
+                .map(Graph::getName)
+                .filter(name -> lower(name).startsWith(lower(filter)))
+                .map(name -> "graph:" + name);
     }
 
     private static Stream<String> nodeSuggestions(final Collection<Graph> graphs, final String filter) {
@@ -79,5 +171,20 @@ public final class BkCompletionSupport {
 
     private static String lower(final String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isGraphToken(final String token) {
+        final String normalized = lower(token);
+        return normalized.startsWith("graph:") || normalized.startsWith("g:");
+    }
+
+    private static boolean isNodeToken(final String token) {
+        final String normalized = lower(token);
+        return normalized.startsWith("node:") || normalized.startsWith("n:");
+    }
+
+    private static boolean isTeleportToken(final String token) {
+        final String normalized = lower(token);
+        return normalized.startsWith("teleport:") || normalized.startsWith("tp:");
     }
 }
