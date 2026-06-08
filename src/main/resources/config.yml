@@ -127,7 +127,42 @@ commands:
     # - LOCAL_TP_WARP: Allows both local teleports and warps.
     # - INTERGRAPH_WARP: Allows both inter-graph teleports and warps.
     # - LOCAL_INTERGRAPH_WARP: Allows all teleportation types.
-    teleportRules: 'DISABLED'
+    teleportRules: 'LOCAL_INTERGRAPH_WARP'
+
+    # Automatic teleport execution for guided /bk resolve paths.
+    # These options only execute teleport-like segments that are already part of the selected path.
+    # They do not enable traversal types disabled by teleportRules.
+    autoTeleport:
+
+      # Whether guided resolve should automatically execute selected teleport-like path segments.
+      enabled: true
+
+      # Delay, in seconds, before an automatic teleport is executed.
+      delaySeconds: 0
+
+      # Whether players receive a message before delayed automatic teleports.
+      messageEnabled: true
+
+      # Cooldown, in seconds, before another automatic teleport can be triggered.
+      cooldownSeconds: 3
+
+      # Whether a delayed teleport is cancelled when the player leaves the source node range.
+      cancelWhenPlayerMovesAway: true
+
+      # Distance, in blocks, from the source node where delayed teleports remain valid.
+      cancelRange: 5.0
+
+      # Whether local teleport path segments may execute automatically.
+      localTeleportEnabled: true
+
+      # Whether inter-graph teleport path segments may execute automatically.
+      interGraphTeleportEnabled: true
+
+      # Whether warp path segments may execute automatically.
+      warpEnabled: true
+
+      # Whether /bk resolve may start from the cheapest allowed warp target when no node is nearby.
+      startFromWarpWhenNoNearbyNode: true
 
     ## ToDo new settings for goal. Chat message, sound, title, subtitle?
 
@@ -153,8 +188,3 @@ editor:
   # Temporary editor preview preset selected when a session starts.
   defaultPreset: 'default' ## ToDo think of a better way to do this. Maybe add a list of presets to the comments too.
 
-## ToDo new section for TP -> Enable / Disable tp, auto teleport?
-## ToDo AutoTeleport: Time
-## ToDo Enable / Disable local TP
-## ToDo Enable / Disable Warps
-## ToDo Send Message for Teleports?

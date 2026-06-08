@@ -11,10 +11,11 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param finishRadius              completion radius for guided resolve finish detection
  * @param finishCleanupDelaySeconds delay after completion before resolve guidance cleanup
  * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
+ * @param autoTeleportOptions       automatic teleport options
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,
                              double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled,
-                             String teleportRules) {
+                             String teleportRules, ResolveAutoTeleportOptions autoTeleportOptions) {
 
     private static final String NEAREST_NODE_RADIUS = "commands.resolve.nearestNodeRadius";
 
@@ -28,6 +29,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
 
     private static final String TELEPORT_RULES = "commands.resolve.teleportRules";
 
+    private static final String AUTO_TELEPORT = "commands.resolve.autoTeleport";
+
     private static final String VIEW_DISTANCE = "visualizer.viewDistance";
 
     private static final double DEFAULT_NEAREST_NODE_RADIUS = 15.0D;
@@ -40,7 +43,7 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
 
     private static final boolean DEFAULT_GOAL_MARKER_ENABLED = true;
 
-    private static final String DEFAULT_TELEPORT_RULES = "DISABLED";
+    private static final String DEFAULT_TELEPORT_RULES = "LOCAL_INTERGRAPH_WARP";
 
     /**
      * Normalizes invalid values.
@@ -66,7 +69,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
                 config.getDouble(FINISH_RADIUS, DEFAULT_FINISH_RADIUS),
                 config.getInt(FINISH_CLEANUP_DELAY, DEFAULT_FINISH_CLEANUP_DELAY),
                 config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED),
-                config.getString(TELEPORT_RULES, DEFAULT_TELEPORT_RULES)
+                config.getString(TELEPORT_RULES, DEFAULT_TELEPORT_RULES),
+                ResolveAutoTeleportOptions.fromConfig(config.getConfigurationSection(AUTO_TELEPORT))
         );
     }
 

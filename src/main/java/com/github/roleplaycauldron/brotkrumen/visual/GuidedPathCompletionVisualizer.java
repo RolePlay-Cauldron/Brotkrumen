@@ -8,7 +8,7 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 /**
  * Guided-path visualizer that notifies once when the final guided node is reached.
  */
-public final class GuidedPathCompletionVisualizer extends Visualizer {
+public class GuidedPathCompletionVisualizer extends Visualizer {
 
     private final GuidedPathVisualGraphSource guidedPathSource;
 

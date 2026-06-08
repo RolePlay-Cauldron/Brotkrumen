@@ -43,6 +43,13 @@ class ResolveServiceTest {
         assertEquals(4.0D, options.finishRadius(), "Finish radius should use default when not configured");
         assertEquals(5, options.finishCleanupDelaySeconds(), "Cleanup delay should default to 5 seconds");
         assertTrue(options.goalMarkerEnabled(), "Goal marker should be enabled by default");
+        assertEquals("LOCAL_INTERGRAPH_WARP", options.teleportRules(), "Teleport rules should allow all by default");
+        assertTrue(options.autoTeleportOptions().enabled(), "Auto teleport should be enabled by default");
+        assertTrue(options.autoTeleportOptions().localTeleportEnabled(), "Local auto teleport should be enabled");
+        assertTrue(options.autoTeleportOptions().interGraphTeleportEnabled(), "Inter-graph auto teleport should be enabled");
+        assertTrue(options.autoTeleportOptions().warpEnabled(), "Warp auto teleport should be enabled");
+        assertTrue(options.autoTeleportOptions().startFromWarpWhenNoNearbyNode(), "Warp-start fallback should be enabled");
+        assertEquals(5.0D, options.autoTeleportOptions().cancelRange(), "Cancel range should default to five blocks");
     }
 
     @Test
@@ -51,6 +58,16 @@ class ResolveServiceTest {
         config.set("commands.resolve.finishRadius", 6.5D);
         config.set("commands.resolve.finishCleanupDelaySeconds", 9);
         config.set("commands.resolve.goalMarkerEnabled", false);
+        config.set("commands.resolve.autoTeleport.enabled", false);
+        config.set("commands.resolve.autoTeleport.delaySeconds", 4);
+        config.set("commands.resolve.autoTeleport.messageEnabled", false);
+        config.set("commands.resolve.autoTeleport.cooldownSeconds", 8);
+        config.set("commands.resolve.autoTeleport.cancelWhenPlayerMovesAway", false);
+        config.set("commands.resolve.autoTeleport.cancelRange", 7.0D);
+        config.set("commands.resolve.autoTeleport.localTeleportEnabled", false);
+        config.set("commands.resolve.autoTeleport.interGraphTeleportEnabled", false);
+        config.set("commands.resolve.autoTeleport.warpEnabled", false);
+        config.set("commands.resolve.autoTeleport.startFromWarpWhenNoNearbyNode", false);
 
         final ResolveOptions options = ResolveOptions.fromConfig(config);
 
@@ -58,6 +75,26 @@ class ResolveServiceTest {
         assertEquals(9, options.finishCleanupDelaySeconds(), "Configured cleanup delay should be loaded");
         assertFalse(options.goalMarkerEnabled(), "Configured goal marker flag should be loaded");
         assertEquals(180L, options.finishCleanupDelayTicks(), "Cleanup delay should convert to ticks");
+        assertFalse(options.autoTeleportOptions().enabled(), "Configured auto teleport flag should be loaded");
+        assertEquals(4, options.autoTeleportOptions().delaySeconds(), "Configured delay should be loaded");
+        assertFalse(options.autoTeleportOptions().messageEnabled(), "Configured message flag should be loaded");
+        assertEquals(8, options.autoTeleportOptions().cooldownSeconds(), "Configured cooldown should be loaded");
+        assertFalse(options.autoTeleportOptions().cancelWhenPlayerMovesAway(), "Configured cancel flag should be loaded");
+        assertEquals(7.0D, options.autoTeleportOptions().cancelRange(), "Configured cancel range should be loaded");
+        assertFalse(options.autoTeleportOptions().localTeleportEnabled(), "Configured local flag should be loaded");
+        assertFalse(options.autoTeleportOptions().interGraphTeleportEnabled(), "Configured inter-graph flag should be loaded");
+        assertFalse(options.autoTeleportOptions().warpEnabled(), "Configured warp flag should be loaded");
+        assertFalse(options.autoTeleportOptions().startFromWarpWhenNoNearbyNode(), "Configured fallback flag should be loaded");
+    }
+
+    @Test
+    void normalizesAutoTeleportOptions() {
+        final ResolveAutoTeleportOptions options = new ResolveAutoTeleportOptions(true, -1, true, -2, true,
+                -3.0D, true, true, true, true);
+
+        assertEquals(0, options.delaySeconds(), "Negative delay should normalize to zero");
+        assertEquals(0, options.cooldownSeconds(), "Negative cooldown should normalize to zero");
+        assertEquals(0.0D, options.cancelRange(), "Negative cancel range should normalize to zero");
     }
 
     @Test

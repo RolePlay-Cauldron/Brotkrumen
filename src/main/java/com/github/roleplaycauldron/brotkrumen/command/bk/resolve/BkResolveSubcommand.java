@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommandContext;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCompletionSupport;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
@@ -11,7 +12,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.WarpPermissionHelper;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
-import com.github.roleplaycauldron.brotkrumen.visual.GuidedPathCompletionVisualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.GuidedPathAutoTeleportVisualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
@@ -36,6 +37,7 @@ import org.bukkit.entity.Player;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -60,6 +62,8 @@ public final class BkResolveSubcommand {
     private static final String GUIDED_PATH_CONFIG = "visualizer.guidedPath";
 
     private static final long NO_CLEANUP_DELAY_TICKS = 0L;
+
+    private static final long MILLIS_PER_TICK = 50L;
 
     private final BkCommandContext commandContext;
 
@@ -193,7 +197,8 @@ public final class BkResolveSubcommand {
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("commands.bk.resolve.error.noNearbyNode");
+            return resolveGraphFromWarpFallback(options, graph.getGraphId(), rules)
+                    .orElseGet(() -> ResolveResult.failure("commands.bk.resolve.error.noNearbyNode"));
         }
         if (start.graphDbId() == graph.getGraphId()) {
             return ResolveResult.completedResult();
@@ -228,7 +233,8 @@ public final class BkResolveSubcommand {
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return ResolveResult.failure("commands.bk.resolve.error.noNearbyNode");
+            return resolveNodeTargetsFromWarpFallback(options, resolution.nodeRefs(), rules)
+                    .orElseGet(() -> ResolveResult.failure("commands.bk.resolve.error.noNearbyNode"));
         }
         if (resolution.nodeRefs().contains(start)) {
             return ResolveResult.completedResult();
@@ -274,6 +280,11 @@ public final class BkResolveSubcommand {
             onGuidedPathCompleted(playerId, token, options);
             return;
         }
+        if (result.initialTeleportTarget() != null && !teleportPlayerTo(player, result.network(), result.initialTeleportTarget())) {
+            commandContext.sessionManager().clearIfCurrent(playerId, token);
+            sendKey(context, "commands.bk.resolve.error.noNearbyNode");
+            return;
+        }
         final Visualizer visualizer = result.path() == null
                 ? graphVisualizer(playerId, result)
                 : pathVisualizer(playerId, token, options, result);
@@ -309,14 +320,32 @@ public final class BkResolveSubcommand {
                 options.goalMarkerEnabled()
         );
         final Runnable completionCallback = () -> onGuidedPathCompleted(playerId, token, options);
+        final ResolveAutoTeleportController autoTeleportController = autoTeleportController(playerId, token, result,
+                source, options.autoTeleportOptions());
         if (result.backend() == ResolveBackend.BLOCK_DISPLAY) {
-            return new GuidedPathCompletionVisualizer(commandContext.loggerFactory(), source,
+            return new GuidedPathAutoTeleportVisualizer(commandContext.loggerFactory(), source,
                     new BlockDisplayGraphRenderer(commandContext.plugin(), playerId),
-                    new ProfileGraphDesignResolver(profile), completionCallback);
+                    new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController);
         }
-        return new GuidedPathCompletionVisualizer(commandContext.loggerFactory(), source,
+        return new GuidedPathAutoTeleportVisualizer(commandContext.loggerFactory(), source,
                 new ParticleGraphRenderer(commandContext.plugin(), playerId, commandContext.effectExecutor()),
-                new ProfileGraphDesignResolver(profile), completionCallback);
+                new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController);
+    }
+
+    private ResolveAutoTeleportController autoTeleportController(final UUID playerId, final long token,
+                                                                 final ResolveResult result,
+                                                                 final GuidedPathVisualGraphSource source,
+                                                                 final ResolveAutoTeleportOptions options) {
+        return new ResolveAutoTeleportController(result.network(), result.path(), source, options,
+                () -> commandContext.plugin().getServer().getPlayer(playerId),
+                (delayTicks, action) -> {
+                    final org.bukkit.scheduler.BukkitTask task = commandContext.plugin().getServer().getScheduler()
+                            .runTaskLater(commandContext.plugin(), action, delayTicks);
+                    return task::cancel;
+                },
+                () -> System.currentTimeMillis() / MILLIS_PER_TICK,
+                () -> commandContext.sessionManager().isCurrent(playerId, token),
+                localization);
     }
 
     private GuidedPathOptions resolveGuidedPathOptions(final ResolveOptions options) {
@@ -348,6 +377,35 @@ public final class BkResolveSubcommand {
         }
         commandContext.plugin().getServer().getScheduler().runTaskLater(commandContext.plugin(),
                 () -> commandContext.sessionManager().clearIfCurrent(playerId, token), cleanupDelayTicks);
+    }
+
+    private Optional<ResolveResult> resolveGraphFromWarpFallback(final ResolveOptions options,
+                                                                final int targetGraphId,
+                                                                final TeleportRules rules) {
+        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
+                commandContext.resolveService());
+        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectGraph(options, targetGraphId,
+                rules);
+        return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),
+                "commands.bk.resolve.status.showingPathToGraph",
+                Map.of(GRAPH_LITERAL, commandContext.graphService().getGraphById(targetGraphId)
+                        .map(Graph::getName).orElse(Integer.toString(targetGraphId))),
+                warp.start()));
+    }
+
+    private Optional<ResolveResult> resolveNodeTargetsFromWarpFallback(final ResolveOptions options,
+                                                                      final Collection<NodeRef> goals,
+                                                                      final TeleportRules rules) {
+        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
+                commandContext.resolveService());
+        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectNodes(options, goals, rules);
+        return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),
+                "commands.bk.resolve.status.showingPathToNodeTarget", Map.of(), warp.start()));
+    }
+
+    private boolean teleportPlayerTo(final Player player, final GraphNetwork network, final NodeRef targetRef) {
+        final Node target = network.getNode(targetRef);
+        return target != null && player.teleport(target.toCenterLocation());
     }
 
     private int cancelOwnGuidance(final CommandContext<CommandSourceStack> context) {
@@ -401,6 +459,7 @@ public final class BkResolveSubcommand {
      */
     private record ResolveResult(Graph graph, GraphNetwork network, PathResult path,
                                  ResolveBackend backend,
+                                 NodeRef initialTeleportTarget,
                                  boolean completed,
                                  String messageKey,
                                  Map<String, String> replacements) {
@@ -414,7 +473,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult graph(final Graph graph, final ResolveBackend backend) {
-            return new ResolveResult(graph, null, null, backend, false,
+            return new ResolveResult(graph, null, null, backend, null, false,
                     "commands.bk.resolve.status.showingGraph", Map.of(GRAPH_LITERAL, graph.getName()));
         }
 
@@ -430,7 +489,7 @@ public final class BkResolveSubcommand {
         /* default */
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
                                   final String messageKey) {
-            return new ResolveResult(null, network, path, backend, false, messageKey, Map.of());
+            return path(network, path, backend, messageKey, Map.of(), null);
         }
 
         /**
@@ -446,7 +505,17 @@ public final class BkResolveSubcommand {
         /* default */
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
                                   final String messageKey, final Map<String, String> replacements) {
-            return new ResolveResult(null, network, path, backend, false, messageKey,
+            return path(network, path, backend, messageKey, replacements, null);
+        }
+
+        /**
+         * Creates a successful path resolution with replacements and an initial teleport target.
+         */
+        /* default */
+        static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
+                                  final String messageKey, final Map<String, String> replacements,
+                                  final NodeRef initialTeleportTarget) {
+            return new ResolveResult(null, network, path, backend, initialTeleportTarget, false, messageKey,
                     replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
@@ -458,7 +527,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult failure(final String messageKey) {
-            return new ResolveResult(null, null, null, null, false, messageKey, Map.of());
+            return new ResolveResult(null, null, null, null, null, false, messageKey, Map.of());
         }
 
         /**
@@ -470,7 +539,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult failure(final String messageKey, final Map<String, String> replacements) {
-            return new ResolveResult(null, null, null, null, false, messageKey,
+            return new ResolveResult(null, null, null, null, null, false, messageKey,
                     replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
@@ -481,7 +550,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult completedResult() {
-            return new ResolveResult(null, null, null, null, true,
+            return new ResolveResult(null, null, null, null, null, true,
                     "commands.bk.resolve.status.guidanceComplete", Map.of());
         }
 
@@ -494,4 +563,5 @@ public final class BkResolveSubcommand {
             return graph != null || network != null || completed;
         }
     }
+
 }

@@ -18,6 +18,7 @@ import java.util.Set;
 /**
  * Visual source that exposes a moving path window for one viewer.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public class GuidedPathVisualGraphSource implements VisualGraphSource {
 
     private final VisualGraphSource delegate;
@@ -176,5 +177,14 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
      */
     public boolean complete() {
         return completed;
+    }
+
+    /**
+     * Returns the current reached path node index.
+     *
+     * @return progress index
+     */
+    public int currentProgressIndex() {
+        return progressIndex;
     }
 }
