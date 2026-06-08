@@ -18,12 +18,14 @@ import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
 import com.github.roleplaycauldron.spellbook.effect.EffectBuilder;
 import com.github.roleplaycauldron.spellbook.effect.EffectInstance;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutionConfig;
+import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import com.github.roleplaycauldron.spellbook.effect.executor.RunningEffect;
 import com.github.roleplaycauldron.spellbook.effect.shape.CubeShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.LineShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.MovingPointShape;
 import com.github.roleplaycauldron.spellbook.effect.shape.Shape;
 import com.github.roleplaycauldron.spellbook.effect.shape.SphereShape;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Server;
@@ -32,6 +34,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -104,6 +107,7 @@ class ParticleGraphRendererTest {
     void particleEdgeConstructorsCreateExpectedShapes() throws ReflectiveOperationException {
         final ParticleEdgeDesign line = ParticleEdgeDesign.line(Particle.FLAME, 7);
         final ParticleEdgeDesign moving = ParticleEdgeDesign.movingPoint(Particle.END_ROD, 0.4f);
+        final ParticleEdgeDesign interGraph = ParticleEdgeDesign.defaultInterGraph();
 
         assertAll(
                 () -> assertInstanceOf(LineShape.class, shape(line.effect()),
@@ -111,7 +115,9 @@ class ParticleGraphRendererTest {
                 () -> assertInstanceOf(MovingPointShape.class, shape(moving.effect()),
                         "Moving edge design should use MovingPointShape"),
                 () -> assertEquals(0.4f, spacing(shape(moving.effect())),
-                        "Moving edge spacing should be passed through")
+                        "Moving edge spacing should be passed through"),
+                () -> assertInstanceOf(MovingPointShape.class, shape(interGraph.effect()),
+                        "Default inter-graph edge design should use MovingPointShape")
         );
     }
 
@@ -212,6 +218,41 @@ class ParticleGraphRendererTest {
         verify(task, times(3)).cancel();
     }
 
+    @Test
+    void changedSnapshotVersionKeepsUnchangedParticleEdgeEffectRunning() {
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final World world = mock(World.class);
+        when(world.getUID()).thenReturn(worldId);
+        final Brotkrumen plugin = plugin(worldId, viewerId);
+        final EffectExecutor executor = mock(EffectExecutor.class);
+        final BukkitTask firstNodeTask = mock(BukkitTask.class);
+        final BukkitTask secondNodeTask = mock(BukkitTask.class);
+        final BukkitTask edgeTask = mock(BukkitTask.class);
+        final BukkitTask updatedFirstNodeTask = mock(BukkitTask.class);
+        final BukkitTask updatedSecondNodeTask = mock(BukkitTask.class);
+        when(executor.start(any(), any())).thenReturn(
+                new RunningEffect(firstNodeTask),
+                new RunningEffect(secondNodeTask),
+                new RunningEffect(edgeTask),
+                new RunningEffect(updatedFirstNodeTask),
+                new RunningEffect(updatedSecondNodeTask)
+        );
+        final ParticleGraphRenderer renderer = new ParticleGraphRenderer(plugin, viewerId, executor);
+        final VisualGraphSnapshot initial = visibleSnapshot(worldId);
+        final VisualGraphSnapshot changedVersion = new VisualGraphSnapshot(initial.nodes(), initial.edges(), 2L);
+        final GraphDesignResolver resolver = ProfileGraphDesignResolver.defaults();
+
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+            bukkit.when(() -> Bukkit.getWorld(worldId)).thenReturn(world);
+            renderer.apply(initial, resolver);
+            renderer.apply(changedVersion, resolver);
+        }
+
+        verify(executor, times(5)).start(any(), any());
+        verify(edgeTask, never()).cancel();
+    }
+
     private EffectInstance effect(final Particle particle, final Shape shape) {
         return EffectBuilder.create()
                 .shape(shape)
@@ -243,7 +284,12 @@ class ParticleGraphRendererTest {
         when(plugin.getServer()).thenReturn(server);
         when(plugin.getConfig()).thenReturn(new YamlConfiguration());
         when(server.getPlayer(viewerId)).thenReturn(player);
-        when(player.getLocation()).thenReturn(new Location(world, 0.5D, 0.5D, 0.5D));
+        final Location location = mock(Location.class);
+        when(location.getWorld()).thenReturn(world);
+        when(location.getX()).thenReturn(0.5D);
+        when(location.getY()).thenReturn(0.5D);
+        when(location.getZ()).thenReturn(0.5D);
+        when(player.getLocation()).thenReturn(location);
         when(world.getUID()).thenReturn(worldId);
         return plugin;
     }
