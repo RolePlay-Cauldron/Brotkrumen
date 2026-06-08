@@ -79,7 +79,7 @@ public final class BkResolveSubcommand {
      *                       Brotkrumen plugin. It provides access to necessary services,
      *                       utilities, and execution resources required to build
      *                       and process the resolve subcommand.
-     * @param localization
+     * @param localization   the localization service
      */
     public BkResolveSubcommand(final BkCommandContext commandContext, final Localization localization) {
         this.commandContext = commandContext;
@@ -380,8 +380,8 @@ public final class BkResolveSubcommand {
     }
 
     private Optional<ResolveResult> resolveGraphFromWarpFallback(final ResolveOptions options,
-                                                                final int targetGraphId,
-                                                                final TeleportRules rules) {
+                                                                 final int targetGraphId,
+                                                                 final TeleportRules rules) {
         final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
                 commandContext.resolveService());
         final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectGraph(options, targetGraphId,
@@ -394,8 +394,8 @@ public final class BkResolveSubcommand {
     }
 
     private Optional<ResolveResult> resolveNodeTargetsFromWarpFallback(final ResolveOptions options,
-                                                                      final Collection<NodeRef> goals,
-                                                                      final TeleportRules rules) {
+                                                                       final Collection<NodeRef> goals,
+                                                                       final TeleportRules rules) {
         final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
                 commandContext.resolveService());
         final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectNodes(options, goals, rules);
@@ -563,5 +563,4 @@ public final class BkResolveSubcommand {
             return graph != null || network != null || completed;
         }
     }
-
 }

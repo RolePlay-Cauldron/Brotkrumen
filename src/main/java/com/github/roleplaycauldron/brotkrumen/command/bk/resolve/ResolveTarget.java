@@ -6,9 +6,10 @@ import java.util.UUID;
 /**
  * Parsed target for the resolve command.
  *
- * @param mode     target mode
- * @param graphKey graph name or id for graph targets
- * @param nodeIds  node ids for node-list targets
+ * @param mode          target mode
+ * @param graphKey      graph name or id for graph targets
+ * @param nodeIds       node ids for node-list targets
+ * @param teleportRules teleport rules
  */
 public record ResolveTarget(Mode mode, String graphKey, List<UUID> nodeIds, String teleportRules) {
 

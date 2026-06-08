@@ -54,6 +54,16 @@ public final class ResolveAutoTeleportController {
 
     /**
      * Creates a controller.
+     *
+     * @param network        the graph network
+     * @param path           the path result
+     * @param source         the visual graph source
+     * @param options        the auto teleport options
+     * @param playerSupplier the player supplier
+     * @param scheduler      the delay scheduler
+     * @param currentTick    the current tick supplier
+     * @param currentSession the current session status supplier
+     * @param localization   the localization service
      */
     public ResolveAutoTeleportController(final GraphNetwork network,
                                          final PathResult path,

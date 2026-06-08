@@ -15,6 +15,13 @@ public final class GuidedPathAutoTeleportVisualizer extends GuidedPathCompletion
 
     /**
      * Creates a guided-path auto-teleport visualizer.
+     *
+     * @param loggerFactory          the logger factory
+     * @param guidedPathSource       the guided path source
+     * @param renderer               the graph renderer
+     * @param designs                the graph design resolver
+     * @param completionCallback     the completion callback
+     * @param autoTeleportController the auto teleport controller
      */
     public GuidedPathAutoTeleportVisualizer(final LoggerFactory loggerFactory,
                                             final GuidedPathVisualGraphSource guidedPathSource,
@@ -27,7 +34,7 @@ public final class GuidedPathAutoTeleportVisualizer extends GuidedPathCompletion
     }
 
     @Override
-    /* default */ void visibilityUpdate() {
+        /* default */ void visibilityUpdate() {
         super.visibilityUpdate();
         if (autoTeleportController != null) {
             autoTeleportController.tick();

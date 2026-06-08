@@ -11,6 +11,7 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param finishRadius              completion radius for guided resolve finish detection
  * @param finishCleanupDelaySeconds delay after completion before resolve guidance cleanup
  * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
+ * @param teleportRules             teleport rules
  * @param autoTeleportOptions       automatic teleport options
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,

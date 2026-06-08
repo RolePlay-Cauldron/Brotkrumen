@@ -38,6 +38,7 @@ public class BkCommand {
      * @param visualizerRegistry  the registry managing visualizers for rendering or displaying graphical representations
      * @param loggerFactory       the logger factory responsible for creating and managing loggers for various components
      * @param effectExecutor      the executor for managing and executing visual or gameplay effects
+     * @param warpService         the service used for managing warps and teleports
      * @param localization        localization service for sender feedback rendering
      */
     public BkCommand(final Brotkrumen plugin, final GraphService graphService,
