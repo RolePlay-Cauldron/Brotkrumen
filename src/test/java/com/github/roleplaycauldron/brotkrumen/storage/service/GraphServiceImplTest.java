@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -78,5 +79,22 @@ class GraphServiceImplTest {
         assertEquals(3, service.getGraphByName("Fresh").orElseThrow().getGraphId(),
                 "New graph saves should cache the persisted graph with its generated id");
         verify(graphTable).saveGraph(provider, newGraph);
+    }
+
+    @Test
+    void saveGraphUpdatesOnlySavedCacheEntry() {
+        final Graph graphA = new Graph(1, "A");
+        final Graph graphB = new Graph(2, "B");
+        final Graph updatedGraphA = new Graph(1, "A-updated");
+        when(graphTable.getAllGraphs(provider)).thenReturn(Set.of(graphA, graphB));
+
+        service.getAllGraphs();
+        service.saveGraph(updatedGraphA);
+
+        assertEquals(Set.of("A-updated", "B"), service.getAllGraphs().stream()
+                        .map(Graph::getName)
+                        .collect(java.util.stream.Collectors.toSet()),
+                "Saving one graph should update only that cache entry and preserve other cached graphs");
+        verify(graphTable).getAllGraphs(provider);
     }
 }
