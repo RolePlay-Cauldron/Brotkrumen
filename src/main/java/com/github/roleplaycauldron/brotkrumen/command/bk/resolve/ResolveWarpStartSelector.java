@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
@@ -17,13 +18,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Selects warp starts for resolve when no nearby node exists.
  */
-@SuppressWarnings("PMD.TooManyMethods")
 final class ResolveWarpStartSelector {
 
     private static final int SINGLE_GRAPH_COUNT = 1;
@@ -46,14 +48,16 @@ final class ResolveWarpStartSelector {
     /**
      * Selects the cheapest warp start route to a target graph.
      */
-    /* default */ Optional<Candidate> selectGraph(final ResolveOptions options, final int targetGraphId,
-                                                 final TeleportRules rules) {
+    /* default */ Optional<Candidate> selectGraph(final ResolveOptions options, final ResolveLocation location,
+                                                  final int targetGraphId, final TeleportRules rules) {
         if (!canUseWarpFallback(options, rules)) {
             return Optional.empty();
         }
         final List<GraphNetwork> networks = resolveService.loadGraphNetworks();
-        return warpStartRefs(rules).stream()
-                .map(start -> graphCandidate(start, targetGraphId, networks, rules))
+        final Set<Integer> requiredGraphIds = Set.of(targetGraphId);
+        return startNetworks(requiredGraphIds, networks).stream()
+                .map(network -> withTemporaryStart(network, location, requiredGraphIds))
+                .map(startNetwork -> graphCandidate(startNetwork, targetGraphId, rules))
                 .filter(Objects::nonNull)
                 .min(Comparator.comparingDouble(Candidate::cost));
     }
@@ -61,14 +65,16 @@ final class ResolveWarpStartSelector {
     /**
      * Selects the cheapest warp start route to target nodes.
      */
-    /* default */ Optional<Candidate> selectNodes(final ResolveOptions options, final Collection<NodeRef> goals,
-                                                  final TeleportRules rules) {
+    /* default */ Optional<Candidate> selectNodes(final ResolveOptions options, final ResolveLocation location,
+                                                  final Collection<NodeRef> goals, final TeleportRules rules) {
         if (!canUseWarpFallback(options, rules)) {
             return Optional.empty();
         }
         final List<GraphNetwork> networks = resolveService.loadGraphNetworks();
-        return warpStartRefs(rules).stream()
-                .map(start -> nodeCandidate(start, goals, networks, rules))
+        final Set<Integer> requiredGraphIds = goals.stream().map(NodeRef::graphDbId).collect(Collectors.toSet());
+        return startNetworks(requiredGraphIds, networks).stream()
+                .map(network -> withTemporaryStart(network, location, requiredGraphIds))
+                .map(startNetwork -> nodeCandidate(startNetwork, goals, rules))
                 .filter(Objects::nonNull)
                 .min(Comparator.comparingDouble(Candidate::cost));
     }
@@ -77,59 +83,68 @@ final class ResolveWarpStartSelector {
         return options.autoTeleportOptions().startFromWarpWhenNoNearbyNode() && rules.isWarpingEnabled();
     }
 
-    private List<NodeRef> warpStartRefs(final TeleportRules rules) {
-        return rules.getWarps().stream()
-                .filter(Warp::enabled)
-                .flatMap(warp -> graphService.getAllGraphs().stream()
-                        .flatMap(graph -> graph.getNodes().stream()
-                                .filter(node -> node.graphId().equals(warp.targetNodeId()))
-                                .map(node -> new NodeRef(graph.getGraphId(), node.graphId()))))
+    private List<GraphNetwork> startNetworks(final Set<Integer> requiredGraphIds,
+                                             final Collection<GraphNetwork> networks) {
+        if (requiredGraphIds.size() == SINGLE_GRAPH_COUNT) {
+            final int requiredGraphId = requiredGraphIds.iterator().next();
+            final List<GraphNetwork> graphNetworks = networks.stream()
+                    .filter(network -> network.hasGraph(requiredGraphId))
+                    .toList();
+            return Stream.concat(graphService.getGraphById(requiredGraphId)
+                            .map(resolveService::singleGraphNetwork)
+                            .stream(), graphNetworks.stream())
+                    .toList();
+        }
+        return networks.stream()
+                .filter(network -> requiredGraphIds.stream().allMatch(network::hasGraph))
                 .toList();
     }
 
-    private Candidate graphCandidate(final NodeRef start, final int targetGraphId,
-                                     final Collection<GraphNetwork> networks, final TeleportRules rules) {
-        final GraphNetwork network = networkForStartAndGraph(start, targetGraphId, networks).orElse(null);
-        if (network == null) {
+    private StartNetwork withTemporaryStart(final GraphNetwork network, final ResolveLocation location,
+                                            final Set<Integer> preferredGraphIds) {
+        final int startGraphId = preferredGraphIds.stream()
+                .filter(network::hasGraph)
+                .findFirst()
+                .orElseGet(() -> network.getGraphs().iterator().next().getGraphId());
+        final GraphNetwork copy = copyNetwork(network);
+        final Graph startGraph = copy.getGraph(startGraphId);
+        final UUID startNodeId = UUID.randomUUID();
+        startGraph.addNode(new Node(startNodeId, location.x(), location.y(), location.z(), location.worldId()));
+        return new StartNetwork(new NodeRef(startGraphId, startNodeId), copy);
+    }
+
+    private GraphNetwork copyNetwork(final GraphNetwork network) {
+        final GraphNetwork copy = new GraphNetwork();
+        for (final Graph graph : network.getGraphs()) {
+            copy.addGraph(graph.copy());
+        }
+        for (final InterGraphEdge edge : network.getInterGraphEdges()) {
+            copy.addInterGraphEdge(edge);
+        }
+        return copy;
+    }
+
+    private Candidate graphCandidate(final StartNetwork startNetwork, final int targetGraphId,
+                                     final TeleportRules rules) {
+        final List<NodeRef> goals = startNetwork.network().getGraph(targetGraphId).getNodes().stream()
+                .map(node -> new NodeRef(targetGraphId, node.graphId()))
+                .filter(ref -> !ref.equals(startNetwork.start()))
+                .toList();
+        if (goals.isEmpty()) {
             return null;
         }
-        final PathResult path = resolveService.findPath(network, start, targetGraphId, rules);
-        return path.nodes().isEmpty() || startsWithWarp(path) ? null
-                : new Candidate(start, network, path, routeCost(network, path, rules));
+        final PathResult path = resolveService.findPath(startNetwork.network(), startNetwork.start(), goals, rules);
+        return path.nodes().isEmpty() ? null
+                : new Candidate(startNetwork.start(), startNetwork.network(), path,
+                routeCost(startNetwork.network(), path, rules));
     }
 
-    private Candidate nodeCandidate(final NodeRef start, final Collection<NodeRef> goals,
-                                    final Collection<GraphNetwork> networks, final TeleportRules rules) {
-        final GraphNetwork network = networkForStartAndGoals(start, goals, networks).orElse(null);
-        if (network == null) {
-            return null;
-        }
-        final PathResult path = resolveService.findPath(network, start, goals, rules);
-        return path.nodes().isEmpty() || startsWithWarp(path) ? null
-                : new Candidate(start, network, path, routeCost(network, path, rules));
-    }
-
-    private boolean startsWithWarp(final PathResult path) {
-        return !path.segments().isEmpty() && path.segments().getFirst().traversalKind() == TraversalKind.WARP;
-    }
-
-    private Optional<GraphNetwork> networkForStartAndGraph(final NodeRef start, final int targetGraphId,
-                                                          final Collection<GraphNetwork> networks) {
-        if (start.graphDbId() == targetGraphId) {
-            return graphService.getGraphById(start.graphDbId()).map(resolveService::singleGraphNetwork);
-        }
-        return resolveService.networkContaining(networks, List.of(start.graphDbId(), targetGraphId));
-    }
-
-    private Optional<GraphNetwork> networkForStartAndGoals(final NodeRef start, final Collection<NodeRef> goals,
-                                                          final Collection<GraphNetwork> networks) {
-        final Collection<Integer> requiredGraphIds = Stream.concat(Stream.of(start.graphDbId()),
-                        goals.stream().map(NodeRef::graphDbId))
-                .collect(Collectors.toSet());
-        if (requiredGraphIds.size() == SINGLE_GRAPH_COUNT) {
-            return graphService.getGraphById(start.graphDbId()).map(resolveService::singleGraphNetwork);
-        }
-        return resolveService.networkContaining(networks, requiredGraphIds);
+    private Candidate nodeCandidate(final StartNetwork startNetwork, final Collection<NodeRef> goals,
+                                    final TeleportRules rules) {
+        final PathResult path = resolveService.findPath(startNetwork.network(), startNetwork.start(), goals, rules);
+        return path.nodes().isEmpty() ? null
+                : new Candidate(startNetwork.start(), startNetwork.network(), path,
+                routeCost(startNetwork.network(), path, rules));
     }
 
     private double routeCost(final GraphNetwork network, final PathResult path, final TeleportRules rules) {
@@ -171,5 +186,8 @@ final class ResolveWarpStartSelector {
      * @param cost    total route cost
      */
     /* default */ record Candidate(NodeRef start, GraphNetwork network, PathResult path, double cost) {
+    }
+
+    private record StartNetwork(NodeRef start, GraphNetwork network) {
     }
 }

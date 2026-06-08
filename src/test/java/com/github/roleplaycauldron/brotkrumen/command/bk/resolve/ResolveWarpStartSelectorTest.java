@@ -7,6 +7,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for {@link ResolveWarpStartSelector}.
  */
+@SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
 class ResolveWarpStartSelectorTest {
 
     private static final UUID WORLD = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
@@ -44,12 +46,36 @@ class ResolveWarpStartSelectorTest {
                 new Warp("cheap", cheapStart, 0.0D, true, false)
         ));
 
-        final ResolveWarpStartSelector.Candidate candidate = selector.selectNodes(ResolveOptions.fromConfig(
-                new org.bukkit.configuration.file.YamlConfiguration()), List.of(new NodeRef(1, target)), rules)
+        final ResolveWarpStartSelector.Candidate candidate = selector.selectNodes(
+                        ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()),
+                        location(), List.of(new NodeRef(1, target)), rules)
                 .orElseThrow();
 
-        assertEquals(new NodeRef(1, cheapStart), candidate.start(), "Cheapest route should be selected");
+        assertNotEquals(new NodeRef(1, cheapStart), candidate.start(), "Fallback should start from a temporary node");
+        assertEquals(new NodeRef(1, cheapStart), candidate.path().nodes().get(1),
+                "Cheapest warp route should be selected");
         assertEquals(2.0D, candidate.cost(), "Candidate cost should use route segment cost");
+    }
+
+    @Test
+    void selectsDirectWarpToNodeTarget() {
+        final UUID target = UUID.randomUUID();
+        final Graph graph = new Graph(1, "route");
+        graph.addNode(new Node(target, 20.0D, 64.0D, 0.0D, WORLD));
+        final ResolveWarpStartSelector selector = selector(graph, network(graph));
+        final TeleportRules rules = new TeleportRules(false, false, true,
+                List.of(new Warp("target", target, 3.0D, true, false)));
+
+        final ResolveWarpStartSelector.Candidate candidate = selector.selectNodes(
+                        ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()),
+                        location(), List.of(new NodeRef(1, target)), rules)
+                .orElseThrow();
+
+        assertEquals(2, candidate.path().nodes().size(), "Direct warp should route from temp node to target");
+        assertEquals(new NodeRef(1, target), candidate.path().nodes().getLast(), "Direct warp should end at target");
+        assertEquals(TraversalKind.WARP, candidate.path().segments().getFirst().traversalKind(),
+                "Direct route should preserve warp segment metadata");
+        assertEquals(3.0D, candidate.cost(), "Candidate cost should include the warp cost");
     }
 
     @Test
@@ -63,10 +89,12 @@ class ResolveWarpStartSelectorTest {
         final ResolveWarpStartSelector selector = selector(graph, network(graph));
         final TeleportRules rules = new TeleportRules(false, false, true,
                 List.of(new Warp("start", start, 0.0D, true, false)));
-        final org.bukkit.configuration.file.YamlConfiguration config = new org.bukkit.configuration.file.YamlConfiguration();
+        final org.bukkit.configuration.file.YamlConfiguration config =
+                new org.bukkit.configuration.file.YamlConfiguration();
         config.set("commands.resolve.autoTeleport.startFromWarpWhenNoNearbyNode", false);
 
-        assertTrue(selector.selectNodes(ResolveOptions.fromConfig(config), List.of(new NodeRef(1, target)), rules)
+        assertTrue(selector.selectNodes(ResolveOptions.fromConfig(config), location(),
+                        List.of(new NodeRef(1, target)), rules)
                 .isEmpty(), "Disabled fallback should not select a warp");
     }
 
@@ -82,7 +110,8 @@ class ResolveWarpStartSelectorTest {
         final TeleportRules rules = new TeleportRules(false, false, false,
                 List.of(new Warp("start", start, 0.0D, true, false)));
 
-        assertTrue(selector.selectNodes(ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()),
+        assertTrue(selector.selectNodes(
+                ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()), location(),
                 List.of(new NodeRef(1, target)), rules).isEmpty(), "Teleport rules should control warp fallback");
     }
 
@@ -97,8 +126,13 @@ class ResolveWarpStartSelectorTest {
         final TeleportRules rules = new TeleportRules(false, false, true,
                 List.of(new Warp("start", start, 0.0D, true, false)));
 
-        assertTrue(selector.selectNodes(ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()),
+        assertTrue(selector.selectNodes(
+                ResolveOptions.fromConfig(new org.bukkit.configuration.file.YamlConfiguration()), location(),
                 List.of(new NodeRef(1, target)), rules).isEmpty(), "Unroutable warp should not be selected");
+    }
+
+    private ResolveLocation location() {
+        return new ResolveLocation(WORLD, -10.0D, 64.0D, 0.0D);
     }
 
     private GraphNetwork network(final Graph graph) {

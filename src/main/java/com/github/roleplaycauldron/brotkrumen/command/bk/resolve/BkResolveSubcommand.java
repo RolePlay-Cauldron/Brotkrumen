@@ -4,7 +4,6 @@ import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommandContext;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCompletionSupport;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
-import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
@@ -197,7 +196,7 @@ public final class BkResolveSubcommand {
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return resolveGraphFromWarpFallback(options, graph.getGraphId(), rules)
+            return resolveGraphFromWarpFallback(location, options, graph.getGraphId(), rules)
                     .orElseGet(() -> ResolveResult.failure("commands.bk.resolve.error.noNearbyNode"));
         }
         if (start.graphDbId() == graph.getGraphId()) {
@@ -233,7 +232,7 @@ public final class BkResolveSubcommand {
                 .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
-            return resolveNodeTargetsFromWarpFallback(options, resolution.nodeRefs(), rules)
+            return resolveNodeTargetsFromWarpFallback(location, options, resolution.nodeRefs(), rules)
                     .orElseGet(() -> ResolveResult.failure("commands.bk.resolve.error.noNearbyNode"));
         }
         if (resolution.nodeRefs().contains(start)) {
@@ -278,11 +277,6 @@ public final class BkResolveSubcommand {
         }
         if (result.completed()) {
             onGuidedPathCompleted(playerId, token, options);
-            return;
-        }
-        if (result.initialTeleportTarget() != null && !teleportPlayerTo(player, result.network(), result.initialTeleportTarget())) {
-            commandContext.sessionManager().clearIfCurrent(playerId, token);
-            sendKey(context, "commands.bk.resolve.error.noNearbyNode");
             return;
         }
         final Visualizer visualizer = result.path() == null
@@ -379,33 +373,29 @@ public final class BkResolveSubcommand {
                 () -> commandContext.sessionManager().clearIfCurrent(playerId, token), cleanupDelayTicks);
     }
 
-    private Optional<ResolveResult> resolveGraphFromWarpFallback(final ResolveOptions options,
+    private Optional<ResolveResult> resolveGraphFromWarpFallback(final ResolveLocation location,
+                                                                 final ResolveOptions options,
                                                                  final int targetGraphId,
                                                                  final TeleportRules rules) {
         final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
                 commandContext.resolveService());
-        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectGraph(options, targetGraphId,
+        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectGraph(options, location, targetGraphId,
                 rules);
         return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),
                 "commands.bk.resolve.status.showingPathToGraph",
                 Map.of(GRAPH_LITERAL, commandContext.graphService().getGraphById(targetGraphId)
-                        .map(Graph::getName).orElse(Integer.toString(targetGraphId))),
-                warp.start()));
+                        .map(Graph::getName).orElse(Integer.toString(targetGraphId)))));
     }
 
-    private Optional<ResolveResult> resolveNodeTargetsFromWarpFallback(final ResolveOptions options,
+    private Optional<ResolveResult> resolveNodeTargetsFromWarpFallback(final ResolveLocation location,
+                                                                       final ResolveOptions options,
                                                                        final Collection<NodeRef> goals,
                                                                        final TeleportRules rules) {
         final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
                 commandContext.resolveService());
-        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectNodes(options, goals, rules);
+        final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectNodes(options, location, goals, rules);
         return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),
-                "commands.bk.resolve.status.showingPathToNodeTarget", Map.of(), warp.start()));
-    }
-
-    private boolean teleportPlayerTo(final Player player, final GraphNetwork network, final NodeRef targetRef) {
-        final Node target = network.getNode(targetRef);
-        return target != null && player.teleport(target.toCenterLocation());
+                "commands.bk.resolve.status.showingPathToNodeTarget", Map.of()));
     }
 
     private int cancelOwnGuidance(final CommandContext<CommandSourceStack> context) {
@@ -459,7 +449,6 @@ public final class BkResolveSubcommand {
      */
     private record ResolveResult(Graph graph, GraphNetwork network, PathResult path,
                                  ResolveBackend backend,
-                                 NodeRef initialTeleportTarget,
                                  boolean completed,
                                  String messageKey,
                                  Map<String, String> replacements) {
@@ -473,7 +462,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult graph(final Graph graph, final ResolveBackend backend) {
-            return new ResolveResult(graph, null, null, backend, null, false,
+            return new ResolveResult(graph, null, null, backend, false,
                     "commands.bk.resolve.status.showingGraph", Map.of(GRAPH_LITERAL, graph.getName()));
         }
 
@@ -489,7 +478,7 @@ public final class BkResolveSubcommand {
         /* default */
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
                                   final String messageKey) {
-            return path(network, path, backend, messageKey, Map.of(), null);
+            return path(network, path, backend, messageKey, Map.of());
         }
 
         /**
@@ -505,17 +494,7 @@ public final class BkResolveSubcommand {
         /* default */
         static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
                                   final String messageKey, final Map<String, String> replacements) {
-            return path(network, path, backend, messageKey, replacements, null);
-        }
-
-        /**
-         * Creates a successful path resolution with replacements and an initial teleport target.
-         */
-        /* default */
-        static ResolveResult path(final GraphNetwork network, final PathResult path, final ResolveBackend backend,
-                                  final String messageKey, final Map<String, String> replacements,
-                                  final NodeRef initialTeleportTarget) {
-            return new ResolveResult(null, network, path, backend, initialTeleportTarget, false, messageKey,
+            return new ResolveResult(null, network, path, backend, false, messageKey,
                     replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
@@ -527,7 +506,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult failure(final String messageKey) {
-            return new ResolveResult(null, null, null, null, null, false, messageKey, Map.of());
+            return new ResolveResult(null, null, null, null, false, messageKey, Map.of());
         }
 
         /**
@@ -539,7 +518,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult failure(final String messageKey, final Map<String, String> replacements) {
-            return new ResolveResult(null, null, null, null, null, false, messageKey,
+            return new ResolveResult(null, null, null, null, false, messageKey,
                     replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
@@ -550,7 +529,7 @@ public final class BkResolveSubcommand {
          */
         /* default */
         static ResolveResult completedResult() {
-            return new ResolveResult(null, null, null, null, null, true,
+            return new ResolveResult(null, null, null, null, true,
                     "commands.bk.resolve.status.guidanceComplete", Map.of());
         }
 
