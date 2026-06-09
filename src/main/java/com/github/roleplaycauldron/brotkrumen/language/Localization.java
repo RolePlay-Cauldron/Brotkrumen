@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Resolves raw localized messages loaded from versioned language files.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public class Localization {
     private static final String PREFIX_KEY = "prefix";
 
@@ -23,7 +24,7 @@ public class Localization {
 
     private final LocalizationLoader loader;
 
-    private final String configuredDefaultTag;
+    private String configuredDefaultTag;
 
     private final Map<String, Map<String, String>> messagesByTag;
 
@@ -53,6 +54,16 @@ public class Localization {
         this.messagesByTag.clear();
         this.messagesByTag.putAll(snapshot.messagesByTag());
         this.state = snapshot.healthState();
+    }
+
+    /**
+     * Reloads localization files using a new configured default language tag.
+     *
+     * @param configuredDefaultTag configured default language tag for non-player contexts
+     */
+    public final void reload(final String configuredDefaultTag) {
+        this.configuredDefaultTag = LocalizationTags.normalize(configuredDefaultTag);
+        reload();
     }
 
     /**

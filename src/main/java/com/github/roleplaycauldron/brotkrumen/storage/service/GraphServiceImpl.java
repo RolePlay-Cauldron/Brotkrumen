@@ -11,6 +11,7 @@ import com.github.roleplaycauldron.spellbook.core.cache.BiKeyLoadingCache;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Implementation of the {@code GraphService} interface for managing graph-related operations.
@@ -24,6 +25,8 @@ public class GraphServiceImpl implements GraphService {
     private final BiKeyLoadingCache<Integer, String, Graph> graphCache;
 
     private final GraphTable graphTable;
+
+    private final ReentrantLock cacheLock = new ReentrantLock();
 
     /**
      * Constructs a new instance of {@link GraphServiceImpl} with the specified storage.
@@ -55,53 +58,82 @@ public class GraphServiceImpl implements GraphService {
 
     @Override
     public Optional<Graph> getGraphById(final int graphId) {
-        return graphCache.getByFirstKey(graphId).map(Graph::copy);
+        cacheLock.lock();
+        try {
+            return graphCache.getByFirstKey(graphId).map(Graph::copy);
+        } finally {
+            cacheLock.unlock();
+        }
     }
 
     @Override
     public Optional<Graph> getGraphByName(final String name) {
-        return graphCache.getBySecondKey(name).map(Graph::copy);
+        cacheLock.lock();
+        try {
+            return graphCache.getBySecondKey(name).map(Graph::copy);
+        } finally {
+            cacheLock.unlock();
+        }
     }
 
     @Override
     public Set<Graph> getAllGraphs() {
-        if (graphCache.size() == 0) {
-            loadAllGraphsToCache();
+        cacheLock.lock();
+        try {
+            if (graphCache.size() == 0) {
+                loadAllGraphsToCache();
+            }
+            return graphCache.getAll().stream()
+                    .map(Graph::copy)
+                    .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        } finally {
+            cacheLock.unlock();
         }
-        return graphCache.getAll().stream()
-                .map(Graph::copy)
-                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
     }
 
-    private Set<Graph> loadAllGraphsToCache() {
+    private void loadAllGraphsToCache() {
         final Set<Graph> graphs = graphTable.getAllGraphs(storage.getProvider());
         graphCache.putAll(graphs);
-        return graphs;
     }
 
     @Override
     public void saveGraph(final Graph graph) {
-        if (graphTable.isNameUsedByOtherGraph(storage.getProvider(), graph.getName(), graph.getGraphId())) {
-            throw new StorageException("A graph with the name '" + graph.getName() + "' already exists");
+        cacheLock.lock();
+        try {
+            if (graphTable.isNameUsedByOtherGraph(storage.getProvider(), graph.getName(), graph.getGraphId())) {
+                throw new StorageException("A graph with the name '" + graph.getName() + "' already exists");
+            }
+            graphTable.saveGraph(storage.getProvider(), graph);
+            if (graph.getGraphId() > 0) {
+                graphCache.put(graph);
+                return;
+            }
+            loadGraphByName(graph.getName()).ifPresent(graphCache::put);
+        } finally {
+            cacheLock.unlock();
         }
-        graphTable.saveGraph(storage.getProvider(), graph);
-        if (graph.getGraphId() > 0) {
-            graphCache.put(graph);
-            return;
-        }
-        loadGraphByName(graph.getName()).ifPresent(graphCache::put);
     }
 
     @Override
     public void deleteGraph(final int graphId) {
-        graphTable.deleteById(storage.getProvider(), graphId);
-        graphCache.invalidateByFirstKey(graphId);
+        cacheLock.lock();
+        try {
+            graphTable.deleteById(storage.getProvider(), graphId);
+            graphCache.invalidateByFirstKey(graphId);
+        } finally {
+            cacheLock.unlock();
+        }
     }
 
     @Override
-    public void invalidateCache() {
-        graphCache.invalidateAll();
-        loadAllGraphsToCache();
+    public void reloadGraphs() {
+        cacheLock.lock();
+        try {
+            graphCache.invalidateAll();
+            loadAllGraphsToCache();
+        } finally {
+            cacheLock.unlock();
+        }
     }
 
     private Optional<Graph> loadGraphById(final int graphId) {

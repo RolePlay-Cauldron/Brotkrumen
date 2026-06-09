@@ -177,6 +177,15 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     }
 
     /**
+     * Reloads localization files using the currently configured default locale.
+     */
+    public void reloadLocalization() {
+        final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"));
+        saveConfiguredDefaultLocaleResource(defaultLocaleTag);
+        localization.reload(defaultLocaleTag);
+    }
+
+    /**
      * Returns the runtime localization service.
      *
      * @return localization service

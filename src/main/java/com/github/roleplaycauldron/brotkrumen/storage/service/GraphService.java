@@ -54,7 +54,7 @@ public interface GraphService {
     void deleteGraph(int graphId);
 
     /**
-     * Invalidates the internal cache, forcing a reload of all graph data from storage.
+     * Invalidates the internal graph cache and reloads all graph data from the database.
      */
-    void invalidateCache();
+    void reloadGraphs();
 }

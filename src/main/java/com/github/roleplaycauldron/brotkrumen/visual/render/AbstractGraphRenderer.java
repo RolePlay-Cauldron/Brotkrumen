@@ -62,6 +62,12 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     protected final UUID viewerId;
 
     /**
+     * Represents the squared radius around a viewer in which nodes and edges
+     * of a visual graph are considered for rendering.
+     */
+    private final double configuredSpawnRadiusSquared;
+
+    /**
      * Currently active rendered node handles keyed by stable visual node id.
      */
     private final Map<VisualNodeId, N> activeNodes = new HashMap<>();
@@ -90,6 +96,7 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     protected AbstractGraphRenderer(final Brotkrumen plugin, final UUID viewerId) {
         this.plugin = plugin;
         this.viewerId = viewerId;
+        this.configuredSpawnRadiusSquared = computeSpawnRadiusSquared(plugin);
     }
 
     @Override
@@ -237,12 +244,16 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     }
 
     private double spawnRadiusSquared() {
-        final double radius = configDistance(VIEW_DISTANCE_CONFIG, DEFAULT_VIEW_DISTANCE)
-                + configDistance(SPAWN_DISTANCE_BUFFER_CONFIG, DEFAULT_SPAWN_DISTANCE_BUFFER);
+        return configuredSpawnRadiusSquared;
+    }
+
+    private double computeSpawnRadiusSquared(final Brotkrumen plugin) {
+        final double radius = configDistance(plugin, VIEW_DISTANCE_CONFIG, DEFAULT_VIEW_DISTANCE)
+                + configDistance(plugin, SPAWN_DISTANCE_BUFFER_CONFIG, DEFAULT_SPAWN_DISTANCE_BUFFER);
         return radius * radius;
     }
 
-    private double configDistance(final String path, final double defaultValue) {
+    private double configDistance(final Brotkrumen plugin, final String path, final double defaultValue) {
         if (plugin == null) {
             return defaultValue;
         }

@@ -556,7 +556,7 @@ class EditorServiceTest {
         assertTrue(deleted.success());
         assertTrue(deleted.message().contains("removed 1 warp and 2 inter-graph edge records"));
         verify(graphService).deleteGraph(9);
-        verify(graphService).invalidateCache();
+        verify(graphService).reloadGraphs();
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "DeleteMe", defaultSettings()).success());
         assertFalse(service.deletePersistedGraph("DeleteMe").success());

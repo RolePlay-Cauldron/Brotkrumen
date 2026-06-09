@@ -28,7 +28,8 @@ messages:
         network:
           empty: "<#FACC15>No networks exist."
           entries: "<#CBD5E1>Networks: <#38BDF8><entries></#38BDF8>"
-
+      reload:
+        success: "<#22C55E>Successfully reloaded configuration, language files, and graphs."
       resolve:
         status:
           resolvingPath: "<#CBD5E1>Resolving path for <#38BDF8><player></#38BDF8>..."
