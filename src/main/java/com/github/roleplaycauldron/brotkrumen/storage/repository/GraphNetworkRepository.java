@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * Service for managing GraphNetwork operations.
  */
-public interface GraphNetworkService {
+public interface GraphNetworkRepository {
 
     /**
      * Loads all graphs and inter-graph connections and groups them into multiple

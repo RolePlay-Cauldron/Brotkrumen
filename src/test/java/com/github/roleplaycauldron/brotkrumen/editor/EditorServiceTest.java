@@ -7,9 +7,9 @@ import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
@@ -44,13 +44,13 @@ class EditorServiceTest {
     private static final UUID WORLD_ID = UUID.randomUUID();
 
     @Mock
-    private GraphService graphService;
+    private GraphRepository graphRepository;
 
     @Mock
-    private GraphNetworkService graphNetworkService;
+    private GraphNetworkRepository graphNetworkRepository;
 
     @Mock
-    private WarpService warpService;
+    private WarpRepository warpRepository;
 
     @Mock
     private World world;
@@ -72,7 +72,7 @@ class EditorServiceTest {
     void setUp() {
         lenient().when(world.getUID()).thenReturn(WORLD_ID);
         lenient().when(loggerFactory.create(any())).thenReturn(logger);
-        service = new EditorService(null, null, loggerFactory, null, graphService, graphNetworkService, warpService);
+        service = new EditorService(null, null, loggerFactory, null, graphRepository, graphNetworkRepository, warpRepository);
         reminder = new EditorWaitingActionBarReminder(service);
     }
 
@@ -102,7 +102,7 @@ class EditorServiceTest {
     void editManualPlaceRequiresAnchor() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Existing")).thenReturn(Optional.of(graph));
+        when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", defaultSettings()).success());
         assertFalse(service.placeNode(PLAYER_ID, location(5.0D)).success());
@@ -116,7 +116,7 @@ class EditorServiceTest {
     void continueCanWaitForNodeBeforeAutoPlacement() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Existing")).thenReturn(Optional.of(graph));
+        when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", defaultSettings()).success());
         assertTrue(service.continuePlacement(PLAYER_ID).success());
@@ -137,7 +137,7 @@ class EditorServiceTest {
     void undoRemovesOnlySessionCreatedNodes() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Existing")).thenReturn(Optional.of(graph));
+        when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", defaultSettings()).success());
         assertTrue(service.handleMovement(PLAYER_ID, location(0.0D)).success());
@@ -217,7 +217,7 @@ class EditorServiceTest {
     void selectedEditNodeDoesNotBecomeAppendAnchor() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Existing")).thenReturn(Optional.of(graph));
+        when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", defaultSettings()).success());
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
@@ -391,11 +391,11 @@ class EditorServiceTest {
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
         assertTrue(service.createSelectedWarp(PLAYER_ID, "spawn").success());
 
-        verify(warpService, never()).saveWarp(any());
+        verify(warpRepository, never()).saveWarp(any());
         assertTrue(service.getWorkingGraph(PLAYER_ID).getNodeById(target.graphId()).flags().contains(NodeFlag.WARP));
 
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 1.0D, true, true));
+        verify(warpRepository).saveWarp(new Warp("spawn", target.graphId(), 1.0D, true, true));
     }
 
     @Test
@@ -409,11 +409,11 @@ class EditorServiceTest {
         assertTrue(service.updateWarpEnabled(PLAYER_ID, "spawn", false).success());
         assertTrue(service.updateWarpPermission(PLAYER_ID, "spawn", false).success());
 
-        verify(warpService, never()).saveWarp(any());
+        verify(warpRepository, never()).saveWarp(any());
         assertTrue(target.flags().contains(NodeFlag.WARP), "Here warp target should carry the warp flag");
 
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
-        verify(warpService).saveWarp(new Warp("spawn", target.graphId(), 4.0D, false, false));
+        verify(warpRepository).saveWarp(new Warp("spawn", target.graphId(), 4.0D, false, false));
     }
 
     @Test
@@ -422,8 +422,8 @@ class EditorServiceTest {
         final Node target = service.getWorkingGraph(PLAYER_ID).addNode(
                 new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID, Set.of(NodeFlag.WARP)));
         final Warp removed = new Warp("spawn", target.graphId(), 1.0D, true, true);
-        when(warpService.getWarp("spawn")).thenReturn(Optional.of(removed));
-        when(warpService.getWarpsTargeting(target.graphId())).thenReturn(Set.of(
+        when(warpRepository.getWarp("spawn")).thenReturn(Optional.of(removed));
+        when(warpRepository.getWarpsTargeting(target.graphId())).thenReturn(Set.of(
                 new Warp("hub", target.graphId(), 1.0D, true, true)));
 
         assertTrue(service.removeWarp(PLAYER_ID, "spawn").success());
@@ -436,16 +436,16 @@ class EditorServiceTest {
         startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
         final Node target = service.getWorkingGraph(PLAYER_ID).addNode(
                 new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID, Set.of(NodeFlag.WARP)));
-        when(warpService.getWarp("spawn")).thenReturn(Optional.of(new Warp("spawn", target.graphId(), 1.0D, true, true)));
-        when(warpService.getWarpsTargeting(target.graphId())).thenReturn(Set.of());
+        when(warpRepository.getWarp("spawn")).thenReturn(Optional.of(new Warp("spawn", target.graphId(), 1.0D, true, true)));
+        when(warpRepository.getWarpsTargeting(target.graphId())).thenReturn(Set.of());
 
         assertTrue(service.removeWarp(PLAYER_ID, "spawn").success());
 
         assertFalse(service.getWorkingGraph(PLAYER_ID).getNodeById(target.graphId()).flags().contains(NodeFlag.WARP));
-        verify(warpService, never()).removeWarp("spawn");
+        verify(warpRepository, never()).removeWarp("spawn");
 
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
-        verify(warpService).removeWarp("spawn");
+        verify(warpRepository).removeWarp("spawn");
     }
 
     @Test
@@ -453,12 +453,12 @@ class EditorServiceTest {
         startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
         final UUID targetId = service.getWorkingGraph(PLAYER_ID)
                 .addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID)).graphId();
-        when(warpService.getWarpsTargeting(List.of(targetId))).thenReturn(Set.of());
+        when(warpRepository.getWarpsTargeting(List.of(targetId))).thenReturn(Set.of());
 
         assertTrue(service.listWarps(PLAYER_ID, false).success());
 
-        verify(warpService).getWarpsTargeting(List.of(targetId));
-        verify(warpService, never()).getManagedWarps();
+        verify(warpRepository).getWarpsTargeting(List.of(targetId));
+        verify(warpRepository, never()).getManagedWarps();
     }
 
     @Test
@@ -484,9 +484,9 @@ class EditorServiceTest {
         final Graph reference = new Graph(2, "Reference");
         final Node activeNode = active.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
         final Node referenceNode = reference.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Active")).thenReturn(Optional.of(active));
-        when(graphService.getGraphByName("Reference")).thenReturn(Optional.of(reference));
-        when(graphNetworkService.loadInterGraphEdges(any())).thenReturn(Set.of());
+        when(graphRepository.getGraphByName("Active")).thenReturn(Optional.of(active));
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphNetworkRepository.loadInterGraphEdges(any())).thenReturn(Set.of());
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Active", defaultSettings()).success());
         assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
@@ -498,7 +498,7 @@ class EditorServiceTest {
         assertTrue(service.selectedNodeConnections(PLAYER_ID).component().toString().contains("inter-graph"));
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
 
-        verify(graphNetworkService).saveInterGraphEdges(org.mockito.Mockito.<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
+        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito.<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
                 && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
                 && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
         assertTrue(active.getNodeById(activeNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT));
@@ -510,8 +510,8 @@ class EditorServiceTest {
     void createSessionRejectsInterGraphAuthoring() {
         final Graph reference = new Graph(2, "Reference");
         reference.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Route")).thenReturn(Optional.empty());
-        when(graphService.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
 
         assertTrue(service.startGraphCreation(PLAYER_ID, "Route", defaultSettings(EditorService.PlacementMode.PREVIEW)).success());
         service.getWorkingGraph(PLAYER_ID).addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
@@ -520,7 +520,7 @@ class EditorServiceTest {
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(4.0D)).success());
 
         assertFalse(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
-        verify(graphNetworkService, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
     }
 
     @Test
@@ -529,9 +529,9 @@ class EditorServiceTest {
         final Graph reference = new Graph(2, "Reference");
         active.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
         reference.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
-        when(graphService.getGraphByName("Active")).thenReturn(Optional.of(active));
-        when(graphService.getGraphByName("Reference")).thenReturn(Optional.of(reference));
-        when(graphNetworkService.loadInterGraphEdges(any())).thenReturn(Set.of());
+        when(graphRepository.getGraphByName("Active")).thenReturn(Optional.of(active));
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphNetworkRepository.loadInterGraphEdges(any())).thenReturn(Set.of());
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Active", defaultSettings()).success());
         assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
@@ -540,23 +540,23 @@ class EditorServiceTest {
         assertTrue(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
         assertTrue(service.cancel(PLAYER_ID).success());
 
-        verify(graphNetworkService, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
     }
 
     @Test
     void persistedGraphDeletionCleansDependentRecordsAndRejectsActiveGraph() {
         final Graph graph = new Graph(9, "DeleteMe");
         final UUID nodeId = graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID)).graphId();
-        when(graphService.getGraphByName("DeleteMe")).thenReturn(Optional.of(graph));
-        when(warpService.removeWarpsTargeting(List.of(nodeId))).thenReturn(1);
-        when(graphNetworkService.deleteInterGraphEdgesForGraph(9)).thenReturn(2);
+        when(graphRepository.getGraphByName("DeleteMe")).thenReturn(Optional.of(graph));
+        when(warpRepository.removeWarpsTargeting(List.of(nodeId))).thenReturn(1);
+        when(graphNetworkRepository.deleteInterGraphEdgesForGraph(9)).thenReturn(2);
 
         final EditorService.EditorResult deleted = service.deletePersistedGraph("DeleteMe");
 
         assertTrue(deleted.success());
         assertTrue(deleted.message().contains("removed 1 warp and 2 inter-graph edge records"));
-        verify(graphService).deleteGraph(9);
-        verify(graphService).reloadGraphs();
+        verify(graphRepository).deleteGraph(9);
+        verify(graphRepository).reloadGraphs();
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "DeleteMe", defaultSettings()).success());
         assertFalse(service.deletePersistedGraph("DeleteMe").success());
@@ -570,7 +570,7 @@ class EditorServiceTest {
     }
 
     private void startCreation(final EditorService.EditorSettings settings) {
-        when(graphService.getGraphByName("Route")).thenReturn(Optional.empty());
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
         assertTrue(service.startGraphCreation(PLAYER_ID, "Route", settings).success());
     }
 

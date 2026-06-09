@@ -1,7 +1,8 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 
 import java.util.Collection;
 import java.util.Set;
@@ -13,7 +14,7 @@ import java.util.concurrent.Executor;
  */
 public class AsyncGraphNetworkService implements com.github.roleplaycauldron.brotkrumen.api.service.GraphNetworkService {
 
-    private final GraphNetworkService delegate;
+    private final GraphNetworkRepository delegate;
 
     private final Executor executor;
 
@@ -23,7 +24,7 @@ public class AsyncGraphNetworkService implements com.github.roleplaycauldron.bro
      * @param delegate synchronous delegate
      * @param executor database executor
      */
-    public AsyncGraphNetworkService(final GraphNetworkService delegate, final Executor executor) {
+    public AsyncGraphNetworkService(final GraphNetworkRepository delegate, final Executor executor) {
         this.delegate = delegate;
         this.executor = executor;
     }

@@ -1,7 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -23,10 +23,10 @@ public class EditorCommand {
      *
      * @param plugin        The JavaPlugin instance.
      * @param editorService The EditorService for managing editor sessions.
-     * @param graphService  The GraphService for graph data operations.
+     * @param graphRepository  The graph repository for graph data operations.
      */
-    public EditorCommand(final JavaPlugin plugin, final EditorService editorService, final GraphService graphService) {
-        this.commandContext = new EditorCommandContext(plugin, editorService, graphService);
+    public EditorCommand(final JavaPlugin plugin, final EditorService editorService, final GraphRepository graphRepository) {
+        this.commandContext = new EditorCommandContext(plugin, editorService, graphRepository);
 
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar()
                 .register(commandTree(), "Graph editor commands"));

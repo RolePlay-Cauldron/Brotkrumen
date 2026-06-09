@@ -10,9 +10,9 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
@@ -68,11 +68,11 @@ public class EditorService {
 
     private final EffectExecutor effectExecutor;
 
-    private final GraphService graphService;
+    private final GraphRepository graphRepository;
 
-    private final GraphNetworkService graphNetworkService;
+    private final GraphNetworkRepository graphNetworkRepository;
 
-    private final WarpService warpServiceInstance;
+    private final WarpRepository warpRepositoryInstance;
 
     private final WrappedLogger log;
 
@@ -83,13 +83,13 @@ public class EditorService {
      * @param plugin             the plugin instance
      * @param loggerFactory      the logger factory
      * @param effectExecutor     the effect executor
-     * @param graphService       the graph service
-     * @param warpService        the warp service
+     * @param graphRepository       the graph repository
+     * @param warpRepository        the warp repository
      */
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
-                         final GraphService graphService, final WarpService warpService) {
-        this(visualizerRegistry, plugin, loggerFactory, effectExecutor, graphService, null, warpService);
+                         final GraphRepository graphRepository, final WarpRepository warpRepository) {
+        this(visualizerRegistry, plugin, loggerFactory, effectExecutor, graphRepository, null, warpRepository);
     }
 
     /**
@@ -99,21 +99,21 @@ public class EditorService {
      * @param plugin              the plugin instance
      * @param loggerFactory       the logger factory
      * @param effectExecutor      the effect executor
-     * @param graphService        the graph service
-     * @param graphNetworkService the graph network service
-     * @param warpService         the warp service
+     * @param graphRepository        the graph repository
+     * @param graphNetworkRepository the graph network repository
+     * @param warpRepository         the warp repository
      */
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
-                         final GraphService graphService, final GraphNetworkService graphNetworkService,
-                         final WarpService warpService) {
+                         final GraphRepository graphRepository, final GraphNetworkRepository graphNetworkRepository,
+                         final WarpRepository warpRepository) {
         this.visualizerRegistry = visualizerRegistry;
         this.plugin = plugin;
         this.loggerFactory = loggerFactory;
         this.effectExecutor = effectExecutor;
-        this.graphService = graphService;
-        this.graphNetworkService = graphNetworkService;
-        this.warpServiceInstance = warpService;
+        this.graphRepository = graphRepository;
+        this.graphNetworkRepository = graphNetworkRepository;
+        this.warpRepositoryInstance = warpRepository;
 
         this.log = loggerFactory.create(EditorService.class);
     }
@@ -143,12 +143,12 @@ public class EditorService {
     }
 
     /**
-     * Returns the warp service instance.
+     * Returns the warp repository instance.
      *
      * @return warp service
      */
-    public WarpService warpService() {
-        return warpServiceInstance;
+    public WarpRepository warpRepository() {
+        return warpRepositoryInstance;
     }
 
     /**
@@ -164,7 +164,7 @@ public class EditorService {
         if (!validation.success()) {
             return validation;
         }
-        if (graphService.getGraphByName(graphName).isPresent()) {
+        if (graphRepository.getGraphByName(graphName).isPresent()) {
             return EditorResult.failure("commands.bkeditor.common.graphAlreadyExists");
         }
 
@@ -193,7 +193,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final boolean exists;
             try {
-                exists = graphService.getGraphByName(graphName).isPresent();
+                exists = graphRepository.getGraphByName(graphName).isPresent();
             } catch (final RuntimeException failure) {
                 log.error("The graph creation session could not be prepared: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -234,7 +234,7 @@ public class EditorService {
             return EditorResult.failure("commands.bkeditor.common.graphNameRequired");
         }
 
-        final Optional<Graph> existing = graphService.getGraphByName(newName);
+        final Optional<Graph> existing = graphRepository.getGraphByName(newName);
         if (existing.isPresent() && existing.get().getGraphId() != session.graph.getGraphId()) {
             return EditorResult.failure("commands.bkeditor.common.graphAlreadyExists");
         }
@@ -261,7 +261,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final Optional<Graph> existing;
             try {
-                existing = graphService.getGraphByName(newName);
+                existing = graphRepository.getGraphByName(newName);
             } catch (final RuntimeException failure) {
                 log.error("The graph rename could not be prepared: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -294,7 +294,7 @@ public class EditorService {
             return validation;
         }
 
-        final Optional<Graph> graph = graphService.getGraphByName(graphName);
+        final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
             return EditorResult.failure("commands.bkeditor.common.graphNotFound");
         }
@@ -326,9 +326,9 @@ public class EditorService {
             final Optional<Graph> graph;
             final Set<InterGraphEdge> interGraphEdges;
             try {
-                graph = graphService.getGraphByName(graphName);
-                interGraphEdges = graph.isPresent() && graphNetworkService != null
-                        ? graphNetworkService.loadInterGraphEdges(Set.of(graph.get().getGraphId()))
+                graph = graphRepository.getGraphByName(graphName);
+                interGraphEdges = graph.isPresent() && graphNetworkRepository != null
+                        ? graphNetworkRepository.loadInterGraphEdges(Set.of(graph.get().getGraphId()))
                         : Set.of();
             } catch (final RuntimeException failure) {
                 log.error("The graph editing session could not be prepared: " + failure.getMessage());
@@ -944,7 +944,7 @@ public class EditorService {
 
         if (plugin == null) {
             try {
-                graphService.saveGraph(session.graph);
+                graphRepository.saveGraph(session.graph);
                 saveWarps(session);
                 saveInterGraphEdges(session);
                 unregisterVisualizer(playerId);
@@ -959,7 +959,7 @@ public class EditorService {
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                graphService.saveGraph(session.graph);
+                graphRepository.saveGraph(session.graph);
                 saveWarps(session);
                 saveInterGraphEdges(session);
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
@@ -984,22 +984,22 @@ public class EditorService {
     }
 
     private void saveWarps(final EditorSession session) {
-        if (warpServiceInstance == null) {
+        if (warpRepositoryInstance == null) {
             return;
         }
         for (final String key : session.pendingDeletions) {
-            warpServiceInstance.removeWarp(key);
+            warpRepositoryInstance.removeWarp(key);
         }
         for (final Warp warp : session.pendingWarps.values()) {
-            warpServiceInstance.saveWarp(warp);
+            warpRepositoryInstance.saveWarp(warp);
         }
     }
 
     private void saveInterGraphEdges(final EditorSession session) {
-        if (graphNetworkService == null || session.mode != EditorMode.EDIT) {
+        if (graphNetworkRepository == null || session.mode != EditorMode.EDIT) {
             return;
         }
-        graphNetworkService.saveInterGraphEdges(session.workspaceNetwork.getInterGraphEdges());
+        graphNetworkRepository.saveInterGraphEdges(session.workspaceNetwork.getInterGraphEdges());
     }
 
     /**
@@ -1029,7 +1029,7 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        final Optional<Graph> graph = graphService.getGraphByName(graphName);
+        final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
             return EditorResult.failure("commands.bkeditor.common.graphNotFound");
         }
@@ -1067,7 +1067,7 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        final Optional<Graph> graph = graphService.getGraphByName(graphName);
+        final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
             return EditorResult.failure("commands.bkeditor.common.graphNotFound");
         }
@@ -1105,7 +1105,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final Optional<Graph> graph;
             try {
-                graph = graphService.getGraphByName(graphName);
+                graph = graphRepository.getGraphByName(graphName);
             } catch (final RuntimeException failure) {
                 log.error("The reference graph change could not be prepared: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -1139,11 +1139,11 @@ public class EditorService {
 
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private Collection<InterGraphEdge> loadInterGraphEdges(final Set<Integer> graphIds) {
-        if (graphNetworkService == null || graphIds.isEmpty()) {
+        if (graphNetworkRepository == null || graphIds.isEmpty()) {
             return Set.of();
         }
         try {
-            return graphNetworkService.loadInterGraphEdges(graphIds);
+            return graphNetworkRepository.loadInterGraphEdges(graphIds);
         } catch (final RuntimeException failure) {
             log.error("Inter-graph edges could not be loaded: " + failure.getMessage());
             return Set.of();
@@ -1211,7 +1211,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final Collection<InterGraphEdge> edges;
             try {
-                edges = graphNetworkService.loadInterGraphEdges(graphIds);
+                edges = graphNetworkRepository.loadInterGraphEdges(graphIds);
             } catch (final RuntimeException failure) {
                 log.error("The reference graph clear operation could not be prepared: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -1336,7 +1336,7 @@ public class EditorService {
      * @return operation result
      */
     public EditorResult deletePersistedGraph(final String graphName) {
-        final Optional<Graph> graph = graphService.getGraphByName(graphName);
+        final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
             return EditorResult.failure("commands.bkeditor.common.graphNotFound");
         }
@@ -1346,11 +1346,11 @@ public class EditorService {
         if (active) {
             return EditorResult.failure("That graph is currently open in an editor session.");
         }
-        final int removedWarps = warpServiceInstance == null ? 0 : warpServiceInstance.removeWarpsTargeting(
+        final int removedWarps = warpRepositoryInstance == null ? 0 : warpRepositoryInstance.removeWarpsTargeting(
                 graph.get().getNodes().stream().map(Node::graphId).toList());
-        final int removedEdges = graphNetworkService == null ? 0 : graphNetworkService.deleteInterGraphEdgesForGraph(graphId);
-        graphService.deleteGraph(graphId);
-        graphService.reloadGraphs();
+        final int removedEdges = graphNetworkRepository == null ? 0 : graphNetworkRepository.deleteInterGraphEdgesForGraph(graphId);
+        graphRepository.deleteGraph(graphId);
+        graphRepository.reloadGraphs();
         return EditorResult.success("Deleted graph " + graph.get().getName() + ", removed " + removedWarps
                 + " warp" + (removedWarps == 1 ? "" : "s") + " and " + removedEdges + " inter-graph edge record"
                 + (removedEdges == 1 ? "" : "s") + ".");
@@ -1369,9 +1369,9 @@ public class EditorService {
             return validation;
         }
         final UUID nodeId = session.selectedNode.graphId();
-        final Collection<Warp> persistedWarps = warpServiceInstance == null
+        final Collection<Warp> persistedWarps = warpRepositoryInstance == null
                 ? Set.of()
-                : warpServiceInstance.getWarpsTargeting(nodeId);
+                : warpRepositoryInstance.getWarpsTargeting(nodeId);
         return deleteSelectedNode(playerId, persistedWarps);
     }
 
@@ -1385,7 +1385,7 @@ public class EditorService {
     public void deleteSelectedNodeAsync(final UUID playerId, final Consumer<EditorResult> callback) {
         final EditorSession session = playerEditors.get(playerId);
         final EditorResult validation = validateDeleteSelectedNode(session);
-        if (!validation.success() || plugin == null || warpServiceInstance == null) {
+        if (!validation.success() || plugin == null || warpRepositoryInstance == null) {
             callback.accept(deleteSelectedNode(playerId));
             return;
         }
@@ -1393,7 +1393,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final Set<Warp> persistedWarps;
             try {
-                persistedWarps = warpServiceInstance.getWarpsTargeting(nodeId);
+                persistedWarps = warpRepositoryInstance.getWarpsTargeting(nodeId);
             } catch (final RuntimeException failure) {
                 log.error("Persisted warps for node deletion could not be loaded: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -1730,7 +1730,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.get(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpServiceInstance.getWarp(key).orElse(null);
+            warp = warpRepositoryInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1754,7 +1754,7 @@ public class EditorService {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             final Optional<Warp> warp;
             try {
-                warp = warpServiceInstance.getWarp(key);
+                warp = warpRepositoryInstance.getWarp(key);
             } catch (final RuntimeException failure) {
                 log.error("The warp update could not be prepared: " + failure.getMessage());
                 plugin.getServer().getScheduler().runTask(plugin, () ->
@@ -1787,7 +1787,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.remove(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpServiceInstance.getWarp(key).orElse(null);
+            warp = warpRepositoryInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1822,8 +1822,8 @@ public class EditorService {
             final Optional<Warp> warp;
             final Collection<Warp> targeting;
             try {
-                warp = warpServiceInstance.getWarp(key);
-                targeting = warp.map(value -> warpServiceInstance.getWarpsTargeting(value.targetNodeId()))
+                warp = warpRepositoryInstance.getWarp(key);
+                targeting = warp.map(value -> warpRepositoryInstance.getWarpsTargeting(value.targetNodeId()))
                         .orElseGet(Set::of);
             } catch (final RuntimeException failure) {
                 log.error("The warp removal could not be prepared: " + failure.getMessage());
@@ -1861,7 +1861,7 @@ public class EditorService {
     }
 
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
-        return warpsTargeting(session, targetNodeId, warpServiceInstance.getWarpsTargeting(targetNodeId));
+        return warpsTargeting(session, targetNodeId, warpRepositoryInstance.getWarpsTargeting(targetNodeId));
     }
 
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId,
@@ -1886,11 +1886,11 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        if (warpServiceInstance == null) {
+        if (warpRepositoryInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         final Collection<UUID> graphNodeIds = session.graph.getNodes().stream().map(Node::graphId).toList();
-        final Set<Warp> warps = new LinkedHashSet<>(all ? warpServiceInstance.getManagedWarps() : warpServiceInstance.getWarpsTargeting(graphNodeIds));
+        final Set<Warp> warps = new LinkedHashSet<>(all ? warpRepositoryInstance.getManagedWarps() : warpRepositoryInstance.getWarpsTargeting(graphNodeIds));
 
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         for (final Warp pending : session.pendingWarps.values()) {
@@ -1916,7 +1916,7 @@ public class EditorService {
     }
 
     private EditorResult validateWarp(final String key) {
-        if (warpServiceInstance == null) {
+        if (warpRepositoryInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         return key == null || key.isBlank() ? EditorResult.failure("commands.bkeditor.common.warpKeyRequired")
@@ -1955,7 +1955,7 @@ public class EditorService {
         session.workspaceNetwork = new GraphNetwork();
         addPersistedGraph(session.workspaceNetwork, session.graph);
         session.referenceGraphs.values().forEach(graph -> addPersistedGraph(session.workspaceNetwork, graph));
-        if (graphNetworkService == null || session.graph.getGraphId() < 0) {
+        if (graphNetworkRepository == null || session.graph.getGraphId() < 0) {
             return;
         }
         final Set<Integer> graphIds = visibleGraphs(session).stream()
@@ -1963,7 +1963,7 @@ public class EditorService {
                 .filter(id -> id >= 0)
                 .collect(Collectors.toSet());
         final Collection<InterGraphEdge> edges = loadedEdges == null
-                ? graphNetworkService.loadInterGraphEdges(graphIds)
+                ? graphNetworkRepository.loadInterGraphEdges(graphIds)
                 : loadedEdges;
         edges.stream()
                 .filter(edge -> graphIds.contains(edge.source().graphDbId()) && graphIds.contains(edge.target().graphDbId()))

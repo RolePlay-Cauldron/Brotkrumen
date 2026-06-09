@@ -7,8 +7,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -100,13 +100,13 @@ class ResolveServiceTest {
     @Test
     void resolvesGraphByNameBeforeId() {
         final Graph graph = new Graph(12, "12");
-        final GraphService graphService = mock(GraphService.class);
-        when(graphService.getGraphByName("12")).thenReturn(Optional.of(graph));
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        when(graphRepository.getGraphByName("12")).thenReturn(Optional.of(graph));
 
-        final Optional<Graph> resolved = new ResolveService(graphService).resolveGraph("12");
+        final Optional<Graph> resolved = new ResolveService(graphRepository).resolveGraph("12");
 
         assertSame(graph, resolved.orElseThrow(), "Graph name should win over numeric id parsing");
-        verify(graphService, never()).getGraphById(12);
+        verify(graphRepository, never()).getGraphById(12);
     }
 
     @Test
@@ -114,7 +114,7 @@ class ResolveServiceTest {
         final Graph graph = new Graph(1, "sternchen");
         final Node near = graph.addNode(new Node(UUID.randomUUID(), 1.0D, 0.0D, 0.0D, WORLD));
         graph.addNode(new Node(UUID.randomUUID(), 5.0D, 0.0D, 0.0D, WORLD));
-        final ResolveService service = new ResolveService(mock(GraphService.class));
+        final ResolveService service = new ResolveService(mock(GraphRepository.class));
 
         final Optional<Node> nearest = service.nearestNode(graph, new ResolveLocation(WORLD, 0.0D, 0.0D, 0.0D),
                 2.0D);
@@ -126,7 +126,7 @@ class ResolveServiceTest {
     void rejectsNearestNodeOutsideRadius() {
         final Graph graph = new Graph(1, "sternchen");
         graph.addNode(new Node(UUID.randomUUID(), 3.0D, 0.0D, 0.0D, WORLD));
-        final ResolveService service = new ResolveService(mock(GraphService.class));
+        final ResolveService service = new ResolveService(mock(GraphRepository.class));
 
         final Optional<Node> nearest = service.nearestNode(graph, new ResolveLocation(WORLD, 0.0D, 0.0D, 0.0D),
                 2.0D);
@@ -141,10 +141,10 @@ class ResolveServiceTest {
         final UUID second = UUID.randomUUID();
         graph.addNode(new Node(first, 0.0D, 0.0D, 0.0D, WORLD));
         graph.addNode(new Node(second, 1.0D, 0.0D, 0.0D, WORLD));
-        final GraphService graphService = mock(GraphService.class);
-        when(graphService.getAllGraphs()).thenReturn(Set.of(graph));
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        when(graphRepository.getAllGraphs()).thenReturn(Set.of(graph));
 
-        final ResolveService.NodeTargetResolution result = new ResolveService(graphService)
+        final ResolveService.NodeTargetResolution result = new ResolveService(graphRepository)
                 .resolveNodeTargets(Set.of(first, second));
 
         assertTrue(result.success(), "Nodes in the same graph should resolve");
@@ -159,10 +159,10 @@ class ResolveServiceTest {
         firstGraph.addNode(new Node(first, 0.0D, 0.0D, 0.0D, WORLD));
         final Graph secondGraph = new Graph(2, "second");
         secondGraph.addNode(new Node(second, 1.0D, 0.0D, 0.0D, WORLD));
-        final GraphService graphService = mock(GraphService.class);
-        when(graphService.getAllGraphs()).thenReturn(Set.of(firstGraph, secondGraph));
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        when(graphRepository.getAllGraphs()).thenReturn(Set.of(firstGraph, secondGraph));
 
-        final ResolveService.NodeTargetResolution result = new ResolveService(graphService)
+        final ResolveService.NodeTargetResolution result = new ResolveService(graphRepository)
                 .resolveNodeTargets(Set.of(first, second));
 
         assertFalse(result.success(), "Nodes across graphs should be rejected");
@@ -176,10 +176,10 @@ class ResolveServiceTest {
         firstGraph.addNode(new Node(first, 0.0D, 0.0D, 0.0D, WORLD));
         final Graph secondGraph = new Graph(2, "second");
         secondGraph.addNode(new Node(second, 1.0D, 0.0D, 0.0D, WORLD));
-        final GraphService graphService = mock(GraphService.class);
-        when(graphService.getAllGraphs()).thenReturn(Set.of(firstGraph, secondGraph));
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        when(graphRepository.getAllGraphs()).thenReturn(Set.of(firstGraph, secondGraph));
 
-        final ResolveService.NodeRefTargetResolution result = new ResolveService(graphService)
+        final ResolveService.NodeRefTargetResolution result = new ResolveService(graphRepository)
                 .resolveNodeRefTargets(Set.of(first, second));
 
         assertTrue(result.success(), "Node refs across graphs should resolve for network pathing");
@@ -202,10 +202,10 @@ class ResolveServiceTest {
         network.addGraph(current);
         network.addGraph(target);
         network.addDirectedInterGraphEdge(new NodeRef(1, exit), new NodeRef(2, entry), 1.0D);
-        final GraphService graphService = mock(GraphService.class);
-        final GraphNetworkService graphNetworkService = mock(GraphNetworkService.class);
-        when(graphNetworkService.loadGraphNetworks()).thenReturn(List.of(network));
-        final ResolveService service = new ResolveService(graphService, graphNetworkService);
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        final GraphNetworkRepository graphNetworkRepository = mock(GraphNetworkRepository.class);
+        when(graphNetworkRepository.loadGraphNetworks()).thenReturn(List.of(network));
+        final ResolveService service = new ResolveService(graphRepository, graphNetworkRepository);
 
         final PathResult path = service.findPath(network, new NodeRef(1, start), 2, TeleportRules.disableTeleports());
 
@@ -225,7 +225,7 @@ class ResolveServiceTest {
         graph.addEdge(start, middle, 1.0D, Set.of(EdgeFlag.UNDIRECTED));
         graph.addEdge(middle, goal, 1.0D, Set.of(EdgeFlag.UNDIRECTED));
 
-        final PathResult result = new ResolveService(mock(GraphService.class)).findPath(graph, start, Set.of(goal), TeleportRules.disableTeleports());
+        final PathResult result = new ResolveService(mock(GraphRepository.class)).findPath(graph, start, Set.of(goal), TeleportRules.disableTeleports());
 
         assertFalse(result.nodes().isEmpty(), "Path should be found");
         assertEquals(goal, result.nodes().getLast().nodeId(), "Path should end at requested goal");

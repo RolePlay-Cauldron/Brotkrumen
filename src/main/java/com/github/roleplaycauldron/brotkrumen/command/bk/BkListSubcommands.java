@@ -45,7 +45,7 @@ public final class BkListSubcommands {
     private int listGraphs(final CommandContext<CommandSourceStack> context) {
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
             try {
-                final String entries = BkOutputFormatter.graphs(commandContext.graphService().getAllGraphs());
+                final String entries = BkOutputFormatter.graphs(commandContext.graphRepository().getAllGraphs());
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
                         sendGraphList(context, entries));
             } catch (final RuntimeException failure) {
@@ -68,7 +68,7 @@ public final class BkListSubcommands {
     private int listNetworks(final CommandContext<CommandSourceStack> context) {
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
             try {
-                final String entries = BkOutputFormatter.networks(commandContext.graphNetworkService().loadGraphNetworks());
+                final String entries = BkOutputFormatter.networks(commandContext.graphNetworkRepository().loadGraphNetworks());
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
                         sendNetworkList(context, entries));
             } catch (final RuntimeException failure) {

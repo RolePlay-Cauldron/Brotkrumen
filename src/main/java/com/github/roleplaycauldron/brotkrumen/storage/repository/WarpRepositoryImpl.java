@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
@@ -11,9 +11,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Database-backed {@link WarpService}.
+ * Database-backed {@link WarpRepository}.
  */
-public class WarpServiceImpl implements WarpService {
+public class WarpRepositoryImpl implements WarpRepository {
 
     private final Storage storage;
 
@@ -24,11 +24,11 @@ public class WarpServiceImpl implements WarpService {
      *
      * @param storage storage root
      */
-    public WarpServiceImpl(final Storage storage) {
+    public WarpRepositoryImpl(final Storage storage) {
         this(storage, new WarpTable(storage.getTablePrefix() + "_warp"));
     }
 
-    /* default */ WarpServiceImpl(final Storage storage, final WarpTable warpTable) {
+    /* default */ WarpRepositoryImpl(final Storage storage, final WarpTable warpTable) {
         this.storage = storage;
         this.warpTable = warpTable;
     }

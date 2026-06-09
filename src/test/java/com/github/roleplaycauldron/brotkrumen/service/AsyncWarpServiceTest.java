@@ -1,6 +1,7 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -18,7 +19,7 @@ class AsyncWarpServiceTest {
 
     @Test
     void warpReadCompletesThroughFuture() {
-        final WarpService delegate = mock(WarpService.class);
+        final WarpRepository delegate = mock(WarpRepository.class);
         final Warp warp = new Warp("spawn", UUID.randomUUID(), 1.0D, true, false);
         when(delegate.getWarp("spawn")).thenReturn(Optional.of(warp));
         final AsyncWarpService service = new AsyncWarpService(delegate, directExecutor);
@@ -28,7 +29,7 @@ class AsyncWarpServiceTest {
 
     @Test
     void warpWriteCompletesThroughFuture() {
-        final WarpService delegate = mock(WarpService.class);
+        final WarpRepository delegate = mock(WarpRepository.class);
         final Warp warp = new Warp("spawn", UUID.randomUUID(), 1.0D, true, false);
         final AsyncWarpService service = new AsyncWarpService(delegate, directExecutor);
 
@@ -39,7 +40,7 @@ class AsyncWarpServiceTest {
 
     @Test
     void warpFailureCompletesExceptionally() {
-        final WarpService delegate = mock(WarpService.class);
+        final WarpRepository delegate = mock(WarpRepository.class);
         when(delegate.getManagedWarps()).thenThrow(new IllegalStateException("boom"));
         final AsyncWarpService service = new AsyncWarpService(delegate, directExecutor);
 
@@ -49,7 +50,7 @@ class AsyncWarpServiceTest {
 
     @Test
     void managedWarpsCompletesThroughFuture() {
-        final WarpService delegate = mock(WarpService.class);
+        final WarpRepository delegate = mock(WarpRepository.class);
         final Set<Warp> warps = Set.of(new Warp("spawn", UUID.randomUUID(), 1.0D, true, false));
         when(delegate.getManagedWarps()).thenReturn(warps);
         final AsyncWarpService service = new AsyncWarpService(delegate, directExecutor);

@@ -44,8 +44,8 @@ public final class BkReloadSubcommand {
         commandContext.plugin().reloadLocalization();
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
             try {
-                commandContext.graphService().reloadGraphs();
-                commandContext.graphNetworkService().reloadGraphNetworks();
+                commandContext.graphRepository().reloadGraphs();
+                commandContext.graphNetworkRepository().reloadGraphNetworks();
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
                         context.getSource().getSender().sendMessage(
                                 localization.getPrefixedMessage("commands.bk.reload.success")));

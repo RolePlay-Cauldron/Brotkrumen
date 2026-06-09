@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for {@link GraphServiceImpl}.
+ * Unit tests for {@link GraphRepositoryImpl}.
  */
 @ExtendWith(MockitoExtension.class)
-class GraphServiceImplTest {
+class GraphRepositoryImplTest {
 
     @Mock
     private Storage storage;
@@ -34,12 +34,12 @@ class GraphServiceImplTest {
     @Mock
     private BrotkrumenConnectionProvider provider;
 
-    private GraphServiceImpl service;
+    private GraphRepositoryImpl service;
 
     @BeforeEach
     void setUp() {
         when(storage.getProvider()).thenReturn(provider);
-        service = new GraphServiceImpl(storage, graphTable);
+        service = new GraphRepositoryImpl(storage, graphTable);
     }
 
     @Test

@@ -1,6 +1,7 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 
 import java.util.Optional;
 import java.util.Set;
@@ -12,7 +13,7 @@ import java.util.concurrent.Executor;
  */
 public class AsyncGraphService implements com.github.roleplaycauldron.brotkrumen.api.service.GraphService {
 
-    private final GraphService delegate;
+    private final GraphRepository delegate;
 
     private final Executor executor;
 
@@ -22,7 +23,7 @@ public class AsyncGraphService implements com.github.roleplaycauldron.brotkrumen
      * @param delegate synchronous delegate
      * @param executor database executor
      */
-    public AsyncGraphService(final GraphService delegate, final Executor executor) {
+    public AsyncGraphService(final GraphRepository delegate, final Executor executor) {
         this.delegate = delegate;
         this.executor = executor;
     }

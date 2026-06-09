@@ -1,6 +1,7 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -14,7 +15,7 @@ import java.util.concurrent.Executor;
  */
 public class AsyncWarpService implements com.github.roleplaycauldron.brotkrumen.api.service.WarpService {
 
-    private final WarpService delegate;
+    private final WarpRepository delegate;
 
     private final Executor executor;
 
@@ -24,7 +25,7 @@ public class AsyncWarpService implements com.github.roleplaycauldron.brotkrumen.
      * @param delegate synchronous delegate
      * @param executor database executor
      */
-    public AsyncWarpService(final WarpService delegate, final Executor executor) {
+    public AsyncWarpService(final WarpRepository delegate, final Executor executor) {
         this.delegate = delegate;
         this.executor = executor;
     }

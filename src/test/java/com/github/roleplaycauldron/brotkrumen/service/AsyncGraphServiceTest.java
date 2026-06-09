@@ -1,6 +1,7 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -17,7 +18,7 @@ class AsyncGraphServiceTest {
 
     @Test
     void graphReadCompletesThroughFuture() {
-        final GraphService delegate = mock(GraphService.class);
+        final GraphRepository delegate = mock(GraphRepository.class);
         final Graph graph = new Graph(7, "Route");
         when(delegate.getGraphById(7)).thenReturn(Optional.of(graph));
         final AsyncGraphService service = new AsyncGraphService(delegate, directExecutor);
@@ -27,7 +28,7 @@ class AsyncGraphServiceTest {
 
     @Test
     void graphWriteCompletesThroughFuture() {
-        final GraphService delegate = mock(GraphService.class);
+        final GraphRepository delegate = mock(GraphRepository.class);
         final Graph graph = new Graph("Route");
         final AsyncGraphService service = new AsyncGraphService(delegate, directExecutor);
 
@@ -38,7 +39,7 @@ class AsyncGraphServiceTest {
 
     @Test
     void graphFailureCompletesExceptionally() {
-        final GraphService delegate = mock(GraphService.class);
+        final GraphRepository delegate = mock(GraphRepository.class);
         when(delegate.getAllGraphs()).thenThrow(new IllegalStateException("boom"));
         final AsyncGraphService service = new AsyncGraphService(delegate, directExecutor);
 
@@ -48,7 +49,7 @@ class AsyncGraphServiceTest {
 
     @Test
     void allGraphsCompletesThroughFuture() {
-        final GraphService delegate = mock(GraphService.class);
+        final GraphRepository delegate = mock(GraphRepository.class);
         final Set<Graph> graphs = Set.of(new Graph("Route"));
         when(delegate.getAllGraphs()).thenReturn(graphs);
         final AsyncGraphService service = new AsyncGraphService(delegate, directExecutor);

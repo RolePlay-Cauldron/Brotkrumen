@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
@@ -14,11 +14,11 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Implementation of the {@code GraphService} interface for managing graph-related operations.
+ * Implementation of the {@code GraphRepository} interface for managing graph-related operations.
  * This service interacts with the underlying storage infrastructure to perform CRUD operations
  * on graph entities.
  */
-public class GraphServiceImpl implements GraphService {
+public class GraphRepositoryImpl implements GraphRepository {
 
     private final Storage storage;
 
@@ -29,13 +29,13 @@ public class GraphServiceImpl implements GraphService {
     private final ReentrantLock cacheLock = new ReentrantLock();
 
     /**
-     * Constructs a new instance of {@link GraphServiceImpl} with the specified storage.
+     * Constructs a new instance of {@link GraphRepositoryImpl} with the specified storage.
      * Initializes the internal tables required for interacting with the underlying graph data.
      *
      * @param storage the storage implementation used to persist and retrieve graph-related data.
      *                This is expected to provide access to the database provider and table prefix.
      */
-    public GraphServiceImpl(final Storage storage) {
+    public GraphRepositoryImpl(final Storage storage) {
         this.storage = storage;
         this.graphCache = new BiKeyLoadingCache<>(Graph::getGraphId,
                 this::loadGraphById,
@@ -47,7 +47,7 @@ public class GraphServiceImpl implements GraphService {
         this.graphTable = new GraphTable(storage.getTablePrefix() + "_graph", edgeTable, nodeTable);
     }
 
-    /* default */ GraphServiceImpl(final Storage storage, final GraphTable graphTable) {
+    /* default */ GraphRepositoryImpl(final Storage storage, final GraphTable graphTable) {
         this.storage = storage;
         this.graphCache = new BiKeyLoadingCache<>(Graph::getGraphId,
                 this::loadGraphById,

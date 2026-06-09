@@ -2,7 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
@@ -40,20 +40,20 @@ public final class EditorCommandContext {
     /**
      * The service for graph data.
      */
-    private final GraphService graphs;
+    private final GraphRepository graphs;
 
     /**
      * Initializes the editor command context.
      *
      * @param plugin        The JavaPlugin instance.
      * @param editorService The EditorService for editor operations.
-     * @param graphService  The GraphService for graph data.
+     * @param graphRepository  The graph repository for graph data.
      */
     public EditorCommandContext(final JavaPlugin plugin, final EditorService editorService,
-                                final GraphService graphService) {
+                                final GraphRepository graphRepository) {
         this.javaPlugin = plugin;
         this.editorOperations = editorService;
-        this.graphs = graphService;
+        this.graphs = graphRepository;
     }
 
     /**
@@ -66,11 +66,11 @@ public final class EditorCommandContext {
     }
 
     /**
-     * Retrieves the GraphService instance.
+     * Retrieves The graph repository instance.
      *
-     * @return The GraphService instance.
+     * @return The graph repository instance.
      */
-    public GraphService graphService() {
+    public GraphRepository graphRepository() {
         return graphs;
     }
 

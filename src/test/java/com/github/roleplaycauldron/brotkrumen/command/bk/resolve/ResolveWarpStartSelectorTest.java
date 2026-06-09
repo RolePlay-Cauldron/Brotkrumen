@@ -8,8 +8,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -142,11 +142,11 @@ class ResolveWarpStartSelectorTest {
     }
 
     private ResolveWarpStartSelector selector(final Graph graph, final GraphNetwork network) {
-        final GraphService graphService = mock(GraphService.class);
-        final GraphNetworkService graphNetworkService = mock(GraphNetworkService.class);
-        when(graphService.getAllGraphs()).thenReturn(Set.of(graph));
-        when(graphService.getGraphById(graph.getGraphId())).thenReturn(Optional.of(graph));
-        when(graphNetworkService.loadGraphNetworks()).thenReturn(List.of(network));
-        return new ResolveWarpStartSelector(graphService, new ResolveService(graphService, graphNetworkService));
+        final GraphRepository graphRepository = mock(GraphRepository.class);
+        final GraphNetworkRepository graphNetworkRepository = mock(GraphNetworkRepository.class);
+        when(graphRepository.getAllGraphs()).thenReturn(Set.of(graph));
+        when(graphRepository.getGraphById(graph.getGraphId())).thenReturn(Optional.of(graph));
+        when(graphNetworkRepository.loadGraphNetworks()).thenReturn(List.of(network));
+        return new ResolveWarpStartSelector(graphRepository, new ResolveService(graphRepository, graphNetworkRepository));
     }
 }

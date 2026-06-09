@@ -11,7 +11,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathSegment;
 import com.github.roleplaycauldron.brotkrumen.graph.search.TraversalKind;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -30,18 +30,18 @@ final class ResolveWarpStartSelector {
 
     private static final int SINGLE_GRAPH_COUNT = 1;
 
-    private final GraphService graphService;
+    private final GraphRepository graphRepository;
 
     private final ResolveService resolveService;
 
     /**
      * Creates a selector.
      *
-     * @param graphService   graph service
+     * @param graphRepository   graph service
      * @param resolveService resolve service
      */
-    /* default */ ResolveWarpStartSelector(final GraphService graphService, final ResolveService resolveService) {
-        this.graphService = Objects.requireNonNull(graphService, "graphService");
+    /* default */ ResolveWarpStartSelector(final GraphRepository graphRepository, final ResolveService resolveService) {
+        this.graphRepository = Objects.requireNonNull(graphRepository, "GraphRepository");
         this.resolveService = Objects.requireNonNull(resolveService, "resolveService");
     }
 
@@ -90,7 +90,7 @@ final class ResolveWarpStartSelector {
             final List<GraphNetwork> graphNetworks = networks.stream()
                     .filter(network -> network.hasGraph(requiredGraphId))
                     .toList();
-            return Stream.concat(graphService.getGraphById(requiredGraphId)
+            return Stream.concat(graphRepository.getGraphById(requiredGraphId)
                             .map(resolveService::singleGraphNetwork)
                             .stream(), graphNetworks.stream())
                     .toList();

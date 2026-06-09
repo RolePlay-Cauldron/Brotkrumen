@@ -1,7 +1,8 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.service;
 
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
@@ -17,7 +18,7 @@ class AsyncGraphNetworkServiceTest {
 
     @Test
     void networkReadCompletesThroughFuture() {
-        final GraphNetworkService delegate = mock(GraphNetworkService.class);
+        final GraphNetworkRepository delegate = mock(GraphNetworkRepository.class);
         final Collection<GraphNetwork> networks = Set.of(new GraphNetwork());
         when(delegate.loadGraphNetworks()).thenReturn(networks);
         final AsyncGraphNetworkService service = new AsyncGraphNetworkService(delegate, directExecutor);
@@ -27,7 +28,7 @@ class AsyncGraphNetworkServiceTest {
 
     @Test
     void networkWriteCompletesThroughFuture() {
-        final GraphNetworkService delegate = mock(GraphNetworkService.class);
+        final GraphNetworkRepository delegate = mock(GraphNetworkRepository.class);
         final Collection<InterGraphEdge> edges = Set.of();
         final AsyncGraphNetworkService service = new AsyncGraphNetworkService(delegate, directExecutor);
 
