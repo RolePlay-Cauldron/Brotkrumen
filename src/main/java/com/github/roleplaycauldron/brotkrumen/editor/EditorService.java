@@ -1082,7 +1082,7 @@ public class EditorService {
                 graph.get().getNodes().stream().map(Node::graphId).toList());
         final int removedEdges = graphNetworkService == null ? 0 : graphNetworkService.deleteInterGraphEdgesForGraph(graphId);
         graphService.deleteGraph(graphId);
-        graphService.invalidateCache();
+        graphService.reloadGraphs();
         return EditorResult.success("Deleted graph " + graph.get().getName() + ", removed " + removedWarps
                 + " warp" + (removedWarps == 1 ? "" : "s") + " and " + removedEdges + " inter-graph edge record"
                 + (removedEdges == 1 ? "" : "s") + ".");

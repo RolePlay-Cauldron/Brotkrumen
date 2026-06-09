@@ -80,6 +80,18 @@ class LocalizationTest {
     }
 
     @Test
+    void reloadCanChangeConfiguredDefaultLanguage() throws IOException {
+        writeLanguageFile("en-us.yml", validLocaleContent("en-US", "Welcome!"));
+        writeLanguageFile("de.yml", validLocaleContent("de", "Willkommen!"));
+
+        final Localization localization = localization("en-us");
+        localization.reload("de-de");
+
+        assertEquals("Willkommen!", localization.getRawMessageWithoutFormats("welcome"),
+                "Reload should apply the new configured default locale for non-player context");
+    }
+
+    @Test
     void supportsCustomThemeTags() throws IOException {
         writeLanguageFile("en-us.yml", validLocaleContent("en-US", "Welcome!"));
         writeLanguageFile("de-dark.yml", validLocaleContent("de-de-dark", "Willkommen (Dark)!"));

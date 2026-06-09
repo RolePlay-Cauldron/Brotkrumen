@@ -59,6 +59,7 @@ public class BkCommand {
         return Commands.literal("bk")
                 .then(new BkVersionSubcommand(commandContext, localization).version())
                 .then(new BkListSubcommands(commandContext, localization).list())
+                .then(new BkReloadSubcommand(commandContext, localization).reload())
                 .then(new BkResolveSubcommand(commandContext, localization).resolve())
                 .build();
     }

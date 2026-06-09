@@ -97,4 +97,20 @@ class GraphServiceImplTest {
                 "Saving one graph should update only that cache entry and preserve other cached graphs");
         verify(graphTable).getAllGraphs(provider);
     }
+
+    @Test
+    void reloadGraphsInvalidatesCacheAndReloadsFromDatabase() {
+        final Graph original = new Graph(1, "Original");
+        final Graph reloaded = new Graph(1, "Reloaded");
+        when(graphTable.getAllGraphs(provider)).thenReturn(Set.of(original), Set.of(reloaded));
+
+        service.getAllGraphs();
+        service.reloadGraphs();
+
+        assertEquals(Set.of("Reloaded"), service.getAllGraphs().stream()
+                        .map(Graph::getName)
+                        .collect(java.util.stream.Collectors.toSet()),
+                "Reload should replace cached graphs with fresh database state");
+        verify(graphTable, times(2)).getAllGraphs(provider);
+    }
 }

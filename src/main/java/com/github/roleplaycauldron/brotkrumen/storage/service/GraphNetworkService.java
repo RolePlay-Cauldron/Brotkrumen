@@ -56,4 +56,12 @@ public interface GraphNetworkService {
      * @param network network containing inter-graph edges to delete
      */
     void deleteInterGraphEdges(GraphNetwork network);
+
+    /**
+     * Invalidates the internal graph-network cache, reloads all graphs and inter-graph edges
+     * from the database, and rebuilds the cached graph networks.
+     *
+     * @return collection of reloaded graph networks
+     */
+    Collection<GraphNetwork> reloadGraphNetworks();
 }

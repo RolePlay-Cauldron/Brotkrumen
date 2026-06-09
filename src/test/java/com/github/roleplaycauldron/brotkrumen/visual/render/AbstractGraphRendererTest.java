@@ -60,6 +60,23 @@ class AbstractGraphRendererTest {
     }
 
     @Test
+    void configuredDistancesAreCapturedWhenRendererIsCreated() {
+        final YamlConfiguration config = new YamlConfiguration();
+        config.set("visualizer.viewDistance", 4.0D);
+        config.set("visualizer.spawnDistanceBuffer", 1.0D);
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final RendererHarness renderer = new RendererHarness(plugin(config, worldId, viewerId), viewerId);
+        config.set("visualizer.viewDistance", 20.0D);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 6, 7);
+
+        renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
+
+        assertEquals(0, renderer.nodeUpdates,
+                "Existing renderer visibility should keep the config values captured at creation");
+    }
+
+    @Test
     void negativeDistancesFallBackToDefaults() {
         final YamlConfiguration config = new YamlConfiguration();
         config.set("visualizer.viewDistance", -1.0D);

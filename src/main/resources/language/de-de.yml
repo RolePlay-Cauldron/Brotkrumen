@@ -25,6 +25,8 @@ messages:
         network:
           empty: "<#FACC15>Keine Netzwerke vorhanden."
           entries: "<#CBD5E1>Netzwerke: <#38BDF8><entries></#38BDF8>"
+      reload:
+        success: "<#22C55E>Konfiguration, Sprachdateien und Graphen wurden erfolgreich neu geladen."
       resolve:
         status:
           resolvingPath: "<#CBD5E1>Pfad für <#38BDF8><player></#38BDF8> wird aufgelöst..."
