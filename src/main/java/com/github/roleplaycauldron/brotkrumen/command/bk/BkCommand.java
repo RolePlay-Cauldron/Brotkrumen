@@ -9,6 +9,7 @@ import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.WarpService;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
@@ -37,13 +38,15 @@ public class BkCommand {
      * @param visualizerRegistry  the registry managing visualizers for rendering or displaying graphical representations
      * @param loggerFactory       the logger factory responsible for creating and managing loggers for various components
      * @param effectExecutor      the executor for managing and executing visual or gameplay effects
+     * @param warpService         the service used for managing warps and teleports
      * @param localization        localization service for sender feedback rendering
      */
     public BkCommand(final Brotkrumen plugin, final GraphService graphService,
-                     final GraphNetworkService graphNetworkService, final Storage storage,
+                     final GraphNetworkService graphNetworkService, final WarpService warpService,
+                     final Storage storage,
                      final VisualizerRegistry visualizerRegistry, final LoggerFactory loggerFactory,
                      final EffectExecutor effectExecutor, final Localization localization) {
-        this.commandContext = new BkCommandContext(plugin, graphService, graphNetworkService, storage,
+        this.commandContext = new BkCommandContext(plugin, graphService, graphNetworkService, warpService, storage,
                 visualizerRegistry, loggerFactory, effectExecutor, new ResolveService(graphService, graphNetworkService),
                 new ResolveTargetParser(), new ResolveGuidanceSessionManager(visualizerRegistry));
         this.localization = localization;

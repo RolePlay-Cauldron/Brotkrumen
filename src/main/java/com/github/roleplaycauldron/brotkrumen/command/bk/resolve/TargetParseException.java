@@ -17,8 +17,14 @@ public class TargetParseException extends Exception {
     @Serial
     private static final long serialVersionUID = -5099275603651221284L;
 
+    /**
+     * Localization key for the error message.
+     */
     private final String errorKey;
 
+    /**
+     * Replacements for the error message.
+     */
     private final Map<String, String> replacements;
 
     /**

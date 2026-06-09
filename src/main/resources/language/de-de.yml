@@ -33,6 +33,8 @@ messages:
           showingPathToNodeTarget: "<#22C55E>Pfad zum angeforderten Knoten-Ziel wird angezeigt."
           guidanceComplete: "<#22C55E>Resolve-Hinweis abgeschlossen."
           cancelledForPlayer: "<#FACC15>Resolve-Hinweis für <#38BDF8><player></#38BDF8> abgebrochen."
+          autoTeleportPending: "<#FACC15>Teleport in <#38BDF8><seconds></#38BDF8> Sekunden."
+          autoTeleportCancelled: "<#FACC15>Ausstehender Teleport abgebrochen."
         error:
           graphNotFound: "<#F43F5E>Kein Graph für <#38BDF8><graph></#38BDF8> gefunden."
           noNearbyNode: "<#F43F5E>Kein naher Graph-Knoten gefunden."

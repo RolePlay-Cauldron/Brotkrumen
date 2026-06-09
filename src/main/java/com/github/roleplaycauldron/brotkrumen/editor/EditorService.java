@@ -71,16 +71,37 @@ public class EditorService {
 
     private final GraphNetworkService graphNetworkService;
 
-    private final WarpService warpService;
+    private final WarpService warpServiceInstance;
 
     private final WrappedLogger log;
 
+    /**
+     * Creates a new editor service.
+     *
+     * @param visualizerRegistry the visualizer registry
+     * @param plugin             the plugin instance
+     * @param loggerFactory      the logger factory
+     * @param effectExecutor     the effect executor
+     * @param graphService       the graph service
+     * @param warpService        the warp service
+     */
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
                          final GraphService graphService, final WarpService warpService) {
         this(visualizerRegistry, plugin, loggerFactory, effectExecutor, graphService, null, warpService);
     }
 
+    /**
+     * Creates a new editor service.
+     *
+     * @param visualizerRegistry  the visualizer registry
+     * @param plugin              the plugin instance
+     * @param loggerFactory       the logger factory
+     * @param effectExecutor      the effect executor
+     * @param graphService        the graph service
+     * @param graphNetworkService the graph network service
+     * @param warpService         the warp service
+     */
     public EditorService(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
                          final GraphService graphService, final GraphNetworkService graphNetworkService,
@@ -91,15 +112,26 @@ public class EditorService {
         this.effectExecutor = effectExecutor;
         this.graphService = graphService;
         this.graphNetworkService = graphNetworkService;
-        this.warpService = warpService;
+        this.warpServiceInstance = warpService;
 
         this.log = loggerFactory.create(EditorService.class);
     }
 
+    /**
+     * Checks if the given preset is supported.
+     *
+     * @param preset the preset to check
+     * @return true if supported
+     */
     public static boolean isSupportedPreset(final String preset) {
         return preset != null && SUPPORTED_PRESETS.contains(preset.toLowerCase(Locale.ROOT));
     }
 
+    /**
+     * Returns a set of all supported presets.
+     *
+     * @return supported presets
+     */
     public static Set<String> supportedPresets() {
         return SUPPORTED_PRESETS;
     }
@@ -109,6 +141,23 @@ public class EditorService {
         return WAITING_FOR_ANCHOR_ACTION_BAR;
     }
 
+    /**
+     * Returns the warp service instance.
+     *
+     * @return warp service
+     */
+    public WarpService warpService() {
+        return warpServiceInstance;
+    }
+
+    /**
+     * Starts a new graph creation session.
+     *
+     * @param playerId  player id
+     * @param graphName name of the graph to create
+     * @param settings  editor settings
+     * @return operation result
+     */
     public EditorResult startGraphCreation(final UUID playerId, final String graphName, final EditorSettings settings) {
         final EditorResult validation = validateStart(playerId, graphName, settings);
         if (!validation.success()) {
@@ -124,6 +173,13 @@ public class EditorService {
         return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
     }
 
+    /**
+     * Renames the active graph in the session.
+     *
+     * @param playerId player id
+     * @param newName  new name for the graph
+     * @return operation result
+     */
     public EditorResult renameActiveGraph(final UUID playerId, final String newName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -142,6 +198,14 @@ public class EditorService {
         return EditorResult.success("commands.bkeditor.status.graphRenamed", Map.of("graph", newName));
     }
 
+    /**
+     * Starts a graph editing session for an existing graph.
+     *
+     * @param playerId  player id
+     * @param graphName name of the graph to edit
+     * @param settings  editor settings
+     * @return operation result
+     */
     public EditorResult startGraphEdit(final UUID playerId, final String graphName, final EditorSettings settings) {
         final EditorResult validation = validateStart(playerId, graphName, settings);
         if (!validation.success()) {
@@ -332,6 +396,13 @@ public class EditorService {
         return SelectionTeleportResult.failure("commands.bkeditor.common.noSelection");
     }
 
+    /**
+     * Handles player movement within an editor session.
+     *
+     * @param playerId editor player id
+     * @param loc      current location
+     * @return operation result
+     */
     public EditorResult handleMovement(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -382,6 +453,12 @@ public class EditorService {
         session.createdNodes.addLast(created);
     }
 
+    /**
+     * Enables preview mode for the editor.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     public EditorResult preview(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -391,6 +468,13 @@ public class EditorService {
         return EditorResult.success("Preview mode enabled.");
     }
 
+    /**
+     * Manually places a node at the specified location.
+     *
+     * @param playerId editor player id
+     * @param loc      node location
+     * @return operation result
+     */
     public EditorResult placeNode(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -718,6 +802,12 @@ public class EditorService {
         return new Location(source.getWorld(), targetX, targetY, targetZ, source.getYaw(), source.getPitch());
     }
 
+    /**
+     * Finishes the route creation session and persists changes.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public EditorResult finishRouteCreation(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
@@ -767,14 +857,14 @@ public class EditorService {
     }
 
     private void saveWarps(final EditorSession session) {
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return;
         }
         for (final String key : session.pendingDeletions) {
-            warpService.removeWarp(key);
+            warpServiceInstance.removeWarp(key);
         }
         for (final Warp warp : session.pendingWarps.values()) {
-            warpService.saveWarp(warp);
+            warpServiceInstance.saveWarp(warp);
         }
     }
 
@@ -785,6 +875,12 @@ public class EditorService {
         graphNetworkService.saveInterGraphEdges(session.workspaceNetwork.getInterGraphEdges());
     }
 
+    /**
+     * Cancels the current editor session.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     public EditorResult cancel(final UUID playerId) {
         if (playerEditors.remove(playerId) == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
@@ -794,6 +890,13 @@ public class EditorService {
         return EditorResult.success("Editor session cancelled.");
     }
 
+    /**
+     * Adds a reference graph to the editor view.
+     *
+     * @param playerId  editor player id
+     * @param graphName name of the graph to add
+     * @return operation result
+     */
     public EditorResult addReferenceGraph(final UUID playerId, final String graphName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -813,6 +916,13 @@ public class EditorService {
         return EditorResult.success("Added reference graph " + graph.get().getName() + " to the editor view.");
     }
 
+    /**
+     * Removes a reference graph from the editor view.
+     *
+     * @param playerId  editor player id
+     * @param graphName name of the graph to remove
+     * @return operation result
+     */
     public EditorResult removeReferenceGraph(final UUID playerId, final String graphName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -832,6 +942,12 @@ public class EditorService {
         return EditorResult.success("Removed reference graph " + graph.get().getName() + " from the editor view.");
     }
 
+    /**
+     * Clears all reference graphs from the editor view.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     public EditorResult clearReferenceGraphs(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -845,6 +961,13 @@ public class EditorService {
         return EditorResult.success("Cleared reference graphs from the editor view.");
     }
 
+    /**
+     * Updates the traversal kind of the selected edge.
+     *
+     * @param playerId  editor player id
+     * @param traversal new traversal kind
+     * @return operation result
+     */
     public EditorResult updateSelectedEdgeTraversal(final UUID playerId, final EdgeTraversal traversal) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -881,6 +1004,12 @@ public class EditorService {
         return EditorResult.success("Set selected edge traversal to " + traversal.configValue() + ".");
     }
 
+    /**
+     * Lists connections for the selected node.
+     *
+     * @param playerId editor player id
+     * @return operation result containing connection details
+     */
     @SuppressWarnings({"PMD.CognitiveComplexity", "PMD.NPathComplexity", "PMD.AvoidDeeplyNestedIfStmts"})
     public EditorResult selectedNodeConnections(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
@@ -932,6 +1061,12 @@ public class EditorService {
         return result.append(Component.text("."));
     }
 
+    /**
+     * Deletes a persisted graph from the storage.
+     *
+     * @param graphName name of the graph to delete
+     * @return operation result
+     */
     public EditorResult deletePersistedGraph(final String graphName) {
         final Optional<Graph> graph = graphService.getGraphByName(graphName);
         if (graph.isEmpty()) {
@@ -943,7 +1078,7 @@ public class EditorService {
         if (active) {
             return EditorResult.failure("That graph is currently open in an editor session.");
         }
-        final int removedWarps = warpService == null ? 0 : warpService.removeWarpsTargeting(
+        final int removedWarps = warpServiceInstance == null ? 0 : warpServiceInstance.removeWarpsTargeting(
                 graph.get().getNodes().stream().map(Node::graphId).toList());
         final int removedEdges = graphNetworkService == null ? 0 : graphNetworkService.deleteInterGraphEdgesForGraph(graphId);
         graphService.deleteGraph(graphId);
@@ -953,6 +1088,12 @@ public class EditorService {
                 + (removedEdges == 1 ? "" : "s") + ".");
     }
 
+    /**
+     * Deletes the selected node from the active graph.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     public EditorResult deleteSelectedNode(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -967,8 +1108,8 @@ public class EditorService {
         final UUID nodeId = session.selectedNode.graphId();
         session.graph.removeNode(session.selectedNode);
         session.pendingWarps.values().removeIf(warp -> warp.targetNodeId().equals(nodeId));
-        if (warpService != null) {
-            warpService.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
+        if (warpServiceInstance != null) {
+            warpServiceInstance.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
         }
         session.selectedNode = null;
         session.selectedNodeRef = null;
@@ -1004,6 +1145,12 @@ public class EditorService {
         return playerEditors.keySet().toArray(UUID[]::new);
     }
 
+    /**
+     * Resumes node placement from the current position or an anchor.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
     public EditorResult continuePlacement(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1019,6 +1166,13 @@ public class EditorService {
         return EditorResult.success("Automatic placement resumed.");
     }
 
+    /**
+     * Undoes the last node placements.
+     *
+     * @param playerId editor player id
+     * @param amount   number of nodes to undo
+     * @return operation result
+     */
     public EditorResult undo(final UUID playerId, final int amount) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1049,6 +1203,12 @@ public class EditorService {
                 : EditorResult.success(message);
     }
 
+    /**
+     * Returns a summary of the current editor settings.
+     *
+     * @param playerId editor player id
+     * @return operation result containing settings summary
+     */
     public EditorResult settingsSummary(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1061,6 +1221,13 @@ public class EditorService {
                 + ", preset=" + session.preset + ".");
     }
 
+    /**
+     * Updates the minimum distance between automatically placed nodes.
+     *
+     * @param playerId     editor player id
+     * @param nodeDistance new node distance
+     * @return operation result
+     */
     public EditorResult updateNodeDistance(final UUID playerId, final int nodeDistance) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1073,6 +1240,13 @@ public class EditorService {
         return EditorResult.success("Node distance set to " + nodeDistance + ".");
     }
 
+    /**
+     * Updates the placement mode for the editor.
+     *
+     * @param playerId      editor player id
+     * @param placementMode new placement mode
+     * @return operation result
+     */
     public EditorResult updatePlacementMode(final UUID playerId, final PlacementMode placementMode) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1193,7 +1367,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.get(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpService.getWarp(key).orElse(null);
+            warp = warpServiceInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1218,7 +1392,7 @@ public class EditorService {
         final EditorSession session = playerEditors.get(playerId);
         Warp warp = session.pendingWarps.remove(key);
         if (warp == null && !session.pendingDeletions.contains(key)) {
-            warp = warpService.getWarp(key).orElse(null);
+            warp = warpServiceInstance.getWarp(key).orElse(null);
         }
 
         if (warp == null) {
@@ -1234,7 +1408,7 @@ public class EditorService {
     }
 
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
-        final Set<Warp> warps = new LinkedHashSet<>(warpService.getWarpsTargeting(targetNodeId));
+        final Set<Warp> warps = new LinkedHashSet<>(warpServiceInstance.getWarpsTargeting(targetNodeId));
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         warps.addAll(session.pendingWarps.values().stream()
                 .filter(warp -> warp.targetNodeId().equals(targetNodeId))
@@ -1254,11 +1428,11 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         final Collection<UUID> graphNodeIds = session.graph.getNodes().stream().map(Node::graphId).toList();
-        final Set<Warp> warps = new LinkedHashSet<>(all ? warpService.getManagedWarps() : warpService.getWarpsTargeting(graphNodeIds));
+        final Set<Warp> warps = new LinkedHashSet<>(all ? warpServiceInstance.getManagedWarps() : warpServiceInstance.getWarpsTargeting(graphNodeIds));
 
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         for (final Warp pending : session.pendingWarps.values()) {
@@ -1284,7 +1458,7 @@ public class EditorService {
     }
 
     private EditorResult validateWarp(final String key) {
-        if (warpService == null) {
+        if (warpServiceInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
         }
         return key == null || key.isBlank() ? EditorResult.failure("commands.bkeditor.common.warpKeyRequired")
@@ -1440,6 +1614,13 @@ public class EditorService {
         }
     }
 
+    /**
+     * Updates whether continuation requires an existing node anchor.
+     *
+     * @param playerId             editor player id
+     * @param continueRequiresNode true if anchor is required
+     * @return operation result
+     */
     public EditorResult updateContinueRequiresNode(final UUID playerId, final boolean continueRequiresNode) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1449,11 +1630,24 @@ public class EditorService {
         return EditorResult.success("Continue requires node set to " + continueRequiresNode + ".");
     }
 
+    /**
+     * Gets the graph currently being created or edited.
+     *
+     * @param playerId editor player id
+     * @return the working graph
+     */
     public Graph getWorkingGraph(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         return session == null ? null : session.graph;
     }
 
+    /**
+     * Updates the visualizer preset for the editor session.
+     *
+     * @param playerId editor player id
+     * @param preset   preset name
+     * @return operation result
+     */
     public EditorResult updatePreset(final UUID playerId, final String preset) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
@@ -1473,14 +1667,34 @@ public class EditorService {
         }
     }
 
+    /**
+     * Gets the current editor settings for a player.
+     *
+     * @param playerId editor player id
+     * @return editor settings
+     */
     public EditorSettings getSettings(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         return session == null ? null : session.settings();
     }
 
+    /**
+     * Placement mode for nodes.
+     */
     public enum PlacementMode {
+        /**
+         * Automatic placement.
+         */
         AUTO("auto"),
+
+        /**
+         * Preview placement.
+         */
         PREVIEW("preview"),
+
+        /**
+         * Waiting for anchor placement.
+         */
         WAITING_FOR_ANCHOR("waiting-for-anchor");
 
         private final String serializedValue;
@@ -1489,6 +1703,12 @@ public class EditorService {
             this.serializedValue = configValue;
         }
 
+        /**
+         * Parses the placement mode from a string.
+         *
+         * @param input the input string
+         * @return the placement mode
+         */
         public static Optional<PlacementMode> parse(final String input) {
             if (input == null || input.isBlank()) {
                 return Optional.empty();
@@ -1502,13 +1722,28 @@ public class EditorService {
             return Optional.empty();
         }
 
+        /**
+         * Returns the config value.
+         *
+         * @return the config value
+         */
         public String configValue() {
             return serializedValue;
         }
     }
 
+    /**
+     * Edge type.
+     */
     public enum EdgeType {
+        /**
+         * Directed edge.
+         */
         DIRECTED("directed"),
+
+        /**
+         * Undirected edge.
+         */
         UNDIRECTED("undirected");
 
         private final String serializedValue;
@@ -1517,6 +1752,12 @@ public class EditorService {
             this.serializedValue = configValue;
         }
 
+        /**
+         * Parses the edge type from a string.
+         *
+         * @param input the input string
+         * @return the edge type
+         */
         public static Optional<EdgeType> parse(final String input) {
             if (input == null || input.isBlank()) {
                 return Optional.empty();
@@ -1530,13 +1771,28 @@ public class EditorService {
             return Optional.empty();
         }
 
+        /**
+         * Returns the config value.
+         *
+         * @return the config value
+         */
         public String configValue() {
             return serializedValue;
         }
     }
 
+    /**
+     * Edge state.
+     */
     public enum EdgeState {
+        /**
+         * Open edge.
+         */
         OPEN("open"),
+
+        /**
+         * Blocked edge.
+         */
         BLOCKED("blocked");
 
         private final String serializedValue;
@@ -1545,6 +1801,12 @@ public class EditorService {
             this.serializedValue = configValue;
         }
 
+        /**
+         * Parses the edge state from a string.
+         *
+         * @param input the input string
+         * @return the edge state
+         */
         public static Optional<EdgeState> parse(final String input) {
             if (input == null || input.isBlank()) {
                 return Optional.empty();
@@ -1558,13 +1820,28 @@ public class EditorService {
             return Optional.empty();
         }
 
+        /**
+         * Returns the config value.
+         *
+         * @return the config value
+         */
         public String configValue() {
             return serializedValue;
         }
     }
 
+    /**
+     * Edge traversal kind.
+     */
     public enum EdgeTraversal {
+        /**
+         * Normal traversal.
+         */
         NORMAL("normal"),
+
+        /**
+         * Teleport traversal.
+         */
         TELEPORT("teleport");
 
         private final String serializedValue;
@@ -1573,6 +1850,12 @@ public class EditorService {
             this.serializedValue = configValue;
         }
 
+        /**
+         * Parses the edge traversal from a string.
+         *
+         * @param input the input string
+         * @return the edge traversal
+         */
         public static Optional<EdgeTraversal> parse(final String input) {
             if (input == null || input.isBlank()) {
                 return Optional.empty();
@@ -1586,6 +1869,11 @@ public class EditorService {
             return Optional.empty();
         }
 
+        /**
+         * Returns the config value.
+         *
+         * @return the config value
+         */
         public String configValue() {
             return serializedValue;
         }
@@ -1596,9 +1884,22 @@ public class EditorService {
         EDIT
     }
 
+    /**
+     * Settings for the editor session.
+     *
+     * @param nodeDistance         minimum distance between nodes
+     * @param placementMode        placement mode
+     * @param continueRequiresNode whether continuation requires an existing node
+     * @param preset               visualizer preset
+     */
     public record EditorSettings(int nodeDistance, PlacementMode placementMode, boolean continueRequiresNode,
                                  String preset) {
 
+        /**
+         * Returns a normalized version of the settings.
+         *
+         * @return normalized settings
+         */
         public EditorSettings normalized() {
             return new EditorSettings(nodeDistance, Objects.requireNonNullElse(placementMode, PlacementMode.AUTO),
                     continueRequiresNode, preset == null || preset.isBlank() ? "default" : preset.toLowerCase(Locale.ROOT));
@@ -1608,36 +1909,83 @@ public class EditorService {
     /**
      * Editor operation result.
      *
-     * @param success whether the operation succeeded
-     * @param message user-facing message
+     * @param success          whether the operation succeeded
+     * @param message          user-facing message
+     * @param actionBarMessage action bar message
+     * @param component        rich component message
+     * @param replacements     message replacements
      */
     public record EditorResult(boolean success, String message, String actionBarMessage, Component component,
                                Map<String, String> replacements) {
 
+        /**
+         * Creates a new editor result.
+         *
+         * @param success whether successful
+         * @param message message
+         */
         public EditorResult(final boolean success, final String message) {
             this(success, message, "", null, Map.of());
         }
 
+        /**
+         * Creates a new editor result.
+         *
+         * @param success   whether successful
+         * @param component component
+         */
         public EditorResult(final boolean success, final Component component) {
             this(success, "", "", component, Map.of());
         }
 
+        /**
+         * Creates a successful result.
+         *
+         * @param message message
+         * @return successful result
+         */
         public static EditorResult success(final String message) {
             return new EditorResult(true, message);
         }
 
+        /**
+         * Creates a successful result with replacements.
+         *
+         * @param message      message
+         * @param replacements replacements
+         * @return successful result
+         */
         public static EditorResult success(final String message, final Map<String, String> replacements) {
             return new EditorResult(true, message, "", null, replacements == null ? Map.of() : Map.copyOf(replacements));
         }
 
+        /**
+         * Creates a successful result with a component.
+         *
+         * @param component component
+         * @return successful result
+         */
         public static EditorResult success(final Component component) {
             return new EditorResult(true, component);
         }
 
+        /**
+         * Creates a successful result with an action bar message.
+         *
+         * @param message          message
+         * @param actionBarMessage action bar message
+         * @return successful result
+         */
         public static EditorResult success(final String message, final String actionBarMessage) {
             return new EditorResult(true, message, actionBarMessage, null, Map.of());
         }
 
+        /**
+         * Creates a failed result.
+         *
+         * @param message message
+         * @return failed result
+         */
         public static EditorResult failure(final String message) {
             return new EditorResult(false, message);
         }
@@ -1651,10 +1999,23 @@ public class EditorService {
      */
     public record SelectionTeleportResult(EditorResult result, Location destination) {
 
+        /**
+         * Creates a successful teleport result.
+         *
+         * @param message     message
+         * @param destination destination
+         * @return successful teleport result
+         */
         public static SelectionTeleportResult success(final String message, final Location destination) {
             return new SelectionTeleportResult(EditorResult.success(message), destination);
         }
 
+        /**
+         * Creates a failed teleport result.
+         *
+         * @param message message
+         * @return failed teleport result
+         */
         public static SelectionTeleportResult failure(final String message) {
             return new SelectionTeleportResult(EditorResult.failure(message), null);
         }

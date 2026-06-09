@@ -37,6 +37,8 @@ messages:
           showingPathToNodeTarget: "<#22C55E>Showing path to requested node target."
           guidanceComplete: "<#22C55E>Resolve guidance complete."
           cancelledForPlayer: "<#FACC15>Cancelled resolve guidance for <#38BDF8><player></#38BDF8>."
+          autoTeleportPending: "<#FACC15>Teleporting in <#38BDF8><seconds></#38BDF8> seconds."
+          autoTeleportCancelled: "<#FACC15>Pending teleport cancelled."
 
         error:
           graphNotFound: "<#F43F5E>No graph found for <#38BDF8><graph></#38BDF8>."

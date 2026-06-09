@@ -71,4 +71,35 @@ class TeleportRulesTest {
         assertEquals(List.of(open, byKey, byNode), result,
                 "Filtering should keep open warps and permission-required warps with either accepted suffix");
     }
+
+    @Test
+    void parsesRuleStrings() {
+        final TeleportRules base = TeleportRules.disableTeleports();
+
+        assertAll(
+                () -> assertFalse(base.parse("DISABLED").isLocalTeleportEnabled(), "DISABLED should disable local teleports"),
+                () -> assertFalse(base.parse("DISABLED").isInterGraphTeleportEnabled(), "DISABLED should disable inter-graph teleports"),
+                () -> assertFalse(base.parse("DISABLED").isWarpingEnabled(), "DISABLED should disable warping"),
+
+                () -> assertTrue(base.parse("LOCAL_TP_ONLY").isLocalTeleportEnabled(), "LOCAL_TP_ONLY should enable local teleports"),
+                () -> assertFalse(base.parse("LOCAL_TP_ONLY").isInterGraphTeleportEnabled(), "LOCAL_TP_ONLY should disable inter-graph teleports"),
+                () -> assertFalse(base.parse("LOCAL_TP_ONLY").isWarpingEnabled(), "LOCAL_TP_ONLY should disable warping"),
+
+                () -> assertFalse(base.parse("WARPS_ONLY").isLocalTeleportEnabled(), "WARPS_ONLY should disable local teleports"),
+                () -> assertFalse(base.parse("WARPS_ONLY").isInterGraphTeleportEnabled(), "WARPS_ONLY should disable inter-graph teleports"),
+                () -> assertTrue(base.parse("WARPS_ONLY").isWarpingEnabled(), "WARPS_ONLY should enable warping"),
+
+                () -> assertFalse(base.parse("INTERGRAPH_TP_ONLY").isLocalTeleportEnabled(), "INTERGRAPH_TP_ONLY should disable local teleports"),
+                () -> assertTrue(base.parse("INTERGRAPH_TP_ONLY").isInterGraphTeleportEnabled(), "INTERGRAPH_TP_ONLY should enable inter-graph teleports"),
+                () -> assertFalse(base.parse("INTERGRAPH_TP_ONLY").isWarpingEnabled(), "INTERGRAPH_TP_ONLY should disable warping"),
+
+                () -> assertTrue(base.parse("LOCAL_INTERGRAPH_TP").isLocalTeleportEnabled(), "LOCAL_INTERGRAPH_TP should enable local teleports"),
+                () -> assertTrue(base.parse("LOCAL_INTERGRAPH_TP").isInterGraphTeleportEnabled(), "LOCAL_INTERGRAPH_TP should enable inter-graph teleports"),
+                () -> assertFalse(base.parse("LOCAL_INTERGRAPH_TP").isWarpingEnabled(), "LOCAL_INTERGRAPH_TP should disable warping"),
+
+                () -> assertTrue(base.parse("LOCAL_TP_WARP").isLocalTeleportEnabled(), "LOCAL_TP_WARP should enable local teleports"),
+                () -> assertFalse(base.parse("LOCAL_TP_WARP").isInterGraphTeleportEnabled(), "LOCAL_TP_WARP should disable inter-graph teleports"),
+                () -> assertTrue(base.parse("LOCAL_TP_WARP").isWarpingEnabled(), "LOCAL_TP_WARP should enable warping")
+        );
+    }
 }

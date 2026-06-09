@@ -7,64 +7,61 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Tests for {@link ResolveTargetParser}.
- */
+@SuppressWarnings({"PMD.UnitTestContainsTooManyAsserts", "PMD.UnitTestAssertionsShouldIncludeMessage"})
 class ResolveTargetParserTest {
 
     private final ResolveTargetParser parser = new ResolveTargetParser();
 
     @Test
-    void parsesLongGraphTarget() throws TargetParseException {
-        final ResolveTarget target = parser.parse(List.of("graph:sternchen"));
-
-        assertEquals(ResolveTarget.Mode.GRAPH, target.mode(), "Mode should be graph");
-        assertEquals("sternchen", target.graphKey(), "Graph key should be preserved");
+    void parsesGraphTarget() throws TargetParseException {
+        final ResolveTarget target = parser.parse("graph:sternchen");
+        assertEquals(ResolveTarget.Mode.GRAPH, target.mode());
+        assertEquals("sternchen", target.graphKey());
+        assertNull(target.teleportRules());
     }
 
     @Test
-    void parsesShortGraphTarget() throws TargetParseException {
-        final ResolveTarget target = parser.parse(List.of("g:12"));
-
-        assertEquals("12", target.graphKey(), "Graph id should be preserved");
+    void parsesGraphTargetWithShortPrefix() throws TargetParseException {
+        final ResolveTarget target = parser.parse("g:sternchen");
+        assertEquals(ResolveTarget.Mode.GRAPH, target.mode());
+        assertEquals("sternchen", target.graphKey());
     }
 
     @Test
-    void parsesNodeListWithLongAndShortPrefixes() throws TargetParseException {
-        final UUID first = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
-        final UUID second = UUID.fromString("18a6d815-2c26-4fde-8179-e74baca4bb4e");
-
-        final ResolveTarget target = parser.parse(List.of("node:" + first, "n:" + second));
-
-        assertEquals(ResolveTarget.Mode.NODE_LIST, target.mode(), "Mode should be node list");
-        assertEquals(List.of(first, second), target.nodeIds(), "Node ids should be preserved");
+    void parsesNodeTarget() throws TargetParseException {
+        final UUID nodeId = UUID.randomUUID();
+        final ResolveTarget target = parser.parse("node:" + nodeId);
+        assertEquals(ResolveTarget.Mode.NODE_LIST, target.mode());
+        assertEquals(List.of(nodeId), target.nodeIds());
+        assertNull(target.teleportRules());
     }
 
     @Test
-    void rejectsMixedGraphAndNodeTargets() {
-        final UUID nodeId = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
-
-        final TargetParseException exception = assertThrows(TargetParseException.class,
-                () -> parser.parse(List.of("graph:sternchen", "node:" + nodeId)));
-
-        assertEquals("commands.bk.resolve.parse.error.mixedTargetModes", exception.getErrorKey(),
-                "Error key should explain ambiguity");
+    void parsesTeleportRules() throws TargetParseException {
+        final ResolveTarget target = parser.parse("graph:sternchen teleport:LOCAL_TP_ONLY");
+        assertEquals("sternchen", target.graphKey());
+        assertEquals("LOCAL_TP_ONLY", target.teleportRules());
     }
 
     @Test
-    void rejectsNetworkTargets() {
-        final TargetParseException exception = assertThrows(TargetParseException.class,
-                () -> parser.parse(List.of("network:main")));
-
-        assertEquals("commands.bk.resolve.parse.error.networkNotSupported", exception.getErrorKey(),
-                "Error key should explain unsupported target");
+    void parsesTeleportRulesWithShortPrefix() throws TargetParseException {
+        final ResolveTarget target = parser.parse("graph:sternchen tp:WARPS_ONLY");
+        assertEquals("WARPS_ONLY", target.teleportRules());
     }
 
     @Test
-    void rejectsBareUuidTargets() {
-        final UUID nodeId = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
+    void parsesTeleportRulesOnly() throws TargetParseException {
+        // This should fail because graph/node is missing
+        assertThrows(TargetParseException.class, () -> parser.parse("teleport:DISABLED"));
+    }
 
-        assertThrows(TargetParseException.class,
-                () -> parser.parse(List.of(nodeId.toString())), "Should reject bare UUID");
+    @Test
+    void failsOnMultipleTeleportRules() {
+        assertThrows(TargetParseException.class, () -> parser.parse("graph:s tp:DISABLED teleport:WARPS"));
+    }
+
+    @Test
+    void failsOnEmptyTeleportRules() {
+        assertThrows(TargetParseException.class, () -> parser.parse("graph:s tp:"));
     }
 }

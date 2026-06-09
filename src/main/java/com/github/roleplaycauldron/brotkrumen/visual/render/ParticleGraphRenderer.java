@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.visual.render;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
@@ -18,7 +19,9 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -29,6 +32,8 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
     private static final long PERIOD_TICKS = 2L;
 
     private final EffectExecutor executor;
+
+    private final Map<RunningEffect, EdgeRenderState> edgeStates = new IdentityHashMap<>();
 
     /**
      * Creates a particle renderer.
@@ -62,9 +67,21 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
             return handle;
         }
 
+        final ParticleEdgeDesign design = designs.resolveParticleEdge(edge);
+        final EdgeRenderState state = new EdgeRenderState(edge, source.node(), target.node(), design);
+        if (handle != null && state.equals(edgeStates.get(handle))) {
+            return handle;
+        }
+
+        edgeStates.remove(handle);
         cancel(handle);
-        final EffectInstance effect = buildEdgeEffect(designs.resolveParticleEdge(edge), edge, source, target);
-        return executor.start(effect, executionConfig(source.node().toCenterLocation(), target.node().toCenterLocation(), player));
+        final EffectInstance effect = buildEdgeEffect(design, edge, source, target);
+        final RunningEffect running = executor.start(effect,
+                executionConfig(source.node().toCenterLocation(), target.node().toCenterLocation(), player));
+        if (running != null) {
+            edgeStates.put(running, state);
+        }
+        return running;
     }
 
     @Override
@@ -74,6 +91,7 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
 
     @Override
     protected void removeEdge(final RunningEffect handle) {
+        edgeStates.remove(handle);
         cancel(handle);
     }
 
@@ -99,6 +117,16 @@ public class ParticleGraphRenderer extends AbstractGraphRenderer<RunningEffect, 
     private void cancel(final RunningEffect effect) {
         if (effect != null) {
             effect.cancel();
+        }
+    }
+
+    private record EdgeRenderState(VisualEdge edge, Node source, Node target, ParticleEdgeDesign design) {
+
+        private EdgeRenderState {
+            Objects.requireNonNull(edge, "edge");
+            Objects.requireNonNull(source, "source");
+            Objects.requireNonNull(target, "target");
+            Objects.requireNonNull(design, "design");
         }
     }
 }

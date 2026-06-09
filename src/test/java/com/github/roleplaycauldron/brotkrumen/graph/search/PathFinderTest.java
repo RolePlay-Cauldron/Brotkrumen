@@ -132,6 +132,25 @@ class PathFinderTest {
     }
 
     @Test
+    void localTeleportObeysIndependentRuleSwitch() {
+        final Graph graph = new Graph(1, "One");
+        final UUID source = UUID.randomUUID();
+        final UUID target = UUID.randomUUID();
+        graph.addNode(new Node(source, 0, 0, 0, null));
+        graph.addNode(new Node(target, 10, 0, 0, null));
+        graph.addDirectedEdge(source, target, 1.0D, Set.of(EdgeFlag.TELEPORT, EdgeFlag.DIRECTED));
+        final PathFinder pathFinder = new PathFinder();
+
+        assertEquals(List.of(new NodeRef(1, source), new NodeRef(1, target)),
+                pathFinder.findPathResult(graph, source, target, null,
+                        new TeleportRules(true, false, false, List.of())).nodes(),
+                "Enabled local teleport should be traversable");
+        assertTrue(pathFinder.findPathResult(graph, source, target, null,
+                new TeleportRules(false, false, false, List.of())).nodes().isEmpty(),
+                "Disabled local teleport should not be traversable");
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void warpRoutesAreGloballyCallableAndDisappearWhenTargetIsRemoved() {
         final Graph graphOne = new Graph(1, "One");

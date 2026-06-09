@@ -28,7 +28,7 @@ public final class BkVersionSubcommand {
      *
      * @param commandContext the context of the `/bk version` command, providing access to various
      *                       services and utilities required for command handling
-     * @param localization
+     * @param localization   the localization service
      */
     public BkVersionSubcommand(final BkCommandContext commandContext, final Localization localization) {
         this.commandContext = commandContext;

@@ -11,9 +11,12 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param finishRadius              completion radius for guided resolve finish detection
  * @param finishCleanupDelaySeconds delay after completion before resolve guidance cleanup
  * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
+ * @param teleportRules             teleport rules
+ * @param autoTeleportOptions       automatic teleport options
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,
-                             double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled) {
+                             double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled,
+                             String teleportRules, ResolveAutoTeleportOptions autoTeleportOptions) {
 
     private static final String NEAREST_NODE_RADIUS = "commands.resolve.nearestNodeRadius";
 
@@ -24,6 +27,10 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
     private static final String FINISH_CLEANUP_DELAY = "commands.resolve.finishCleanupDelaySeconds";
 
     private static final String GOAL_MARKER_ENABLED = "commands.resolve.goalMarkerEnabled";
+
+    private static final String TELEPORT_RULES = "commands.resolve.teleportRules";
+
+    private static final String AUTO_TELEPORT = "commands.resolve.autoTeleport";
 
     private static final String VIEW_DISTANCE = "visualizer.viewDistance";
 
@@ -36,6 +43,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
     private static final int DEFAULT_FINISH_CLEANUP_DELAY = 5;
 
     private static final boolean DEFAULT_GOAL_MARKER_ENABLED = true;
+
+    private static final String DEFAULT_TELEPORT_RULES = "LOCAL_INTERGRAPH_WARP";
 
     /**
      * Normalizes invalid values.
@@ -60,7 +69,9 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
                 ResolveBackend.parse(config.getString(VISUALIZER_BACKEND, "particle")),
                 config.getDouble(FINISH_RADIUS, DEFAULT_FINISH_RADIUS),
                 config.getInt(FINISH_CLEANUP_DELAY, DEFAULT_FINISH_CLEANUP_DELAY),
-                config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED)
+                config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED),
+                config.getString(TELEPORT_RULES, DEFAULT_TELEPORT_RULES),
+                ResolveAutoTeleportOptions.fromConfig(config.getConfigurationSection(AUTO_TELEPORT))
         );
     }
 
