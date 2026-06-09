@@ -1,0 +1,62 @@
+name: Generate Build Version
+description: Generate the Brotkrumen build version for pull request, main, and release builds.
+
+inputs:
+  event-name:
+    description: GitHub event name for the current workflow run.
+    required: true
+  ref-name:
+    description: Git ref name for the current workflow run.
+    required: true
+  run-number:
+    description: GitHub workflow run number.
+    required: true
+  default-branch:
+    description: Repository default branch.
+    required: true
+
+outputs:
+  version:
+    description: Generated Brotkrumen build version.
+    value: ${{ steps.generate.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate version
+      id: generate
+      shell: bash
+      env:
+        EVENT_NAME: ${{ inputs.event-name }}
+        REF_NAME: ${{ inputs.ref-name }}
+        RUN_NUMBER: ${{ inputs.run-number }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+      run: |
+        revision="$(sed -n 's:.*<revision>\(.*\)</revision>.*:\1:p' pom.xml | head -n 1)"
+
+        if [[ -z "$revision" ]]; then
+          echo "Could not read <revision> from pom.xml" >&2
+          exit 1
+        fi
+
+        if [[ "$EVENT_NAME" == "pull_request" ]]; then
+          version="${revision}-DEV-ARTIFACT-${RUN_NUMBER}"
+        elif [[ "$EVENT_NAME" == "release" ]]; then
+          version="$revision"
+        elif [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+          revision_commit="$(git log --first-parent -m -G '^[[:space:]]*<revision>.*</revision>' --format='%H' -- pom.xml | head -n 1)"
+
+          if [[ -z "$revision_commit" ]]; then
+            echo "Could not find the most recent <revision> change in git history" >&2
+            exit 1
+          fi
+
+          build_number=$(( $(git rev-list --first-parent --count "${revision_commit}..HEAD") + 1 ))
+          version="${revision}-DEV-${build_number}"
+        else
+          echo "Unsupported build event/ref combination: event=$EVENT_NAME ref=$REF_NAME" >&2
+          exit 1
+        fi
+
+        echo "Generated build version: $version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
