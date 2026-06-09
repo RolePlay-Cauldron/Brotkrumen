@@ -30,8 +30,12 @@ public final class EditorWarpSubcommands {
                 .then(create(commandContext, "selected"))
                 .then(create(commandContext, "here"))
                 .then(Commands.literal("remove").then(key(KEY_ARGUMENT).executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().removeWarp(
-                                player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT)))))))
+                        player -> {
+                            commandContext.editorService().removeWarpAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, KEY_ARGUMENT),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        }))))
                 .then(list(commandContext))
                 .then(set(commandContext));
     }
@@ -48,30 +52,48 @@ public final class EditorWarpSubcommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> list(final EditorCommandContext commandContext) {
         return Commands.literal("list")
-                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                        commandContext.editorService().listWarps(player.getUniqueId(), false))))
+                .executes(context -> withPlayer(commandContext, context, player -> {
+                    commandContext.runEditorOperationAsync(player, () ->
+                            commandContext.editorService().listWarps(player.getUniqueId(), false));
+                    return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                }))
                 .then(Commands.literal("all").executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player,
-                                commandContext.editorService().listWarps(player.getUniqueId(), true)))));
+                        player -> {
+                            commandContext.runEditorOperationAsync(player, () ->
+                                    commandContext.editorService().listWarps(player.getUniqueId(), true));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> set(final EditorCommandContext commandContext) {
         return Commands.literal("set")
                 .then(Commands.literal("cost").then(key(KEY_ARGUMENT).then(Commands.argument("cost",
                         DoubleArgumentType.doubleArg(0.0D)).executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpCost(
-                                player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
-                                DoubleArgumentType.getDouble(context, "cost"))))))))
+                        player -> {
+                            commandContext.editorService().updateWarpCostAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, KEY_ARGUMENT),
+                                    DoubleArgumentType.getDouble(context, "cost"),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })))))
                 .then(Commands.literal("enabled").then(key(KEY_ARGUMENT).then(Commands.argument("enabled",
                         BoolArgumentType.bool()).executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpEnabled(
-                                player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
-                                BoolArgumentType.getBool(context, "enabled"))))))))
+                        player -> {
+                            commandContext.editorService().updateWarpEnabledAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, KEY_ARGUMENT),
+                                    BoolArgumentType.getBool(context, "enabled"),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })))))
                 .then(Commands.literal("permission").then(key(KEY_ARGUMENT).then(Commands.argument("required",
                         BoolArgumentType.bool()).executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().updateWarpPermission(
-                                player.getUniqueId(), StringArgumentType.getString(context, KEY_ARGUMENT),
-                                BoolArgumentType.getBool(context, "required"))))))));
+                        player -> {
+                            commandContext.editorService().updateWarpPermissionAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, KEY_ARGUMENT),
+                                    BoolArgumentType.getBool(context, "required"),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })))));
     }
 
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> key(

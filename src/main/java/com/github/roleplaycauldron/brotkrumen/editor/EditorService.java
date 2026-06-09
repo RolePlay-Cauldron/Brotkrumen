@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -174,6 +175,50 @@ public class EditorService {
     }
 
     /**
+     * Starts a graph creation session with the database name check performed asynchronously.
+     *
+     * @param playerId  player id
+     * @param graphName graph name
+     * @param settings  editor settings
+     * @param callback  result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void startGraphCreationAsync(final UUID playerId, final String graphName, final EditorSettings settings,
+                                        final Consumer<EditorResult> callback) {
+        final EditorResult validation = validateStart(playerId, graphName, settings);
+        if (!validation.success() || plugin == null) {
+            callback.accept(plugin == null ? startGraphCreation(playerId, graphName, settings) : validation);
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final boolean exists;
+            try {
+                exists = graphService.getGraphByName(graphName).isPresent();
+            } catch (final RuntimeException failure) {
+                log.error("The graph creation session could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load graph data, aborting editing")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (exists) {
+                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphAlreadyExists"));
+                    return;
+                }
+                callback.accept(startGraphCreationWithoutNameCheck(playerId, graphName, settings));
+            });
+        });
+    }
+
+    private EditorResult startGraphCreationWithoutNameCheck(final UUID playerId, final String graphName,
+                                                            final EditorSettings settings) {
+        final EditorSession session = EditorSession.create(new Graph(graphName), settings.normalized());
+        playerEditors.put(playerId, session);
+        registerVisualizer(playerId, session);
+        return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
+    }
+
+    /**
      * Renames the active graph in the session.
      *
      * @param playerId player id
@@ -196,6 +241,43 @@ public class EditorService {
 
         session.graph.setName(newName);
         return EditorResult.success("commands.bkeditor.status.graphRenamed", Map.of("graph", newName));
+    }
+
+    /**
+     * Renames the active graph with name collision lookup performed asynchronously.
+     *
+     * @param playerId player id
+     * @param newName  new name
+     * @param callback result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void renameActiveGraphAsync(final UUID playerId, final String newName,
+                                       final Consumer<EditorResult> callback) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null || plugin == null || newName == null || newName.isBlank()) {
+            callback.accept(renameActiveGraph(playerId, newName));
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Optional<Graph> existing;
+            try {
+                existing = graphService.getGraphByName(newName);
+            } catch (final RuntimeException failure) {
+                log.error("The graph rename could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load graph data, aborting rename")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (existing.isPresent() && existing.get().getGraphId() != session.graph.getGraphId()) {
+                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphAlreadyExists"));
+                    return;
+                }
+                session.graph.setName(newName);
+                callback.accept(EditorResult.success("commands.bkeditor.status.graphRenamed",
+                        Map.of("graph", newName)));
+            });
+        });
     }
 
     /**
@@ -222,6 +304,51 @@ public class EditorService {
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
         return EditorResult.success("commands.bkeditor.status.sessionStartedEdit", Map.of("graph", graphName));
+    }
+
+    /**
+     * Starts graph editing with graph and inter-graph data loaded asynchronously.
+     *
+     * @param playerId  player id
+     * @param graphName graph name
+     * @param settings  editor settings
+     * @param callback  result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void startGraphEditAsync(final UUID playerId, final String graphName, final EditorSettings settings,
+                                    final Consumer<EditorResult> callback) {
+        final EditorResult validation = validateStart(playerId, graphName, settings);
+        if (!validation.success() || plugin == null) {
+            callback.accept(plugin == null ? startGraphEdit(playerId, graphName, settings) : validation);
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Optional<Graph> graph;
+            final Set<InterGraphEdge> interGraphEdges;
+            try {
+                graph = graphService.getGraphByName(graphName);
+                interGraphEdges = graph.isPresent() && graphNetworkService != null
+                        ? graphNetworkService.loadInterGraphEdges(Set.of(graph.get().getGraphId()))
+                        : Set.of();
+            } catch (final RuntimeException failure) {
+                log.error("The graph editing session could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load graph data, aborting editing")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (graph.isEmpty()) {
+                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphNotFound"));
+                    return;
+                }
+                final EditorSession session = EditorSession.edit(graph.get(), settings.normalized());
+                loadSessionInterGraphEdges(session, interGraphEdges);
+                playerEditors.put(playerId, session);
+                registerVisualizer(playerId, session);
+                callback.accept(EditorResult.success("commands.bkeditor.status.sessionStartedEdit",
+                        Map.of("graph", graphName)));
+            });
+        });
     }
 
     private EditorResult validateStart(final UUID playerId, final String graphName, final EditorSettings settings) {
@@ -917,6 +1044,18 @@ public class EditorService {
     }
 
     /**
+     * Adds a reference graph with graph and edge data loaded asynchronously.
+     *
+     * @param playerId  player id
+     * @param graphName graph name
+     * @param callback  result callback on the main thread
+     */
+    public void addReferenceGraphAsync(final UUID playerId, final String graphName,
+                                       final Consumer<EditorResult> callback) {
+        referenceGraphAsync(playerId, graphName, callback, true);
+    }
+
+    /**
      * Removes a reference graph from the editor view.
      *
      * @param playerId  editor player id
@@ -943,6 +1082,98 @@ public class EditorService {
     }
 
     /**
+     * Removes a reference graph with graph and edge data loaded asynchronously.
+     *
+     * @param playerId  player id
+     * @param graphName graph name
+     * @param callback  result callback on the main thread
+     */
+    public void removeReferenceGraphAsync(final UUID playerId, final String graphName,
+                                          final Consumer<EditorResult> callback) {
+        referenceGraphAsync(playerId, graphName, callback, false);
+    }
+
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private void referenceGraphAsync(final UUID playerId, final String graphName,
+                                     final Consumer<EditorResult> callback,
+                                     final boolean add) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null || plugin == null) {
+            callback.accept(add ? addReferenceGraph(playerId, graphName) : removeReferenceGraph(playerId, graphName));
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Optional<Graph> graph;
+            try {
+                graph = graphService.getGraphByName(graphName);
+            } catch (final RuntimeException failure) {
+                log.error("The reference graph change could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load graph data, aborting view update")));
+                return;
+            }
+            if (graph.isEmpty()) {
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("commands.bkeditor.common.graphNotFound")));
+                return;
+            }
+            final Set<Integer> graphIds = referenceGraphIds(session, graph.get(), add);
+            final Collection<InterGraphEdge> edges = loadInterGraphEdges(graphIds);
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+                    callback.accept(applyReferenceGraphChange(playerId, session, graph.get(), edges, add)));
+        });
+    }
+
+    private Set<Integer> referenceGraphIds(final EditorSession session, final Graph graph, final boolean add) {
+        final Set<Integer> graphIds = visibleGraphs(session).stream()
+                .map(Graph::getGraphId)
+                .filter(id -> id >= 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (add && graph.getGraphId() >= 0) {
+            graphIds.add(graph.getGraphId());
+        } else if (!add) {
+            graphIds.remove(graph.getGraphId());
+        }
+        return graphIds;
+    }
+
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private Collection<InterGraphEdge> loadInterGraphEdges(final Set<Integer> graphIds) {
+        if (graphNetworkService == null || graphIds.isEmpty()) {
+            return Set.of();
+        }
+        try {
+            return graphNetworkService.loadInterGraphEdges(graphIds);
+        } catch (final RuntimeException failure) {
+            log.error("Inter-graph edges could not be loaded: " + failure.getMessage());
+            return Set.of();
+        }
+    }
+
+    private EditorResult applyReferenceGraphChange(final UUID playerId, final EditorSession session,
+                                                   final Graph graph, final Collection<InterGraphEdge> edges,
+                                                   final boolean add) {
+        if (add) {
+            if (graph.getGraphId() == session.graph.getGraphId()) {
+                return EditorResult.failure("The active graph is already visible.");
+            }
+            session.referenceGraphs.put(graph.getGraphId(), graph.copy());
+            loadSessionInterGraphEdges(session, edges);
+            session.workspaceVersion++;
+            refreshVisualizer(playerId);
+            return EditorResult.success("Added reference graph " + graph.getName() + " to the editor view.");
+        }
+        if (session.referenceGraphs.remove(graph.getGraphId()) == null) {
+            return EditorResult.failure("That graph is not visible in the editor view.");
+        }
+        loadSessionInterGraphEdges(session, edges);
+        clearSelection(playerId);
+        session.workspaceVersion++;
+        refreshVisualizer(playerId);
+        return EditorResult.success("Removed reference graph " + graph.getName() + " from the editor view.");
+    }
+
+    /**
      * Clears all reference graphs from the editor view.
      *
      * @param playerId editor player id
@@ -959,6 +1190,43 @@ public class EditorService {
         session.workspaceVersion++;
         refreshVisualizer(playerId);
         return EditorResult.success("Cleared reference graphs from the editor view.");
+    }
+
+    /**
+     * Clears all reference graphs after loading the remaining graph network edges asynchronously.
+     *
+     * @param playerId editor player id
+     * @param callback result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void clearReferenceGraphsAsync(final UUID playerId, final Consumer<EditorResult> callback) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null || plugin == null) {
+            callback.accept(clearReferenceGraphs(playerId));
+            return;
+        }
+        final Set<Integer> graphIds = session.graph.getGraphId() >= 0
+                ? Set.of(session.graph.getGraphId())
+                : Set.of();
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Collection<InterGraphEdge> edges;
+            try {
+                edges = graphNetworkService.loadInterGraphEdges(graphIds);
+            } catch (final RuntimeException failure) {
+                log.error("The reference graph clear operation could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load graph network data, aborting view clear")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                session.referenceGraphs.clear();
+                loadSessionInterGraphEdges(session, edges);
+                clearSelection(playerId);
+                session.workspaceVersion++;
+                refreshVisualizer(playerId);
+                callback.accept(EditorResult.success("Cleared reference graphs from the editor view."));
+            });
+        });
     }
 
     /**
@@ -1096,6 +1364,48 @@ public class EditorService {
      */
     public EditorResult deleteSelectedNode(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
+        final EditorResult validation = validateDeleteSelectedNode(session);
+        if (!validation.success()) {
+            return validation;
+        }
+        final UUID nodeId = session.selectedNode.graphId();
+        final Collection<Warp> persistedWarps = warpServiceInstance == null
+                ? Set.of()
+                : warpServiceInstance.getWarpsTargeting(nodeId);
+        return deleteSelectedNode(playerId, persistedWarps);
+    }
+
+    /**
+     * Deletes the selected node with persisted warp lookups performed asynchronously.
+     *
+     * @param playerId editor player id
+     * @param callback result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void deleteSelectedNodeAsync(final UUID playerId, final Consumer<EditorResult> callback) {
+        final EditorSession session = playerEditors.get(playerId);
+        final EditorResult validation = validateDeleteSelectedNode(session);
+        if (!validation.success() || plugin == null || warpServiceInstance == null) {
+            callback.accept(deleteSelectedNode(playerId));
+            return;
+        }
+        final UUID nodeId = session.selectedNode.graphId();
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Set<Warp> persistedWarps;
+            try {
+                persistedWarps = warpServiceInstance.getWarpsTargeting(nodeId);
+            } catch (final RuntimeException failure) {
+                log.error("Persisted warps for node deletion could not be loaded: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load warp data, aborting deletion")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+                    callback.accept(deleteSelectedNode(playerId, persistedWarps)));
+        });
+    }
+
+    private EditorResult validateDeleteSelectedNode(final EditorSession session) {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
@@ -1105,12 +1415,19 @@ public class EditorService {
         if (session.selectedNodeRef.graphDbId() != session.graph.getGraphId()) {
             return EditorResult.failure("Only active graph nodes can be deleted.");
         }
+        return EditorResult.success("");
+    }
+
+    private EditorResult deleteSelectedNode(final UUID playerId, final Collection<Warp> persistedWarps) {
+        final EditorSession session = playerEditors.get(playerId);
+        final EditorResult validation = validateDeleteSelectedNode(session);
+        if (!validation.success()) {
+            return validation;
+        }
         final UUID nodeId = session.selectedNode.graphId();
         session.graph.removeNode(session.selectedNode);
         session.pendingWarps.values().removeIf(warp -> warp.targetNodeId().equals(nodeId));
-        if (warpServiceInstance != null) {
-            warpServiceInstance.getWarpsTargeting(nodeId).forEach(warp -> session.pendingDeletions.add(warp.key()));
-        }
+        persistedWarps.forEach(warp -> session.pendingDeletions.add(warp.key()));
         session.selectedNode = null;
         session.selectedNodeRef = null;
         session.selectedEdge = null;
@@ -1333,6 +1650,24 @@ public class EditorService {
     }
 
     /**
+     * Changes the route cost of a persisted warp with database lookup performed asynchronously.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param cost     new cost
+     * @param callback result callback on the main thread
+     */
+    public void updateWarpCostAsync(final UUID playerId, final String key, final double cost,
+                                    final Consumer<EditorResult> callback) {
+        if (cost < MIN_WARP_COST) {
+            callback.accept(EditorResult.failure("Warp cost must not be negative."));
+            return;
+        }
+        updateWarpAsync(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), cost, warp.enabled(),
+                warp.needPermission()), "cost", callback);
+    }
+
+    /**
      * Changes the enabled state of a persisted warp.
      *
      * @param playerId editor player id
@@ -1346,6 +1681,20 @@ public class EditorService {
     }
 
     /**
+     * Changes the enabled state of a persisted warp with database lookup performed asynchronously.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param enabled  new enabled state
+     * @param callback result callback on the main thread
+     */
+    public void updateWarpEnabledAsync(final UUID playerId, final String key, final boolean enabled,
+                                       final Consumer<EditorResult> callback) {
+        updateWarpAsync(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), warp.cost(), enabled,
+                warp.needPermission()), "enabled state", callback);
+    }
+
+    /**
      * Changes the permission requirement of a persisted warp.
      *
      * @param playerId       editor player id
@@ -1356,6 +1705,20 @@ public class EditorService {
     public EditorResult updateWarpPermission(final UUID playerId, final String key, final boolean needPermission) {
         return updateWarp(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), warp.cost(),
                 warp.enabled(), needPermission), "permission requirement");
+    }
+
+    /**
+     * Changes the permission requirement of a persisted warp with database lookup performed asynchronously.
+     *
+     * @param playerId       editor player id
+     * @param key            warp key
+     * @param needPermission new permission state
+     * @param callback       result callback on the main thread
+     */
+    public void updateWarpPermissionAsync(final UUID playerId, final String key, final boolean needPermission,
+                                          final Consumer<EditorResult> callback) {
+        updateWarpAsync(playerId, key, warp -> new Warp(warp.key(), warp.targetNodeId(), warp.cost(),
+                warp.enabled(), needPermission), "permission requirement", callback);
     }
 
     private EditorResult updateWarp(final UUID playerId, final String key,
@@ -1375,6 +1738,38 @@ public class EditorService {
         }
         session.pendingWarps.put(key, change.apply(warp));
         return EditorResult.success("Updated warp " + key + " " + property + ".");
+    }
+
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private void updateWarpAsync(final UUID playerId, final String key,
+                                 final java.util.function.UnaryOperator<Warp> change, final String property,
+                                 final Consumer<EditorResult> callback) {
+        final EditorResult check = validateWarpOperation(playerId, key);
+        final EditorSession session = playerEditors.get(playerId);
+        if (!check.success() || plugin == null || session == null
+                || session.pendingWarps.containsKey(key) || session.pendingDeletions.contains(key)) {
+            callback.accept(updateWarp(playerId, key, change, property));
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Optional<Warp> warp;
+            try {
+                warp = warpServiceInstance.getWarp(key);
+            } catch (final RuntimeException failure) {
+                log.error("The warp update could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load warp data, aborting update")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (warp.isEmpty()) {
+                    callback.accept(EditorResult.failure("No warp with that key exists."));
+                    return;
+                }
+                session.pendingWarps.put(key, change.apply(warp.get()));
+                callback.accept(EditorResult.success("Updated warp " + key + " " + property + "."));
+            });
+        });
     }
 
     /**
@@ -1407,8 +1802,71 @@ public class EditorService {
         return EditorResult.success("Removed warp " + key + ".");
     }
 
+    /**
+     * Removes a warp with database lookup performed asynchronously.
+     *
+     * @param playerId editor player id
+     * @param key      warp key
+     * @param callback result callback on the main thread
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void removeWarpAsync(final UUID playerId, final String key, final Consumer<EditorResult> callback) {
+        final EditorResult check = validateWarpOperation(playerId, key);
+        final EditorSession session = playerEditors.get(playerId);
+        if (!check.success() || plugin == null || session == null
+                || session.pendingWarps.containsKey(key) || session.pendingDeletions.contains(key)) {
+            callback.accept(removeWarp(playerId, key));
+            return;
+        }
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            final Optional<Warp> warp;
+            final Collection<Warp> targeting;
+            try {
+                warp = warpServiceInstance.getWarp(key);
+                targeting = warp.map(value -> warpServiceInstance.getWarpsTargeting(value.targetNodeId()))
+                        .orElseGet(Set::of);
+            } catch (final RuntimeException failure) {
+                log.error("The warp removal could not be prepared: " + failure.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () ->
+                        callback.accept(EditorResult.failure("Failed to load warp data, aborting removal")));
+                return;
+            }
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+                    callback.accept(removeWarp(playerId, key, warp.orElse(null), targeting)));
+        });
+    }
+
+    private EditorResult removeWarp(final UUID playerId, final String key, final Warp persistedWarp,
+                                    final Collection<Warp> persistedTargeting) {
+        final EditorResult check = validateWarpOperation(playerId, key);
+        if (!check.success()) {
+            return check;
+        }
+        final EditorSession session = playerEditors.get(playerId);
+        Warp warp = session.pendingWarps.remove(key);
+        if (warp == null && !session.pendingDeletions.contains(key)) {
+            warp = persistedWarp;
+        }
+
+        if (warp == null) {
+            return EditorResult.failure("No warp with that key exists.");
+        }
+
+        session.pendingDeletions.add(key);
+        if (warpsTargeting(session, warp.targetNodeId(), persistedTargeting).isEmpty()) {
+            clearWarpFlag(session, warp.targetNodeId());
+            refreshVisualizer(playerId);
+        }
+        return EditorResult.success("Removed warp " + key + ".");
+    }
+
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
-        final Set<Warp> warps = new LinkedHashSet<>(warpServiceInstance.getWarpsTargeting(targetNodeId));
+        return warpsTargeting(session, targetNodeId, warpServiceInstance.getWarpsTargeting(targetNodeId));
+    }
+
+    private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId,
+                                            final Collection<Warp> persistedWarps) {
+        final Set<Warp> warps = new LinkedHashSet<>(persistedWarps);
         warps.removeIf(warp -> session.pendingDeletions.contains(warp.key()));
         warps.addAll(session.pendingWarps.values().stream()
                 .filter(warp -> warp.targetNodeId().equals(targetNodeId))
@@ -1490,6 +1948,10 @@ public class EditorService {
     }
 
     private void loadSessionInterGraphEdges(final EditorSession session) {
+        loadSessionInterGraphEdges(session, null);
+    }
+
+    private void loadSessionInterGraphEdges(final EditorSession session, final Collection<InterGraphEdge> loadedEdges) {
         session.workspaceNetwork = new GraphNetwork();
         addPersistedGraph(session.workspaceNetwork, session.graph);
         session.referenceGraphs.values().forEach(graph -> addPersistedGraph(session.workspaceNetwork, graph));
@@ -1500,7 +1962,10 @@ public class EditorService {
                 .map(Graph::getGraphId)
                 .filter(id -> id >= 0)
                 .collect(Collectors.toSet());
-        graphNetworkService.loadInterGraphEdges(graphIds).stream()
+        final Collection<InterGraphEdge> edges = loadedEdges == null
+                ? graphNetworkService.loadInterGraphEdges(graphIds)
+                : loadedEdges;
+        edges.stream()
                 .filter(edge -> graphIds.contains(edge.source().graphDbId()) && graphIds.contains(edge.target().graphDbId()))
                 .forEach(session.workspaceNetwork::addInterGraphEdge);
     }

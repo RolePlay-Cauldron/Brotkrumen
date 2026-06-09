@@ -1,7 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
-import com.github.roleplaycauldron.brotkrumen.storage.StorageException;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -11,6 +10,7 @@ import io.papermc.paper.command.brigadier.Commands;
 /**
  * `/bk reload` command.
  */
+@SuppressWarnings("PMD.AvoidCatchingGenericException")
 public final class BkReloadSubcommand {
 
     private final BkCommandContext commandContext;
@@ -49,9 +49,9 @@ public final class BkReloadSubcommand {
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
                         context.getSource().getSender().sendMessage(
                                 localization.getPrefixedMessage("commands.bk.reload.success")));
-            } catch (final StorageException | IllegalArgumentException ex) {
+            } catch (final RuntimeException failure) {
                 commandContext.loggerFactory().create(BkReloadSubcommand.class)
-                        .error("Reload failed: " + ex.getMessage());
+                        .error("Reload failed: " + failure.getMessage());
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
                         context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
                                 "<#F43F5E>Reload failed. Check the console for details.")));

@@ -12,6 +12,7 @@ import java.util.Map;
 /**
  * `/bk list` command.
  */
+@SuppressWarnings("PMD.AvoidCatchingGenericException")
 public final class BkListSubcommands {
 
     private final BkCommandContext commandContext;
@@ -42,7 +43,19 @@ public final class BkListSubcommands {
     }
 
     private int listGraphs(final CommandContext<CommandSourceStack> context) {
-        final String entries = BkOutputFormatter.graphs(commandContext.graphService().getAllGraphs());
+        commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
+            try {
+                final String entries = BkOutputFormatter.graphs(commandContext.graphService().getAllGraphs());
+                commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
+                        sendGraphList(context, entries));
+            } catch (final RuntimeException failure) {
+                listFailed(context, failure);
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void sendGraphList(final CommandContext<CommandSourceStack> context, final String entries) {
         if (entries.isBlank()) {
             context.getSource().getSender().sendMessage(
                     localization.getPrefixedMessage("commands.bk.list.graph.empty"));
@@ -50,11 +63,22 @@ public final class BkListSubcommands {
             context.getSource().getSender().sendMessage(
                     localization.getPrefixedMessage("commands.bk.list.graph.entries", Map.of("entries", entries)));
         }
-        return Command.SINGLE_SUCCESS;
     }
 
     private int listNetworks(final CommandContext<CommandSourceStack> context) {
-        final String entries = BkOutputFormatter.networks(commandContext.graphNetworkService().loadGraphNetworks());
+        commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
+            try {
+                final String entries = BkOutputFormatter.networks(commandContext.graphNetworkService().loadGraphNetworks());
+                commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
+                        sendNetworkList(context, entries));
+            } catch (final RuntimeException failure) {
+                listFailed(context, failure);
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void sendNetworkList(final CommandContext<CommandSourceStack> context, final String entries) {
         if (entries.isBlank()) {
             context.getSource().getSender().sendMessage(
                     localization.getPrefixedMessage("commands.bk.list.network.empty"));
@@ -62,6 +86,13 @@ public final class BkListSubcommands {
             context.getSource().getSender().sendMessage(
                     localization.getPrefixedMessage("commands.bk.list.network.entries", Map.of("entries", entries)));
         }
-        return Command.SINGLE_SUCCESS;
+    }
+
+    private void listFailed(final CommandContext<CommandSourceStack> context, final RuntimeException failure) {
+        commandContext.loggerFactory().create(BkListSubcommands.class)
+                .error("List command failed: " + failure.getMessage());
+        commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
+                context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
+                        "<#F43F5E>List failed. Check the console for details.")));
     }
 }

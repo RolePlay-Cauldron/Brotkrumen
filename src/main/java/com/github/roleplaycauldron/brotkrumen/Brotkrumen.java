@@ -5,8 +5,16 @@ import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
 import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
+import com.github.roleplaycauldron.brotkrumen.graph.search.PathSearchServiceImpl;
+import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistryImpl;
+import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
+import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
+import com.github.roleplaycauldron.brotkrumen.storage.service.AsyncGraphNetworkService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.AsyncGraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.service.AsyncWarpService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
@@ -25,10 +33,15 @@ import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Starting point of the plugin.
  */
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods", "PMD.DoNotUseThreads"})
 public class Brotkrumen extends JavaPlugin implements Listener {
 
     /**
@@ -72,6 +85,21 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private Metrics metrics;
 
     /**
+     * Executor for database-backed public API work.
+     */
+    private ExecutorService databaseExecutor;
+
+    /**
+     * Executor for public path search work.
+     */
+    private ExecutorService searchExecutor;
+
+    /**
+     * Public API facade provider.
+     */
+    private BrotkrumenApiProvider apiProvider;
+
+    /**
      * Default constructor.
      */
     public Brotkrumen() {
@@ -99,6 +127,9 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage = new Storage(loggerFactory, databaseSection, getDataFolder());
         storage.initialize();
 
+        databaseExecutor = Executors.newFixedThreadPool(2, namedThreadFactory("brotkrumen-db"));
+        searchExecutor = Executors.newFixedThreadPool(2, namedThreadFactory("brotkrumen-search"));
+
         graphService = new GraphServiceImpl(storage);
         graphNetworkService = new GraphNetworkServiceImpl(storage, graphService);
         final WarpServiceImpl warpService = new WarpServiceImpl(storage);
@@ -110,6 +141,20 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
         this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
         reg.startVisibilityUpdates();
+
+        final AsyncGraphService asyncGraphService = new AsyncGraphService(graphService, databaseExecutor);
+        final AsyncGraphNetworkService asyncGraphNetworkService =
+                new AsyncGraphNetworkService(graphNetworkService, databaseExecutor);
+        final AsyncWarpService asyncWarpService = new AsyncWarpService(warpService, databaseExecutor);
+        final SearchRegistryImpl searchRegistry = new SearchRegistryImpl();
+        searchRegistry.register(new AStarAlgorithm());
+        searchRegistry.register(new DijkstraAlgorithm());
+        final PathSearchServiceImpl pathSearchService = new PathSearchServiceImpl(new PathFinder(searchRegistry),
+                searchExecutor);
+        apiProvider = new BrotkrumenApiProvider(asyncGraphService, asyncGraphNetworkService, asyncWarpService,
+                pathSearchService, searchRegistry, reg);
+        registerPublicApiServices(servicesManager, asyncGraphService, asyncGraphNetworkService, asyncWarpService,
+                pathSearchService, searchRegistry);
 
         final EffectExecutor executor = new EffectExecutor(this);
         final EditorService editorService = new EditorService(reg, this, loggerFactory, executor, graphService,
@@ -125,6 +170,8 @@ public class Brotkrumen extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        getServer().getServicesManager().unregisterAll(this);
+
         if (reg != null) {
             reg.stopVisibilityUpdates();
         }
@@ -133,7 +180,50 @@ public class Brotkrumen extends JavaPlugin implements Listener {
             storage.shutdown();
         }
 
-        metrics.shutdown();
+        if (metrics != null) {
+            metrics.shutdown();
+        }
+        shutdownExecutors();
+    }
+
+    private void registerPublicApiServices(final ServicesManager servicesManager,
+                                           final AsyncGraphService asyncGraphService,
+                                           final AsyncGraphNetworkService asyncGraphNetworkService,
+                                           final AsyncWarpService asyncWarpService,
+                                           final PathSearchServiceImpl pathSearchService,
+                                           final SearchRegistryImpl searchRegistry) {
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.BrotkrumenApi.class, apiProvider,
+                this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.GraphService.class,
+                asyncGraphService, this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.GraphNetworkService.class,
+                asyncGraphNetworkService, this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.WarpService.class,
+                asyncWarpService, this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.graph.search.PathSearchService.class,
+                pathSearchService, this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry.class,
+                searchRegistry, this, ServicePriority.Normal);
+        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService.class,
+                reg, this, ServicePriority.Normal);
+    }
+
+    private void shutdownExecutors() {
+        if (databaseExecutor != null) {
+            databaseExecutor.shutdownNow();
+        }
+        if (searchExecutor != null) {
+            searchExecutor.shutdownNow();
+        }
+    }
+
+    private ThreadFactory namedThreadFactory(final String prefix) {
+        final AtomicInteger counter = new AtomicInteger();
+        return runnable -> {
+            final Thread thread = new Thread(runnable, prefix + "-" + counter.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
     }
 
     private void loadLocalization(final LoggerFactory loggerFactory) {
