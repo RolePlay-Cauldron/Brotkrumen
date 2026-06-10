@@ -1,5 +1,12 @@
 package com.github.roleplaycauldron.brotkrumen;
 
+import com.github.roleplaycauldron.brotkrumen.api.BrotkrumenApi;
+import com.github.roleplaycauldron.brotkrumen.api.graph.search.PathSearchService;
+import com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry;
+import com.github.roleplaycauldron.brotkrumen.api.service.GraphNetworkService;
+import com.github.roleplaycauldron.brotkrumen.api.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.api.service.WarpService;
+import com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommand;
 import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
@@ -21,25 +28,21 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepositoryI
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
+import com.github.roleplaycauldron.spellbook.core.scheduler.SimplePaperScheduler;
+import com.github.roleplaycauldron.spellbook.core.scheduler.SimpleScheduler;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Starting point of the plugin.
  */
-@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods", "PMD.DoNotUseThreads"})
-public class Brotkrumen extends JavaPlugin implements Listener {
+public class Brotkrumen extends JavaPlugin {
 
     /**
      * The logger factory for creating loggers.
@@ -82,16 +85,6 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     private Metrics metrics;
 
     /**
-     * Executor for database-backed public API work.
-     */
-    private ExecutorService databaseExecutor;
-
-    /**
-     * Executor for public path search work.
-     */
-    private ExecutorService searchExecutor;
-
-    /**
      * Public API facade provider.
      */
     private BrotkrumenApiProvider apiProvider;
@@ -124,8 +117,7 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         storage = new Storage(loggerFactory, databaseSection, getDataFolder());
         storage.initialize();
 
-        databaseExecutor = Executors.newFixedThreadPool(2, namedThreadFactory("brotkrumen-db"));
-        searchExecutor = Executors.newFixedThreadPool(2, namedThreadFactory("brotkrumen-search"));
+        final SimpleScheduler scheduler = new SimplePaperScheduler(this, getServer().getScheduler());
 
         graphRepository = new GraphRepositoryImpl(storage);
         graphNetworkRepository = new GraphNetworkRepositoryImpl(storage, graphRepository);
@@ -136,15 +128,15 @@ public class Brotkrumen extends JavaPlugin implements Listener {
         this.reg = new VisualizerRegistry(this, loggerFactory.create(VisualizerRegistry.class));
         reg.startVisibilityUpdates();
 
-        final AsyncGraphService asyncGraphService = new AsyncGraphService(graphRepository, databaseExecutor);
+        final AsyncGraphService asyncGraphService = new AsyncGraphService(graphRepository, scheduler);
         final AsyncGraphNetworkService asyncGraphNetworkService =
-                new AsyncGraphNetworkService(graphNetworkRepository, databaseExecutor);
-        final AsyncWarpService asyncWarpService = new AsyncWarpService(warpRepository, databaseExecutor);
+                new AsyncGraphNetworkService(graphNetworkRepository, scheduler);
+        final AsyncWarpService asyncWarpService = new AsyncWarpService(warpRepository, scheduler);
         final SearchRegistryImpl searchRegistry = new SearchRegistryImpl();
         searchRegistry.register(new AStarAlgorithm());
         searchRegistry.register(new DijkstraAlgorithm());
         final PathSearchServiceImpl pathSearchService = new PathSearchServiceImpl(new PathFinder(searchRegistry),
-                searchExecutor);
+                scheduler);
         apiProvider = new BrotkrumenApiProvider(asyncGraphService, asyncGraphNetworkService, asyncWarpService,
                 pathSearchService, searchRegistry, reg);
         registerPublicApiServices(servicesManager, asyncGraphService, asyncGraphNetworkService, asyncWarpService,
@@ -165,19 +157,15 @@ public class Brotkrumen extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         getServer().getServicesManager().unregisterAll(this);
-
         if (reg != null) {
             reg.stopVisibilityUpdates();
         }
-
         if (storage != null) {
             storage.shutdown();
         }
-
         if (metrics != null) {
             metrics.shutdown();
         }
-        shutdownExecutors();
     }
 
     private void registerPublicApiServices(final ServicesManager servicesManager,
@@ -186,38 +174,20 @@ public class Brotkrumen extends JavaPlugin implements Listener {
                                            final AsyncWarpService asyncWarpService,
                                            final PathSearchServiceImpl pathSearchService,
                                            final SearchRegistryImpl searchRegistry) {
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.BrotkrumenApi.class, apiProvider,
+        servicesManager.register(BrotkrumenApi.class, apiProvider,
                 this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.GraphService.class,
+        servicesManager.register(GraphService.class,
                 asyncGraphService, this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.GraphNetworkService.class,
+        servicesManager.register(GraphNetworkService.class,
                 asyncGraphNetworkService, this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.service.WarpService.class,
+        servicesManager.register(WarpService.class,
                 asyncWarpService, this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.graph.search.PathSearchService.class,
+        servicesManager.register(PathSearchService.class,
                 pathSearchService, this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry.class,
+        servicesManager.register(SearchRegistry.class,
                 searchRegistry, this, ServicePriority.Normal);
-        servicesManager.register(com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService.class,
+        servicesManager.register(VisualizerService.class,
                 reg, this, ServicePriority.Normal);
-    }
-
-    private void shutdownExecutors() {
-        if (databaseExecutor != null) {
-            databaseExecutor.shutdownNow();
-        }
-        if (searchExecutor != null) {
-            searchExecutor.shutdownNow();
-        }
-    }
-
-    private ThreadFactory namedThreadFactory(final String prefix) {
-        final AtomicInteger counter = new AtomicInteger();
-        return runnable -> {
-            final Thread thread = new Thread(runnable, prefix + "-" + counter.incrementAndGet());
-            thread.setDaemon(true);
-            return thread;
-        };
     }
 
     private void loadLocalization(final LoggerFactory loggerFactory) {

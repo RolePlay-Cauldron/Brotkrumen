@@ -1,60 +1,61 @@
 package com.github.roleplaycauldron.brotkrumen.service;
 
+import com.github.roleplaycauldron.brotkrumen.api.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
+import com.github.roleplaycauldron.spellbook.core.scheduler.SimpleScheduler;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 /**
  * Executor-backed public async graph service adapter.
  */
-public class AsyncGraphService implements com.github.roleplaycauldron.brotkrumen.api.service.GraphService {
+public class AsyncGraphService implements GraphService {
 
     private final GraphRepository delegate;
 
-    private final Executor executor;
+    private final SimpleScheduler scheduler;
 
     /**
      * Creates an async graph service adapter.
      *
-     * @param delegate synchronous delegate
-     * @param executor database executor
+     * @param delegate  synchronous delegate
+     * @param scheduler scheduler
      */
-    public AsyncGraphService(final GraphRepository delegate, final Executor executor) {
+    public AsyncGraphService(final GraphRepository delegate, final SimpleScheduler scheduler) {
         this.delegate = delegate;
-        this.executor = executor;
+        this.scheduler = scheduler;
     }
 
     @Override
     public CompletableFuture<Optional<Graph>> graphById(final int graphId) {
-        return CompletableFuture.supplyAsync(() -> delegate.getGraphById(graphId), executor);
+        return scheduler.runTaskAsync(() -> delegate.getGraphById(graphId));
     }
 
     @Override
     public CompletableFuture<Optional<Graph>> graphByName(final String name) {
-        return CompletableFuture.supplyAsync(() -> delegate.getGraphByName(name), executor);
+        return scheduler.runTaskAsync(() -> delegate.getGraphByName(name));
     }
 
     @Override
     public CompletableFuture<Set<Graph>> allGraphs() {
-        return CompletableFuture.supplyAsync(delegate::getAllGraphs, executor);
+        return scheduler.runTaskAsync(delegate::getAllGraphs);
     }
 
     @Override
     public CompletableFuture<Void> saveGraph(final Graph graph) {
-        return CompletableFuture.runAsync(() -> delegate.saveGraph(graph), executor);
+        return scheduler.runTaskAsync(() -> delegate.saveGraph(graph));
     }
 
     @Override
     public CompletableFuture<Void> deleteGraph(final int graphId) {
-        return CompletableFuture.runAsync(() -> delegate.deleteGraph(graphId), executor);
+        return scheduler.runTaskAsync(() -> delegate.deleteGraph(graphId));
     }
 
     @Override
     public CompletableFuture<Void> reloadGraphs() {
-        return CompletableFuture.runAsync(delegate::reloadGraphs, executor);
+        return scheduler.runTaskAsync(delegate::reloadGraphs);
     }
 }

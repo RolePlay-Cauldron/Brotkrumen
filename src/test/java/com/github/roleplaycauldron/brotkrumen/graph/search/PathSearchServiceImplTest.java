@@ -4,18 +4,18 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
+import com.github.roleplaycauldron.brotkrumen.util.DirectSimpleScheduler;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PathSearchServiceImplTest {
 
-    private final Executor directExecutor = Runnable::run;
+    private final DirectSimpleScheduler scheduler = new DirectSimpleScheduler();
 
     @Test
     void graphPathSearchCompletesThroughFuture() {
@@ -28,7 +28,7 @@ class PathSearchServiceImplTest {
         final TeleportRules rules = TeleportRules.disableTeleports();
         final PathResult expected = new PathResult(List.of(new NodeRef(3, start), new NodeRef(3, goal)), List.of());
         when(pathFinder.findPathResult(graph, start, goal, null, rules)).thenReturn(expected);
-        final PathSearchServiceImpl service = new PathSearchServiceImpl(pathFinder, directExecutor);
+        final PathSearchServiceImpl service = new PathSearchServiceImpl(pathFinder, scheduler);
 
         assertEquals(expected, service.findPath(graph, start, goal, null, rules).join(),
                 "Future should expose path result");
