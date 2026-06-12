@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.graph.search;
 
+import com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
@@ -11,14 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Test class for the {@link SearchRegistry}.
+ * Test class for the {@link SearchRegistryImpl}.
  */
 class SearchRegistryTest {
     private final UUID uuidOne = UUID.fromString("5e60eed2-3f0f-4695-9f86-5fe54006e44e");
 
     @Test
     void testSelectsFirstSuitableAlgorithm() {
-        final SearchRegistry registry = new SearchRegistry();
+        final SearchRegistry registry = new SearchRegistryImpl();
 
         final PathAlgorithm algo1 = mock(PathAlgorithm.class);
         final PathAlgorithm algo2 = mock(PathAlgorithm.class);
@@ -40,7 +41,7 @@ class SearchRegistryTest {
 
     @Test
     void testUnregisterRemovesAlgorithm() {
-        final SearchRegistry registry = new SearchRegistry();
+        final SearchRegistry registry = new SearchRegistryImpl();
         final PathAlgorithm algo = mock(PathAlgorithm.class);
 
         registry.register(algo);

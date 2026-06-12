@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
@@ -21,16 +21,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of the {@code GraphNetworkService} interface.
+ * Implementation of the {@code GraphNetworkRepository} interface.
  */
 @SuppressWarnings("PMD.TooManyMethods")
-public class GraphNetworkServiceImpl implements GraphNetworkService {
+public class GraphNetworkRepositoryImpl implements GraphNetworkRepository {
 
     private static final int MINIMUM_NETWORK_GRAPH_COUNT = 2;
 
     private final Storage storage;
 
-    private final GraphService graphService;
+    private final GraphRepository graphRepository;
 
     private final InterGraphEdgeTable interGraphEdgeTable;
 
@@ -41,26 +41,26 @@ public class GraphNetworkServiceImpl implements GraphNetworkService {
     private boolean cacheLoaded;
 
     /**
-     * Constructs a new instance of {@link GraphNetworkServiceImpl}.
+     * Constructs a new instance of {@link GraphNetworkRepositoryImpl}.
      *
-     * @param storage      the storage implementation
-     * @param graphService the graph service to load individual graphs
+     * @param storage         the storage implementation
+     * @param graphRepository the graph repository to load individual graphs
      */
-    public GraphNetworkServiceImpl(final Storage storage, final GraphService graphService) {
-        this(storage, graphService, new InterGraphEdgeTable(storage.getTablePrefix() + "_inter_graph_edge"));
+    public GraphNetworkRepositoryImpl(final Storage storage, final GraphRepository graphRepository) {
+        this(storage, graphRepository, new InterGraphEdgeTable(storage.getTablePrefix() + "_inter_graph_edge"));
     }
 
     /**
-     * Constructs a new instance of {@link GraphNetworkServiceImpl} with a specific table.
+     * Constructs a new instance of {@link GraphNetworkRepositoryImpl} with a specific table.
      *
      * @param storage             the storage implementation
-     * @param graphService        the graph service to load individual graphs
+     * @param graphRepository     the graph repository to load individual graphs
      * @param interGraphEdgeTable the table for inter-graph edges
      */
-    public GraphNetworkServiceImpl(final Storage storage, final GraphService graphService,
-                                   final InterGraphEdgeTable interGraphEdgeTable) {
+    public GraphNetworkRepositoryImpl(final Storage storage, final GraphRepository graphRepository,
+                                      final InterGraphEdgeTable interGraphEdgeTable) {
         this.storage = storage;
-        this.graphService = graphService;
+        this.graphRepository = graphRepository;
         this.interGraphEdgeTable = interGraphEdgeTable;
         this.cachedNetworks = new ArrayList<>();
         this.cacheLock = new ReentrantLock();
@@ -285,7 +285,7 @@ public class GraphNetworkServiceImpl implements GraphNetworkService {
     }
 
     private List<GraphNetwork> loadGraphNetworksFromDatabase() {
-        final Set<Graph> graphs = graphService.getAllGraphs();
+        final Set<Graph> graphs = graphRepository.getAllGraphs();
         final Set<InterGraphEdge> edges = interGraphEdgeTable.getAllEdges(storage.getProvider());
 
         final Map<Integer, Graph> graphById = graphs.stream()

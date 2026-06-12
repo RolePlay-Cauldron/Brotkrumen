@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * CRUD and managed read boundary for persisted warps.
  */
-public interface WarpService {
+public interface WarpRepository {
 
     /**
      * Reads a warp by key.

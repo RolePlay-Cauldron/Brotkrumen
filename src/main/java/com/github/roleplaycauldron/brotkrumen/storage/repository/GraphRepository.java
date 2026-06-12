@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 
@@ -10,7 +10,7 @@ import java.util.Set;
  * facilitates CRUD operations on graphs, including loading graphs by ID or name,
  * retrieving all stored graphs, saving new graphs, and deleting existing ones.
  */
-public interface GraphService {
+public interface GraphRepository {
 
     /**
      * Loads a graph with the specified ID.

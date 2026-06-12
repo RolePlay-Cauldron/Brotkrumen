@@ -8,6 +8,8 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import java.util.UUID;
+
 import static org.mockito.Mockito.*;
 
 class VisualizerRegistryTest {
@@ -44,6 +46,19 @@ class VisualizerRegistryTest {
             verify(scheduler, times(2)).scheduleSyncRepeatingTask(any(), any(Runnable.class), anyLong(), anyLong());
             verify(scheduler).cancelTask(42);
         }
+    }
+
+    @Test
+    void showAndHideMapToSynchronousLifecycle() {
+        final Visualizer visualizer = mock(Visualizer.class);
+        final VisualizerRegistry registry = registry();
+        final UUID viewerId = UUID.randomUUID();
+
+        registry.show(viewerId, visualizer);
+        registry.hide(viewerId);
+
+        verify(visualizer).visibilityUpdate();
+        verify(visualizer).shutdown();
     }
 
     private VisualizerRegistry registry() {

@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.graph.search;
 
+import com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;

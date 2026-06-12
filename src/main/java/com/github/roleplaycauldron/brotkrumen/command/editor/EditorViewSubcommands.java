@@ -26,29 +26,31 @@ public final class EditorViewSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> view(final EditorCommandContext commandContext) {
         return Commands.literal("view")
                 .then(Commands.literal("add").then(graphArgument(commandContext)
-                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                                commandContext.editorService().addReferenceGraph(player.getUniqueId(),
-                                        StringArgumentType.getString(context, GRAPH_ARGUMENT)))))))
+                        .executes(context -> withPlayer(commandContext, context, player -> {
+                            commandContext.editorService().addReferenceGraphAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, GRAPH_ARGUMENT),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        }))))
                 .then(Commands.literal("remove").then(graphArgument(commandContext)
-                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                                commandContext.editorService().removeReferenceGraph(player.getUniqueId(),
-                                        StringArgumentType.getString(context, GRAPH_ARGUMENT)))))))
+                        .executes(context -> withPlayer(commandContext, context, player -> {
+                            commandContext.editorService().removeReferenceGraphAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, GRAPH_ARGUMENT),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        }))))
                 .then(Commands.literal("clear").executes(context -> withPlayer(commandContext, context,
-                        player -> EditorCommandFeedback.send(commandContext, player, commandContext.editorService().clearReferenceGraphs(
-                                player.getUniqueId())))));
+                        player -> {
+                            commandContext.editorService().clearReferenceGraphsAsync(player.getUniqueId(),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })));
     }
 
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> graphArgument(
             final EditorCommandContext commandContext) {
         return Commands.argument(GRAPH_ARGUMENT, StringArgumentType.word())
-                .suggests((context, builder) -> {
-                    final String remaining = builder.getRemainingLowerCase();
-                    commandContext.graphService().getAllGraphs().stream()
-                            .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
-                            .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
-                            .forEach(builder::suggest);
-                    return builder.buildFuture();
-                });
+                .suggests((context, builder) -> commandContext.suggestGraphNames(builder));
     }
 
     private static int withPlayer(final EditorCommandContext commandContext,

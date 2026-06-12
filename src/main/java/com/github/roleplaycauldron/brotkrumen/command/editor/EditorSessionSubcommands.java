@@ -37,13 +37,7 @@ public final class EditorSessionSubcommands {
         return Commands.literal("edit")
                 .then(Commands.argument("graphName", StringArgumentType.word())
                         .suggests((context, builder) -> {
-                            final String remaining = builder.getRemainingLowerCase();
-                            commandContext.graphService().getAllGraphs()
-                                    .stream()
-                                    .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
-                                    .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
-                                    .forEach(builder::suggest);
-                            return builder.buildFuture();
+                            return commandContext.suggestGraphNames(builder);
                         })
                         .executes(context -> editGraph(commandContext, context)));
     }
@@ -57,9 +51,12 @@ public final class EditorSessionSubcommands {
     public static LiteralArgumentBuilder<CommandSourceStack> rename(final EditorCommandContext commandContext) {
         return Commands.literal("rename")
                 .then(Commands.argument("newName", StringArgumentType.word())
-                        .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                                commandContext.editorService().renameActiveGraph(player.getUniqueId(),
-                                        StringArgumentType.getString(context, "newName"))))));
+                        .executes(context -> withPlayer(commandContext, context, player -> {
+                            commandContext.editorService().renameActiveGraphAsync(player.getUniqueId(),
+                                    StringArgumentType.getString(context, "newName"),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                        })));
     }
 
     /**
@@ -88,16 +85,22 @@ public final class EditorSessionSubcommands {
 
     private static int createGraph(final EditorCommandContext commandContext,
                                    final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                commandContext.editorService().startGraphCreation(player.getUniqueId(),
-                        StringArgumentType.getString(context, "name"), commandContext.defaultSettings())));
+        return withPlayer(commandContext, context, player -> {
+            commandContext.editorService().startGraphCreationAsync(player.getUniqueId(),
+                    StringArgumentType.getString(context, "name"), commandContext.defaultSettings(),
+                    result -> EditorCommandFeedback.send(commandContext, player, result));
+            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+        });
     }
 
     private static int editGraph(final EditorCommandContext commandContext,
                                  final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
-                commandContext.editorService().startGraphEdit(player.getUniqueId(),
-                        StringArgumentType.getString(context, "graphName"), commandContext.defaultSettings())));
+        return withPlayer(commandContext, context, player -> {
+            commandContext.editorService().startGraphEditAsync(player.getUniqueId(),
+                    StringArgumentType.getString(context, "graphName"), commandContext.defaultSettings(),
+                    result -> EditorCommandFeedback.send(commandContext, player, result));
+            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+        });
     }
 
     private static int withPlayer(final EditorCommandContext commandContext,

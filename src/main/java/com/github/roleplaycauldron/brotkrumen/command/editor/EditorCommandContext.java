@@ -1,15 +1,23 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+
 /**
  * Shared dependencies and helpers for editor subcommands.
  */
+@SuppressWarnings("PMD.AvoidCatchingGenericException")
 public final class EditorCommandContext {
 
     private static final String DEFAULT_NODE_DISTANCE_CONFIG = "editor.defaultNodeDistance";
@@ -32,20 +40,20 @@ public final class EditorCommandContext {
     /**
      * The service for graph data.
      */
-    private final GraphService graphs;
+    private final GraphRepository graphs;
 
     /**
      * Initializes the editor command context.
      *
      * @param plugin        The JavaPlugin instance.
      * @param editorService The EditorService for editor operations.
-     * @param graphService  The GraphService for graph data.
+     * @param graphRepository  The graph repository for graph data.
      */
     public EditorCommandContext(final JavaPlugin plugin, final EditorService editorService,
-                                final GraphService graphService) {
+                                final GraphRepository graphRepository) {
         this.javaPlugin = plugin;
         this.editorOperations = editorService;
-        this.graphs = graphService;
+        this.graphs = graphRepository;
     }
 
     /**
@@ -58,12 +66,60 @@ public final class EditorCommandContext {
     }
 
     /**
-     * Retrieves the GraphService instance.
+     * Retrieves The graph repository instance.
      *
-     * @return The GraphService instance.
+     * @return The graph repository instance.
      */
-    public GraphService graphService() {
+    public GraphRepository graphRepository() {
         return graphs;
+    }
+
+    /**
+     * Suggests persisted graph names asynchronously.
+     *
+     * @param builder suggestions builder
+     * @return suggestions future
+     */
+    public CompletableFuture<Suggestions> suggestGraphNames(final SuggestionsBuilder builder) {
+        final String remaining = builder.getRemainingLowerCase();
+        final CompletableFuture<Suggestions> suggestions = new CompletableFuture<>();
+        javaPlugin.getServer().getScheduler().runTaskAsynchronously(javaPlugin, () -> {
+            try {
+                graphs.getAllGraphs().stream()
+                        .map(Graph::getName)
+                        .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(remaining))
+                        .forEach(builder::suggest);
+                suggestions.complete(builder.build());
+            } catch (final RuntimeException failure) {
+                javaPlugin.getLogger().warning("Graph suggestions failed: " + failure.getMessage());
+                suggestions.complete(builder.build());
+            }
+        });
+        return suggestions;
+    }
+
+    /**
+     * Runs a database-backed editor operation asynchronously and sends feedback on the main thread.
+     *
+     * @param player    command player
+     * @param operation editor operation
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public void runEditorOperationAsync(final Player player, final Supplier<EditorService.EditorResult> operation) {
+        javaPlugin.getServer().getScheduler().runTaskAsynchronously(javaPlugin, () -> {
+            final EditorService.EditorResult result;
+            try {
+                result = operation.get();
+            } catch (final RuntimeException failure) {
+                javaPlugin.getLogger().warning("Editor command failed: " + failure.getMessage());
+                javaPlugin.getServer().getScheduler().runTask(javaPlugin, () -> player.sendMessage(
+                        EditorCommandFeedback.localization(this).getPrefixedMessageFromString(
+                                "<#F43F5E>Editor command failed. Check the console for details.")));
+                return;
+            }
+            javaPlugin.getServer().getScheduler().runTask(javaPlugin, () ->
+                    EditorCommandFeedback.send(this, player, result));
+        });
     }
 
     /**

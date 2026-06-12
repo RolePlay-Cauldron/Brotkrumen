@@ -26,29 +26,27 @@ public final class EditorDeleteSubcommands {
                 .then(Commands.literal("node")
                         .executes(context -> {
                             final org.bukkit.entity.Player player = commandContext.player(context);
-                            return player == null
-                                    ? EditorCommandFeedback.playerOnly(commandContext, context)
-                                    : EditorCommandFeedback.send(commandContext, player,
-                                    commandContext.editorService().deleteSelectedNode(player.getUniqueId()));
+                            if (player == null) {
+                                return EditorCommandFeedback.playerOnly(commandContext, context);
+                            }
+                            commandContext.editorService().deleteSelectedNodeAsync(player.getUniqueId(),
+                                    result -> EditorCommandFeedback.send(commandContext, player, result));
+                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
                         }))
                 .then(Commands.literal("graph")
                         .then(Commands.argument(GRAPH_ARGUMENT, StringArgumentType.word())
                                 .suggests((context, builder) -> {
-                                    final String remaining = builder.getRemainingLowerCase();
-                                    commandContext.graphService().getAllGraphs()
-                                            .stream()
-                                            .map(com.github.roleplaycauldron.brotkrumen.graph.Graph::getName)
-                                            .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(remaining))
-                                            .forEach(builder::suggest);
-                                    return builder.buildFuture();
+                                    return commandContext.suggestGraphNames(builder);
                                 })
                                 .executes(context -> {
                                     final org.bukkit.entity.Player player = commandContext.player(context);
-                                    return player == null
-                                            ? EditorCommandFeedback.playerOnly(commandContext, context)
-                                            : EditorCommandFeedback.send(commandContext, player,
+                                    if (player == null) {
+                                        return EditorCommandFeedback.playerOnly(commandContext, context);
+                                    }
+                                    commandContext.runEditorOperationAsync(player, () ->
                                             commandContext.editorService().deletePersistedGraph(
                                                     StringArgumentType.getString(context, GRAPH_ARGUMENT)));
+                                    return com.mojang.brigadier.Command.SINGLE_SUCCESS;
                                 })));
     }
 }

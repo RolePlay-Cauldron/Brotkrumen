@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.visual;
 
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import org.bukkit.Bukkit;
 
@@ -13,7 +14,7 @@ import java.util.UUID;
  * Responsible for registering, unregistering, and periodically updating the visibility of visualizers
  * associated with player UUIDs.
  */
-public class VisualizerRegistry {
+public class VisualizerRegistry implements VisualizerService {
 
     private static final long VISIBILITY_CHECK_PERIOD_TICKS = 10L;
 
@@ -54,18 +55,29 @@ public class VisualizerRegistry {
         visualiser.visibilityUpdate();
     }
 
+    @Override
+    public void show(final UUID viewerId, final Visualizer visualizer) {
+        register(viewerId, visualizer);
+    }
+
     /**
      * Replaces the visualizer for a viewer, shutting down the previous visualizer if one exists.
      *
      * @param uuid       viewer uuid
      * @param visualiser new visualizer
      */
+    @Override
     public void replace(final UUID uuid, final Visualizer visualiser) {
         final Visualizer previous = visualisers.put(uuid, visualiser);
         if (previous != null) {
             previous.shutdown();
         }
         visualiser.visibilityUpdate();
+    }
+
+    @Override
+    public void hide(final UUID viewerId) {
+        unregister(viewerId);
     }
 
     /**
@@ -89,6 +101,7 @@ public class VisualizerRegistry {
      *
      * @param uuid viewer uuid
      */
+    @Override
     public void refresh(final UUID uuid) {
         final Visualizer visualiser = visualisers.get(uuid);
         if (visualiser != null) {
@@ -99,6 +112,7 @@ public class VisualizerRegistry {
     /**
      * Refreshes all active visualizers from their visual graph sources.
      */
+    @Override
     public void refreshAll() {
         new HashMap<>(visualisers).values().forEach(Visualizer::refresh);
     }

@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.graph.search;
 
+import com.github.roleplaycauldron.brotkrumen.api.graph.search.SearchRegistry;
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
@@ -29,7 +30,7 @@ public class PathFinder {
      * The default constructor. It automatically registers the {@link AStarAlgorithm} and {@link DijkstraAlgorithm}.
      */
     public PathFinder() {
-        this.registry = new SearchRegistry();
+        this.registry = new SearchRegistryImpl();
         this.registry.register(new AStarAlgorithm());
         this.registry.register(new DijkstraAlgorithm());
     }

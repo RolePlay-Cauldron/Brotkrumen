@@ -45,7 +45,7 @@ import java.util.stream.Stream;
 /**
  * `/bk resolve` command.
  */
-@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods"})
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods", "PMD.AvoidCatchingGenericException"})
 public final class BkResolveSubcommand {
 
     private static final String CANCEL_LITERAL = "cancel";
@@ -129,9 +129,19 @@ public final class BkResolveSubcommand {
         final String remaining = builder.getRemaining();
         final SuggestionsBuilder tokenBuilder = builder.createOffset(
                 builder.getStart() + BkCompletionSupport.currentTokenStart(remaining));
-        BkCompletionSupport.resolveTargetTail(commandContext.graphService().getAllGraphs(), remaining)
-                .forEach(tokenBuilder::suggest);
-        return tokenBuilder.buildFuture();
+        final CompletableFuture<Suggestions> suggestions = new CompletableFuture<>();
+        commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
+            try {
+                BkCompletionSupport.resolveTargetTail(commandContext.graphRepository().getAllGraphs(), remaining)
+                        .forEach(tokenBuilder::suggest);
+                suggestions.complete(tokenBuilder.build());
+            } catch (final RuntimeException failure) {
+                commandContext.loggerFactory().create(BkResolveSubcommand.class)
+                        .error("Resolve target suggestions failed: " + failure.getMessage());
+                suggestions.complete(tokenBuilder.build());
+            }
+        });
+        return suggestions;
     }
 
     private int resolve(final CommandContext<CommandSourceStack> context) {
@@ -154,17 +164,49 @@ public final class BkResolveSubcommand {
         final ResolveLocation location = ResolveLocation.from(player.getLocation());
         final ResolveOptions options = commandContext.resolveOptions();
 
-        final TeleportRules rules = resolveTeleportRules(player, options, target.teleportRules());
-
         final long token = commandContext.sessionManager().replaceWithPending(playerId);
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () ->
-                resolveAsync(context, playerId, token, location, options, target, rules));
+                prepareResolveRulesAsync(context, playerId, token, location, options, target));
         sendKey(context, "commands.bk.resolve.status.resolvingPath", Map.of("player", player.getName()));
         return Command.SINGLE_SUCCESS;
     }
 
-    private TeleportRules resolveTeleportRules(final Player player, final ResolveOptions options, final String tpRulesInput) {
-        final List<Warp> allowedWarps = WarpPermissionHelper.allowedWarps(commandContext.warpService().getManagedWarps(), player::hasPermission);
+    private void prepareResolveRulesAsync(final CommandContext<CommandSourceStack> context,
+                                          final UUID playerId, final long token,
+                                          final ResolveLocation location,
+                                          final ResolveOptions options,
+                                          final ResolveTarget target) {
+        try {
+            final List<Warp> managedWarps = List.copyOf(commandContext.warpRepository().getManagedWarps());
+            commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
+                    prepareResolveRules(context, playerId, token, location, options, target, managedWarps));
+        } catch (final RuntimeException failure) {
+            resolveFailed(context, playerId, token, failure);
+        }
+    }
+
+    private void prepareResolveRules(final CommandContext<CommandSourceStack> context,
+                                     final UUID playerId, final long token,
+                                     final ResolveLocation location,
+                                     final ResolveOptions options,
+                                     final ResolveTarget target,
+                                     final List<Warp> managedWarps) {
+        if (!commandContext.sessionManager().isCurrent(playerId, token)) {
+            return;
+        }
+        final Player player = commandContext.plugin().getServer().getPlayer(playerId);
+        if (player == null) {
+            commandContext.sessionManager().clearIfCurrent(playerId, token);
+            return;
+        }
+        final TeleportRules rules = resolveTeleportRules(player, options, target.teleportRules(), managedWarps);
+        commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () ->
+                resolveAsync(context, playerId, token, location, options, target, rules));
+    }
+
+    private TeleportRules resolveTeleportRules(final Player player, final ResolveOptions options,
+                                               final String tpRulesInput, final List<Warp> managedWarps) {
+        final List<Warp> allowedWarps = WarpPermissionHelper.allowedWarps(managedWarps, player::hasPermission);
         final TeleportRules baseRules = new TeleportRules(false, false, false, allowedWarps);
         if (tpRulesInput != null) {
             return baseRules.parse(tpRulesInput);
@@ -176,11 +218,26 @@ public final class BkResolveSubcommand {
                               final UUID playerId, final long token, final ResolveLocation location,
                               final ResolveOptions options, final ResolveTarget target,
                               final TeleportRules rules) {
-        final ResolveResult result = target.mode() == ResolveTarget.Mode.GRAPH
-                ? resolveGraphTarget(location, options, target, rules)
-                : resolveNodeTargets(location, options, target, rules);
-        commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(),
-                () -> finishResolve(context, playerId, token, options, result));
+        try {
+            final ResolveResult result = target.mode() == ResolveTarget.Mode.GRAPH
+                    ? resolveGraphTarget(location, options, target, rules)
+                    : resolveNodeTargets(location, options, target, rules);
+            commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(),
+                    () -> finishResolve(context, playerId, token, options, result));
+        } catch (final RuntimeException failure) {
+            resolveFailed(context, playerId, token, failure);
+        }
+    }
+
+    private void resolveFailed(final CommandContext<CommandSourceStack> context, final UUID playerId,
+                               final long token, final RuntimeException failure) {
+        commandContext.loggerFactory().create(BkResolveSubcommand.class)
+                .error("Resolve command failed: " + failure.getMessage());
+        commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () -> {
+            commandContext.sessionManager().clearIfCurrent(playerId, token);
+            context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
+                    "<#F43F5E>Resolve failed. Check the console for details."));
+        });
     }
 
     private ResolveResult resolveGraphTarget(final ResolveLocation location,
@@ -193,7 +250,7 @@ public final class BkResolveSubcommand {
                     Map.of(GRAPH_LITERAL, target.graphKey()));
         }
         final NodeRef start = commandContext.resolveService()
-                .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
+                .nearestNodeRef(commandContext.graphRepository().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
             return resolveGraphFromWarpFallback(location, options, graph.getGraphId(), rules)
@@ -229,7 +286,7 @@ public final class BkResolveSubcommand {
             return ResolveResult.failure(resolution.errorKey(), resolution.replacements());
         }
         final NodeRef start = commandContext.resolveService()
-                .nearestNodeRef(commandContext.graphService().getAllGraphs(), location, options.effectiveNearestNodeRadius())
+                .nearestNodeRef(commandContext.graphRepository().getAllGraphs(), location, options.effectiveNearestNodeRadius())
                 .orElse(null);
         if (start == null) {
             return resolveNodeTargetsFromWarpFallback(location, options, resolution.nodeRefs(), rules)
@@ -244,7 +301,7 @@ public final class BkResolveSubcommand {
                 .collect(Collectors.toSet());
         final GraphNetwork network = requiredGraphIds.size() == 1
                 ? commandContext.resolveService().singleGraphNetwork(
-                commandContext.graphService().getGraphById(start.graphDbId()).orElseThrow())
+                commandContext.graphRepository().getGraphById(start.graphDbId()).orElseThrow())
                 : commandContext.resolveService()
                 .networkContaining(commandContext.resolveService().loadGraphNetworks(), requiredGraphIds)
                 .orElse(null);
@@ -377,13 +434,13 @@ public final class BkResolveSubcommand {
                                                                  final ResolveOptions options,
                                                                  final int targetGraphId,
                                                                  final TeleportRules rules) {
-        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
+        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphRepository(),
                 commandContext.resolveService());
         final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectGraph(options, location, targetGraphId,
                 rules);
         return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),
                 "commands.bk.resolve.status.showingPathToGraph",
-                Map.of(GRAPH_LITERAL, commandContext.graphService().getGraphById(targetGraphId)
+                Map.of(GRAPH_LITERAL, commandContext.graphRepository().getGraphById(targetGraphId)
                         .map(Graph::getName).orElse(Integer.toString(targetGraphId)))));
     }
 
@@ -391,7 +448,7 @@ public final class BkResolveSubcommand {
                                                                        final ResolveOptions options,
                                                                        final Collection<NodeRef> goals,
                                                                        final TeleportRules rules) {
-        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphService(),
+        final ResolveWarpStartSelector selector = new ResolveWarpStartSelector(commandContext.graphRepository(),
                 commandContext.resolveService());
         final Optional<ResolveWarpStartSelector.Candidate> candidate = selector.selectNodes(options, location, goals, rules);
         return candidate.map(warp -> ResolveResult.path(warp.network(), warp.path(), options.backend(),

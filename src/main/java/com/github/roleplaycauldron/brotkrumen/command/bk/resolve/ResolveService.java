@@ -7,8 +7,8 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.TeleportRules;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphNetworkService;
-import com.github.roleplaycauldron.brotkrumen.storage.service.GraphService;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
+import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -26,52 +26,52 @@ import java.util.stream.Collectors;
 @SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.ShortVariable", "PMD.TooManyMethods"})
 public class ResolveService {
 
-    private final GraphService graphService;
+    private final GraphRepository graphRepository;
 
-    private final GraphNetworkService graphNetworkService;
+    private final GraphNetworkRepository graphNetworkRepository;
 
     private final PathFinder pathFinder;
 
     /**
      * Creates a resolve service.
      *
-     * @param graphService graph service
+     * @param graphRepository graph service
      */
-    public ResolveService(final GraphService graphService) {
-        this(graphService, null, new PathFinder());
+    public ResolveService(final GraphRepository graphRepository) {
+        this(graphRepository, null, new PathFinder());
     }
 
     /**
      * Creates a resolve service.
      *
-     * @param graphService        graph service
-     * @param graphNetworkService graph network service
+     * @param graphRepository        graph service
+     * @param graphNetworkRepository graph network service
      */
-    public ResolveService(final GraphService graphService, final GraphNetworkService graphNetworkService) {
-        this(graphService, graphNetworkService, new PathFinder());
+    public ResolveService(final GraphRepository graphRepository, final GraphNetworkRepository graphNetworkRepository) {
+        this(graphRepository, graphNetworkRepository, new PathFinder());
     }
 
     /**
      * Creates a resolve service.
      *
-     * @param graphService graph service
+     * @param graphRepository graph service
      * @param pathFinder   pathfinder
      */
-    public ResolveService(final GraphService graphService, final PathFinder pathFinder) {
-        this(graphService, null, pathFinder);
+    public ResolveService(final GraphRepository graphRepository, final PathFinder pathFinder) {
+        this(graphRepository, null, pathFinder);
     }
 
     /**
      * Creates a resolve service.
      *
-     * @param graphService        graph service
-     * @param graphNetworkService graph network service
+     * @param graphRepository        graph service
+     * @param graphNetworkRepository graph network service
      * @param pathFinder          pathfinder
      */
-    public ResolveService(final GraphService graphService, final GraphNetworkService graphNetworkService,
+    public ResolveService(final GraphRepository graphRepository, final GraphNetworkRepository graphNetworkRepository,
                           final PathFinder pathFinder) {
-        this.graphService = graphService;
-        this.graphNetworkService = graphNetworkService;
+        this.graphRepository = graphRepository;
+        this.graphNetworkRepository = graphNetworkRepository;
         this.pathFinder = pathFinder;
     }
 
@@ -85,12 +85,12 @@ public class ResolveService {
         if (graphKey == null || graphKey.isBlank()) {
             return Optional.empty();
         }
-        final Optional<Graph> byName = graphService.getGraphByName(graphKey);
+        final Optional<Graph> byName = graphRepository.getGraphByName(graphKey);
         if (byName.isPresent()) {
             return byName;
         }
         try {
-            return graphService.getGraphById(Integer.parseInt(graphKey));
+            return graphRepository.getGraphById(Integer.parseInt(graphKey));
         } catch (final NumberFormatException ex) {
             return Optional.empty();
         }
@@ -126,7 +126,7 @@ public class ResolveService {
         }
         final Set<UUID> requested = Set.copyOf(nodeIds);
         Graph containingGraph = null;
-        for (final Graph graph : graphService.getAllGraphs()) {
+        for (final Graph graph : graphRepository.getAllGraphs()) {
             final Set<UUID> present = graph.getNodes().stream()
                     .map(Node::graphId)
                     .filter(requested::contains)
@@ -180,7 +180,7 @@ public class ResolveService {
             return NodeRefTargetResolution.failure("commands.bk.resolve.service.error.noNodeTargets");
         }
         final Set<UUID> requested = Set.copyOf(nodeIds);
-        final List<NodeRef> refs = graphService.getAllGraphs().stream()
+        final List<NodeRef> refs = graphRepository.getAllGraphs().stream()
                 .flatMap(graph -> graph.getNodes().stream()
                         .filter(node -> requested.contains(node.graphId()))
                         .map(node -> new NodeRef(graph.getGraphId(), node.graphId())))
@@ -197,10 +197,10 @@ public class ResolveService {
      * @return graph networks
      */
     public List<GraphNetwork> loadGraphNetworks() {
-        if (graphNetworkService == null) {
+        if (graphNetworkRepository == null) {
             return List.of();
         }
-        return List.copyOf(graphNetworkService.loadGraphNetworks());
+        return List.copyOf(graphNetworkRepository.loadGraphNetworks());
     }
 
     /**

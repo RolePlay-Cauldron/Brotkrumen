@@ -1,4 +1,4 @@
-package com.github.roleplaycauldron.brotkrumen.storage.service;
+package com.github.roleplaycauldron.brotkrumen.storage.repository;
 
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Storage;
@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for {@link WarpServiceImpl}.
+ * Unit tests for {@link WarpRepositoryImpl}.
  */
 @ExtendWith(MockitoExtension.class)
-class WarpServiceImplTest {
+class WarpRepositoryImplTest {
 
     @Mock
     private Storage storage;
@@ -33,12 +33,12 @@ class WarpServiceImplTest {
     @Mock
     private BrotkrumenConnectionProvider provider;
 
-    private WarpServiceImpl service;
+    private WarpRepositoryImpl service;
 
     @BeforeEach
     void setUp() {
         when(storage.getProvider()).thenReturn(provider);
-        service = new WarpServiceImpl(storage, warpTable);
+        service = new WarpRepositoryImpl(storage, warpTable);
     }
 
     @Test
