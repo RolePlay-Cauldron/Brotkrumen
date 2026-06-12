@@ -25,8 +25,12 @@ messages:
         network:
           empty: "<#FACC15>Keine Netzwerke vorhanden."
           entries: "<#CBD5E1>Netzwerke: <#38BDF8><entries></#38BDF8>"
+        error:
+          failed: "<#F43F5E>Liste fehlgeschlagen. Details stehen in der Konsole."
       reload:
         success: "<#22C55E>Konfiguration, Sprachdateien und Graphen wurden erfolgreich neu geladen."
+        error:
+          failed: "<#F43F5E>Reload fehlgeschlagen. Details stehen in der Konsole."
       resolve:
         status:
           resolvingPath: "<#CBD5E1>Pfad für <#38BDF8><player></#38BDF8> wird aufgelöst..."
@@ -38,6 +42,7 @@ messages:
           autoTeleportPending: "<#FACC15>Teleport in <#38BDF8><seconds></#38BDF8> Sekunden."
           autoTeleportCancelled: "<#FACC15>Ausstehender Teleport abgebrochen."
         error:
+          failed: "<#F43F5E>Resolve fehlgeschlagen. Details stehen in der Konsole."
           graphNotFound: "<#F43F5E>Kein Graph für <#38BDF8><graph></#38BDF8> gefunden."
           noNearbyNode: "<#F43F5E>Kein naher Graph-Knoten gefunden."
           noNetworkToGraph: "<#F43F5E>Kein Graph-Netzwerk verbindet deinen aktuellen Graphen mit <#38BDF8><graph></#38BDF8>."
@@ -50,6 +55,8 @@ messages:
         parse:
           error:
             missingTarget: "<#F43F5E>Bitte gib ein Graph- oder Knoten-Ziel an."
+            multipleTeleportRules: "<#F43F5E>Bitte gib Teleport-Regeln nur einmal an."
+            missingTeleportRules: "<#F43F5E>Bitte gib Teleport-Regeln nach dem teleport-rules Token an."
             networkNotSupported: "<#F43F5E>Netzwerk-Ziele werden von /bk resolve nicht unterstützt."
             multipleGraphTargets: "<#F43F5E>Bitte gib nur ein Graph-Ziel an."
             missingGraphTarget: "<#F43F5E>Bitte gib einen Graph-Namen oder eine ID an."
@@ -76,21 +83,120 @@ messages:
         noNearbyEdge: "<#F43F5E>Keine nahe Graph-Kante gefunden."
         warpStorageUnavailable: "<#F43F5E>Warp-Speicher ist nicht verfügbar."
         warpKeyRequired: "<#F43F5E>Bitte gib einen Warp-Key an."
+        editAnchorRequired: "<#F43F5E>Laufe durch einen vorhandenen Knoten, bevor du neue Edit-Knoten platzierst."
+        edgeTypeRequired: "<#F43F5E>Kantentyp ist erforderlich."
+        edgeStateRequired: "<#F43F5E>Kantenstatus ist erforderlich."
+        edgeTraversalRequired: "<#F43F5E>Kantenbewegung ist erforderlich."
+        twoNodesRequired: "<#F43F5E>WÃ¤hle zwei Graph-Knoten aus, bevor du eine Kante erstellst."
+        localEdgeActiveGraphOnly: "<#F43F5E>Lokale Kanten kÃ¶nnen nur im aktiven Graph erstellt werden."
+        interGraphPersistedEndpointsRequired: "<#F43F5E>Inter-Graph-Kanten benÃ¶tigen gespeicherte Graph-Endpunkte."
+        edgeSelectionRequiredType: "<#F43F5E>WÃ¤hle eine Graph-Kante aus, bevor du ihren Typ Ã¤nderst."
+        edgeSelectionRequiredState: "<#F43F5E>WÃ¤hle eine Graph-Kante aus, bevor du ihren Status Ã¤nderst."
+        edgeSelectionRequiredRemove: "<#F43F5E>WÃ¤hle eine Graph-Kante aus, bevor du sie entfernst."
+        edgeSelectionRequiredTraversal: "<#F43F5E>WÃ¤hle eine Graph-Kante aus, bevor du ihre Bewegung Ã¤nderst."
+        activeGraphAlreadyVisible: "<#F43F5E>Der aktive Graph ist bereits sichtbar."
+        graphNotVisible: "<#F43F5E>Dieser Graph ist in der Editor-Ansicht nicht sichtbar."
+        nodeSelectionRequiredConnections: "<#F43F5E>WÃ¤hle einen Graph-Knoten aus, bevor du Verbindungen prÃ¼fst."
+        graphOpenInEditor: "<#F43F5E>Dieser Graph ist aktuell in einer Editor-Sitzung geÃ¶ffnet."
+        nodeSelectionRequiredDelete: "<#F43F5E>WÃ¤hle einen Graph-Knoten aus, bevor du ihn lÃ¶schst."
+        activeGraphNodeRequiredDelete: "<#F43F5E>Nur Knoten des aktiven Graphen kÃ¶nnen gelÃ¶scht werden."
+        undoAmountPositive: "<#F43F5E>Die Undo-Anzahl muss grÃ¶sser als null sein."
+        noUndoNodes: "<#F43F5E>Es gibt keine in dieser Sitzung erstellten Knoten zum ZurÃ¼cknehmen."
+        placementModeRequired: "<#F43F5E>Platzierungsmodus ist erforderlich."
+        nodeSelectionRequiredWarp: "<#F43F5E>WÃ¤hle einen Graph-Knoten aus, bevor du einen ausgewÃ¤hlten Warp erstellst."
+        selectedWarpActiveGraphOnly: "<#F43F5E>AusgewÃ¤hlte Warps kÃ¶nnen nur auf den aktiven Graph zielen."
+        warpCostNonNegative: "<#F43F5E>Warp-Kosten dÃ¼rfen nicht negativ sein."
+        warpNotFound: "<#F43F5E>Kein Warp mit diesem Key vorhanden."
       status:
         sessionStartedCreate: "<#22C55E>Editor gestartet. <#CBD5E1>Schritte für Graph <#38BDF8><graph></#38BDF8> werden aufgezeichnet."
         sessionStartedEdit: "<#22C55E>Editor gestartet. <#CBD5E1>Graph <#38BDF8><graph></#38BDF8> wird bearbeitet. Laufe durch einen vorhandenen Knoten, um Knoten anzuhängen."
         graphRenamed: "<#22C55E>Graph umbenannt. <#CBD5E1>Aktiver Graph ist jetzt <#38BDF8><graph></#38BDF8>."
         previewEnabled: "<#22C55E>Vorschau-Modus aktiviert."
         nodePlaced: "<#22C55E>Knoten platziert."
+        appendAnchorSelected: "<#22C55E>Vorhandener Knoten als Anhaenge-Anker ausgewaehlt."
+        nodeAdded: "<#22C55E>Knoten hinzugefÃ¼gt."
         nodeAddedAuto: "<#22C55E>Knoten hinzugefügt. <#CBD5E1>Automatische Graph-Aufzeichnung läuft weiter."
         guidanceWaitingAnchorActionbar: "<#FACC15>Platzierung pausiert. <#CBD5E1>Laufe durch einen Knoten oder nutze <#38BDF8>/bkeditor continue</#38BDF8>."
         continueWaitingNode: "<#FACC15>Warte auf Knoten. <#CBD5E1>Laufe durch einen Knoten, um die Platzierung fortzusetzen."
         continueResumed: "<#22C55E>Automatische Platzierung fortgesetzt."
-        settingsSummary: "<#CBD5E1>Einstellungen: <#38BDF8><value></#38BDF8>"
+        sessionFinished: "<#22C55E>Routenerstellung abgeschlossen."
+        sessionSaving: "<#CBD5E1>Editor-Sitzung wird gespeichert..."
+        sessionCancelled: "<#FACC15>Editor-Sitzung abgebrochen."
+        undoNodes: "<#22C55E><#38BDF8><count></#38BDF8> Knoten zurueckgenommen."
+        settingsSummary: "<#CBD5E1>Einstellungen: knoten-abstand=<#38BDF8><node_distance></#38BDF8>, platzierung=<#38BDF8><placement></#38BDF8>, continue-requires-node=<#38BDF8><continue_requires_node></#38BDF8>, preset=<#38BDF8><preset></#38BDF8>."
+        nodeDistanceSet: "<#22C55E>Knotenabstand auf <#38BDF8><value></#38BDF8> gesetzt."
+        placementModeSet: "<#22C55E>Platzierungsmodus auf <#38BDF8><mode></#38BDF8> gesetzt."
+        continueRequiresNodeSet: "<#22C55E>Continue requires node auf <#38BDF8><value></#38BDF8> gesetzt."
+        presetSet: "<#22C55E>Editor-Preset auf <#38BDF8><preset></#38BDF8> gesetzt."
         warpListEmpty: "<#FACC15>Keine gespeicherten Warps."
         warpListActiveEmpty: "<#FACC15>Keine Warps zielen auf den aktiven Graph."
         warpListAll: "<#CBD5E1>Alle Warps: <#38BDF8><entries></#38BDF8>."
         warpListActive: "<#CBD5E1>Warps des aktiven Graphen: <#38BDF8><entries></#38BDF8>."
+
+      selection:
+        selectedNode: "<#CBD5E1>Knoten <#38BDF8><node_id></#38BDF8> in Graph <#38BDF8><graph></#38BDF8> ausgewaehlt."
+        selectedNodeWithEndpoints: "<#CBD5E1>Knoten <#38BDF8><node_id></#38BDF8> in Graph <#38BDF8><graph></#38BDF8> ausgewaehlt. Kanten-Endpunkte: <#38BDF8><source></#38BDF8> -> <#38BDF8><target></#38BDF8>."
+        selectedEdge: "<#CBD5E1>Kante <#38BDF8><edge_id></#38BDF8> in Graph <#38BDF8><graph></#38BDF8> ausgewaehlt."
+        selectedEdgeDetailed: "<#CBD5E1>Kante <#38BDF8><edge_id></#38BDF8> von <#38BDF8><source></#38BDF8> nach <#38BDF8><target></#38BDF8> in Graph <#38BDF8><graph></#38BDF8> ausgewaehlt."
+        selectedInterGraphEdge: "<#CBD5E1>Inter-Graph-Kante <#38BDF8><edge_id></#38BDF8> ausgewaehlt."
+        selectedInterGraphEdgeDetailed: "<#CBD5E1>Inter-Graph-Kante <#38BDF8><edge_id></#38BDF8> von <#38BDF8><source></#38BDF8> nach <#38BDF8><target></#38BDF8> ausgewaehlt."
+        cleared: "<#22C55E>Graph-Auswahl geleert."
+        teleportedNode: "<#22C55E>Zum ausgewaehlten Knoten teleportiert."
+        teleportedEdge: "<#22C55E>Zur ausgewaehlten Kante teleportiert."
+        edgeIncomplete: "<#F43F5E>Die ausgewaehlte Kante ist unvollstaendig."
+
+      edge:
+        created: "<#22C55E><#38BDF8><type></#38BDF8>-Kante zwischen ausgewaehlten Knoten gesetzt."
+        typeUpdated: "<#22C55E>Typ der ausgewaehlten Kante auf <#38BDF8><type></#38BDF8> gesetzt."
+        stateUpdated: "<#22C55E>Status der ausgewaehlten Kante auf <#38BDF8><state></#38BDF8> gesetzt."
+        traversalUpdated: "<#22C55E>Bewegung der ausgewaehlten Kante auf <#38BDF8><traversal></#38BDF8> gesetzt."
+        removed: "<#22C55E><#38BDF8><count></#38BDF8> ausgewaehlte Kanten-Datensaetze entfernt."
+
+      reference:
+        added: "<#22C55E>Referenz-Graph <#38BDF8><graph></#38BDF8> zur Editor-Ansicht hinzugefuegt."
+        removed: "<#22C55E>Referenz-Graph <#38BDF8><graph></#38BDF8> aus der Editor-Ansicht entfernt."
+        cleared: "<#22C55E>Referenz-Graphen aus der Editor-Ansicht geleert."
+
+      connections:
+        empty: "<#FACC15>Der ausgewaehlte Knoten hat keine bekannten Verbindungen."
+        header: "<#CBD5E1>Verbindungen des ausgewaehlten Knotens:"
+        line: "<#CBD5E1><scope> <direction> zu <#38BDF8><node_id></#38BDF8> in Graph <#38BDF8><graph></#38BDF8> bei <#38BDF8><location></#38BDF8> [<traversal>, <state>]."
+        scope:
+          local: "lokal"
+          inter-graph: "inter-graph"
+        direction:
+          out: "ausgehend"
+          in: "eingehend"
+          undirected: "ungerichtet"
+        traversal:
+          normal: "normal"
+          teleport: "teleport"
+        state:
+          open: "offen"
+          blocked: "blockiert"
+
+      graph:
+        deleted: "<#22C55E>Graph <#38BDF8><graph></#38BDF8> geloescht, <#38BDF8><warps></#38BDF8> Warp(s) und <#38BDF8><edges></#38BDF8> Inter-Graph-Kanten-Datensaetze entfernt."
+
+      node:
+        deleted: "<#22C55E>Ausgewaehlten Knoten <#38BDF8><node_id></#38BDF8> geloescht."
+
+      warp:
+        created: "<#22C55E>Warp <#38BDF8><key></#38BDF8> fuer Knoten <#38BDF8><node_id></#38BDF8> erstellt."
+        updated: "<#22C55E>Warp <#38BDF8><key></#38BDF8> <#CBD5E1><property></#CBD5E1> aktualisiert."
+        removed: "<#22C55E>Warp <#38BDF8><key></#38BDF8> entfernt."
+
+      error:
+        commandFailed: "<#F43F5E>Editor-Befehl fehlgeschlagen. Details stehen in der Konsole."
+        graphLoadEditing: "<#F43F5E>Graph-Daten konnten nicht geladen werden, Bearbeitung wird abgebrochen."
+        graphLoadRename: "<#F43F5E>Graph-Daten konnten nicht geladen werden, Umbenennung wird abgebrochen."
+        graphSave: "<#F43F5E>Graph konnte nicht gespeichert werden, Bearbeitung wird abgebrochen."
+        graphSaveWithReason: "<#F43F5E>Graph konnte nicht gespeichert werden: <#38BDF8><reason></#38BDF8>"
+        graphLoadViewUpdate: "<#F43F5E>Graph-Daten konnten nicht geladen werden, Ansichts-Update wird abgebrochen."
+        graphNetworkLoadViewClear: "<#F43F5E>Graph-Netzwerk-Daten konnten nicht geladen werden, Leeren der Ansicht wird abgebrochen."
+        warpLoadDeletion: "<#F43F5E>Warp-Daten konnten nicht geladen werden, Loeschung wird abgebrochen."
+        warpLoadUpdate: "<#F43F5E>Warp-Daten konnten nicht geladen werden, Update wird abgebrochen."
+        warpLoadRemoval: "<#F43F5E>Warp-Daten konnten nicht geladen werden, Entfernen wird abgebrochen."
 
 #################
 # DO NOT TOUCH! #

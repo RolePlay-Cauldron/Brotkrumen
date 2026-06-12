@@ -235,8 +235,8 @@ public final class BkResolveSubcommand {
                 .error("Resolve command failed: " + failure.getMessage());
         commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () -> {
             commandContext.sessionManager().clearIfCurrent(playerId, token);
-            context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
-                    "<#F43F5E>Resolve failed. Check the console for details."));
+            context.getSource().getSender().sendMessage(
+                    localization.getPrefixedMessage("commands.bk.resolve.error.failed"));
         });
     }
 

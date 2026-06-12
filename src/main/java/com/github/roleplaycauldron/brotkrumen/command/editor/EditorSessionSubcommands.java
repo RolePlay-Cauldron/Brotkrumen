@@ -1,126 +1,104 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import org.bukkit.entity.Player;
 
 /**
  * Builds editor lifecycle subcommands.
  */
 public final class EditorSessionSubcommands {
 
-    private EditorSessionSubcommands() {
+    private final EditorCommandContext commandContext;
+
+    /**
+     * Creates lifecycle subcommand builders.
+     *
+     * @param commandContext editor command context
+     */
+    public EditorSessionSubcommands(final EditorCommandContext commandContext) {
+        this.commandContext = commandContext;
     }
 
     /**
      * Builds the create subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the create subcommand.
+     * @return create subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> create(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> create() {
         return Commands.literal("create")
                 .then(Commands.argument("name", StringArgumentType.word())
-                        .executes(context -> createGraph(commandContext, context)));
+                        .executes(this::createGraph));
     }
 
     /**
      * Builds the edit subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the edit subcommand.
+     * @return edit subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> edit(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> edit() {
         return Commands.literal("edit")
                 .then(Commands.argument("graphName", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            return commandContext.suggestGraphNames(builder);
-                        })
-                        .executes(context -> editGraph(commandContext, context)));
+                        .suggests((context, builder) -> commandContext.suggestGraphNames(builder))
+                        .executes(this::editGraph));
     }
 
     /**
      * Builds the rename subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the rename subcommand.
+     * @return rename subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> rename(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> rename() {
         return Commands.literal("rename")
                 .then(Commands.argument("newName", StringArgumentType.word())
-                        .executes(context -> withPlayer(commandContext, context, player -> {
+                        .executes(context -> commandContext.withPlayer(context, player -> {
                             commandContext.editorService().renameActiveGraphAsync(player.getUniqueId(),
                                     StringArgumentType.getString(context, "newName"),
-                                    result -> EditorCommandFeedback.send(commandContext, player, result));
-                            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                                    result -> commandContext.getFeedback().send(player, result));
+                            return Command.SINGLE_SUCCESS;
                         })));
     }
 
     /**
      * Builds the finish subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the finish subcommand.
+     * @return finish subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> finish(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> finish() {
         return Commands.literal("finish")
-                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
+                .executes(context -> commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
                         commandContext.editorService().finishRouteCreation(player.getUniqueId()))));
     }
 
     /**
      * Builds the cancel subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the cancel subcommand.
+     * @return cancel subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> cancel(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> cancel() {
         return Commands.literal("cancel")
-                .executes(context -> withPlayer(commandContext, context, player -> EditorCommandFeedback.send(commandContext, player,
+                .executes(context -> commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
                         commandContext.editorService().cancel(player.getUniqueId()))));
     }
 
-    private static int createGraph(final EditorCommandContext commandContext,
-                                   final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> {
+    private int createGraph(final CommandContext<CommandSourceStack> context) {
+        return commandContext.withPlayer(context, player -> {
             commandContext.editorService().startGraphCreationAsync(player.getUniqueId(),
                     StringArgumentType.getString(context, "name"), commandContext.defaultSettings(),
-                    result -> EditorCommandFeedback.send(commandContext, player, result));
-            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                    result -> commandContext.getFeedback().send(player, result));
+            return Command.SINGLE_SUCCESS;
         });
     }
 
-    private static int editGraph(final EditorCommandContext commandContext,
-                                 final CommandContext<CommandSourceStack> context) {
-        return withPlayer(commandContext, context, player -> {
+    private int editGraph(final CommandContext<CommandSourceStack> context) {
+        return commandContext.withPlayer(context, player -> {
             commandContext.editorService().startGraphEditAsync(player.getUniqueId(),
                     StringArgumentType.getString(context, "graphName"), commandContext.defaultSettings(),
-                    result -> EditorCommandFeedback.send(commandContext, player, result));
-            return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+                    result -> commandContext.getFeedback().send(player, result));
+            return Command.SINGLE_SUCCESS;
         });
-    }
-
-    private static int withPlayer(final EditorCommandContext commandContext,
-                                  final CommandContext<CommandSourceStack> context,
-                                  final PlayerAction action) {
-        final Player player = commandContext.player(context);
-        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
-    }
-
-    /**
-     * Functional interface for actions that require a player.
-     */
-    @FunctionalInterface
-    private interface PlayerAction {
-        /**
-         * Executes the action for the given player.
-         *
-         * @param player The player.
-         * @return The result of the action.
-         */
-        int run(Player player);
     }
 }

@@ -2,7 +2,6 @@ package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.entity.Player;
@@ -12,73 +11,58 @@ import org.bukkit.entity.Player;
  */
 public final class EditorSelectionSubcommands {
 
-    private EditorSelectionSubcommands() {
+    private final EditorCommandContext commandContext;
+
+    /**
+     * Creates selection subcommand builders.
+     *
+     * @param commandContext editor command context
+     */
+    public EditorSelectionSubcommands(final EditorCommandContext commandContext) {
+        this.commandContext = commandContext;
     }
 
     /**
      * Builds the select subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the select subcommand.
+     * @return select subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> select(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> select() {
         return Commands.literal("select")
-                .then(Commands.literal("node").executes(context -> withPlayer(commandContext, context, player ->
-                        EditorCommandFeedback.send(commandContext, player, commandContext.editorService().selectNearbyNode(
+                .then(Commands.literal("node").executes(context -> commandContext.withPlayer(context, player ->
+                        commandContext.getFeedback().send(player, commandContext.editorService().selectNearbyNode(
                                 player.getUniqueId(), player.getLocation())))))
-                .then(Commands.literal("edge").executes(context -> withPlayer(commandContext, context, player ->
-                        EditorCommandFeedback.send(commandContext, player, commandContext.editorService().selectNearbyEdge(
+                .then(Commands.literal("edge").executes(context -> commandContext.withPlayer(context, player ->
+                        commandContext.getFeedback().send(player, commandContext.editorService().selectNearbyEdge(
                                 player.getUniqueId(), player.getLocation())))));
     }
 
     /**
      * Builds the selection management subcommand.
      *
-     * @param commandContext The editor command context.
-     * @return The LiteralArgumentBuilder for the selection subcommand.
+     * @return selection subcommand
      */
-    public static LiteralArgumentBuilder<CommandSourceStack> selection(final EditorCommandContext commandContext) {
+    public LiteralArgumentBuilder<CommandSourceStack> selection() {
         return Commands.literal("selection")
-                .then(Commands.literal("show").executes(context -> withPlayer(commandContext, context, player ->
-                        EditorCommandFeedback.send(commandContext, player, commandContext.editorService().showSelection(player.getUniqueId())))))
-                .then(Commands.literal("clear").executes(context -> withPlayer(commandContext, context, player ->
-                        EditorCommandFeedback.send(commandContext, player, commandContext.editorService().clearSelection(player.getUniqueId())))))
-                .then(Commands.literal("connections").executes(context -> withPlayer(commandContext, context, player ->
-                        EditorCommandFeedback.send(commandContext, player, commandContext.editorService().selectedNodeConnections(
-                                player.getUniqueId())))))
-                .then(Commands.literal("teleport").executes(context -> withPlayer(commandContext, context,
-                        player -> teleport(commandContext, player))));
+                .then(Commands.literal("show").executes(context -> commandContext.withPlayer(context, player ->
+                        commandContext.getFeedback().send(player,
+                                commandContext.editorService().showSelection(player.getUniqueId())))))
+                .then(Commands.literal("clear").executes(context -> commandContext.withPlayer(context, player ->
+                        commandContext.getFeedback().send(player,
+                                commandContext.editorService().clearSelection(player.getUniqueId())))))
+                .then(Commands.literal("connections").executes(context -> commandContext.withPlayer(context, player ->
+                        commandContext.getFeedback().send(player,
+                                commandContext.editorService().selectedNodeConnections(player.getUniqueId())))))
+                .then(Commands.literal("teleport").executes(context -> commandContext.withPlayer(context,
+                        this::teleport)));
     }
 
-    private static int teleport(final EditorCommandContext commandContext, final Player player) {
+    private int teleport(final Player player) {
         final EditorService.SelectionTeleportResult result = commandContext.editorService().teleportToSelection(
                 player.getUniqueId(), player.getLocation());
         if (result.destination() != null) {
             player.teleport(result.destination());
         }
-        return EditorCommandFeedback.send(commandContext, player, result.result());
-    }
-
-    private static int withPlayer(final EditorCommandContext commandContext,
-                                  final CommandContext<CommandSourceStack> context,
-                                  final PlayerAction action) {
-        final Player player = commandContext.player(context);
-        return player == null ? EditorCommandFeedback.playerOnly(commandContext, context) : action.run(player);
-    }
-
-    /**
-     * Functional interface for actions that require a player.
-     */
-    @FunctionalInterface
-    private interface PlayerAction {
-        /**
-         * Executes the action for the given player.
-         *
-         * @param player The player.
-         * @return The result of the action.
-         */
-        int run(Player player);
+        return commandContext.getFeedback().send(player, result.result());
     }
 }
-
-

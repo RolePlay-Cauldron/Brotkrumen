@@ -53,8 +53,8 @@ public final class BkReloadSubcommand {
                 commandContext.loggerFactory().create(BkReloadSubcommand.class)
                         .error("Reload failed: " + failure.getMessage());
                 commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
-                        context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
-                                "<#F43F5E>Reload failed. Check the console for details.")));
+                        context.getSource().getSender().sendMessage(
+                                localization.getPrefixedMessage("commands.bk.reload.error.failed")));
             }
         });
         return Command.SINGLE_SUCCESS;

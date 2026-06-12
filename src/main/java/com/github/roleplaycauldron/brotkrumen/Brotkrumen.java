@@ -37,11 +37,15 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Locale;
 
 /**
  * Starting point of the plugin.
  */
+@SuppressWarnings("PMD.CouplingBetweenObjects")
 public class Brotkrumen extends JavaPlugin {
 
     /**
@@ -111,7 +115,8 @@ public class Brotkrumen extends JavaPlugin {
 
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
-            log.error("Could not start the plugin because the data configuration is missing. Please check your config.yml file for errors.");
+            log.error("Could not start the plugin because the data configuration is missing. "
+                    + "Please check your config.yml file for errors.");
             return;
         }
         storage = new Storage(loggerFactory, databaseSection, getDataFolder());
@@ -203,8 +208,9 @@ public class Brotkrumen extends JavaPlugin {
 
     private void registerCommands(final EffectExecutor executor, final EditorService editorService) {
         new EditorWaitingActionBarReminder(editorService).start(this);
-        new EditorCommand(this, editorService, graphRepository);
-        new BkCommand(this, graphRepository, graphNetworkRepository, editorService.warpRepository(), storage, reg, loggerFactory, executor, localization);
+        new EditorCommand(this, loggerFactory, editorService, graphRepository, localization);
+        new BkCommand(this, graphRepository, graphNetworkRepository, editorService.warpRepository(), storage, reg,
+                loggerFactory, executor, localization);
     }
 
     private void registerListeners(final EditorService editorService) {
@@ -213,8 +219,15 @@ public class Brotkrumen extends JavaPlugin {
 
     private void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {
         final String resourcePath = localeResourcePath(defaultLocaleTag);
-        if (getResource(resourcePath) != null) {
-            saveResource(resourcePath, false);
+        if (new File(getDataFolder(), resourcePath).isFile()) {
+            return;
+        }
+        try (InputStream resource = getResource(resourcePath)) {
+            if (resource != null) {
+                saveResource(resourcePath, false);
+            }
+        } catch (final IOException failure) {
+            log.error("Could not check locale resource '" + resourcePath + "': " + failure.getMessage());
         }
     }
 

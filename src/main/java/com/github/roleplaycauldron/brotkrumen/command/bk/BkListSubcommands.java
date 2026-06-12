@@ -92,7 +92,7 @@ public final class BkListSubcommands {
         commandContext.loggerFactory().create(BkListSubcommands.class)
                 .error("List command failed: " + failure.getMessage());
         commandContext.plugin().getServer().getScheduler().runTask(commandContext.plugin(), () ->
-                context.getSource().getSender().sendMessage(localization.getPrefixedMessageFromString(
-                        "<#F43F5E>List failed. Check the console for details.")));
+                context.getSource().getSender().sendMessage(
+                        localization.getPrefixedMessage("commands.bk.list.error.failed")));
     }
 }

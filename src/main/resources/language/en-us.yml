@@ -28,8 +28,12 @@ messages:
         network:
           empty: "<#FACC15>No networks exist."
           entries: "<#CBD5E1>Networks: <#38BDF8><entries></#38BDF8>"
+        error:
+          failed: "<#F43F5E>List failed. Check the console for details."
       reload:
         success: "<#22C55E>Successfully reloaded configuration, language files, and graphs."
+        error:
+          failed: "<#F43F5E>Reload failed. Check the console for details."
       resolve:
         status:
           resolvingPath: "<#CBD5E1>Resolving path for <#38BDF8><player></#38BDF8>..."
@@ -42,6 +46,7 @@ messages:
           autoTeleportCancelled: "<#FACC15>Pending teleport cancelled."
 
         error:
+          failed: "<#F43F5E>Resolve failed. Check the console for details."
           graphNotFound: "<#F43F5E>No graph found for <#38BDF8><graph></#38BDF8>."
           noNearbyNode: "<#F43F5E>No nearby graph node found."
           noNetworkToGraph: "<#F43F5E>No graph network connects your current graph to <#38BDF8><graph></#38BDF8>."
@@ -56,6 +61,8 @@ messages:
           error:
             missingTarget: "<#F43F5E>Please specify a graph or node target."
             networkNotSupported: "<#F43F5E>Network targets are not supported by /bk resolve."
+            multipleTeleportRules: "<#F43F5E>Please specify teleport rules only once."
+            missingTeleportRules: "<#F43F5E>Please specify teleport rules after the teleport-rules token."
             multipleGraphTargets: "<#F43F5E>Please specify only one graph target."
             missingGraphTarget: "<#F43F5E>Please specify a graph name or id."
             unknownToken: "<#F43F5E>Unknown resolve target token: <#38BDF8><token></#38BDF8>"
@@ -84,6 +91,30 @@ messages:
         noNearbyEdge: "<#F43F5E>No nearby graph edge found."
         warpStorageUnavailable: "<#F43F5E>Warp storage is unavailable."
         warpKeyRequired: "<#F43F5E>Please specify a warp key."
+        editAnchorRequired: "<#F43F5E>Walk through an existing node before placing new edit nodes."
+        edgeTypeRequired: "<#F43F5E>Edge type is required."
+        edgeStateRequired: "<#F43F5E>Edge state is required."
+        edgeTraversalRequired: "<#F43F5E>Edge traversal is required."
+        twoNodesRequired: "<#F43F5E>Select two graph nodes before creating an edge."
+        localEdgeActiveGraphOnly: "<#F43F5E>Local edge authoring is only available for the active graph."
+        interGraphPersistedEndpointsRequired: "<#F43F5E>Inter-graph edges require persisted graph endpoints."
+        edgeSelectionRequiredType: "<#F43F5E>Select a graph edge before changing its type."
+        edgeSelectionRequiredState: "<#F43F5E>Select a graph edge before changing its state."
+        edgeSelectionRequiredRemove: "<#F43F5E>Select a graph edge before removing it."
+        edgeSelectionRequiredTraversal: "<#F43F5E>Select a graph edge before changing its traversal."
+        activeGraphAlreadyVisible: "<#F43F5E>The active graph is already visible."
+        graphNotVisible: "<#F43F5E>That graph is not visible in the editor view."
+        nodeSelectionRequiredConnections: "<#F43F5E>Select a graph node before inspecting connections."
+        graphOpenInEditor: "<#F43F5E>That graph is currently open in an editor session."
+        nodeSelectionRequiredDelete: "<#F43F5E>Select a graph node before deleting it."
+        activeGraphNodeRequiredDelete: "<#F43F5E>Only active graph nodes can be deleted."
+        undoAmountPositive: "<#F43F5E>Undo amount must be greater than zero."
+        noUndoNodes: "<#F43F5E>There are no session-created nodes to undo."
+        placementModeRequired: "<#F43F5E>Placement mode is required."
+        nodeSelectionRequiredWarp: "<#F43F5E>Select a graph node before creating a selected warp."
+        selectedWarpActiveGraphOnly: "<#F43F5E>Selected warps can only target the active graph."
+        warpCostNonNegative: "<#F43F5E>Warp cost must not be negative."
+        warpNotFound: "<#F43F5E>No warp with that key exists."
 
       status:
         sessionStartedCreate: "<#22C55E>Editor started. <#CBD5E1>Tracing steps for graph <#38BDF8><graph></#38BDF8>."
@@ -91,15 +122,90 @@ messages:
         graphRenamed: "<#22C55E>Graph renamed. <#CBD5E1>Active graph is now <#38BDF8><graph></#38BDF8>."
         previewEnabled: "<#22C55E>Preview mode enabled."
         nodePlaced: "<#22C55E>Node placed."
+        nodeAdded: "<#22C55E>Node added."
         nodeAddedAuto: "<#22C55E>Node added. <#CBD5E1>Automatic graph tracing continues."
+        appendAnchorSelected: "<#22C55E>Selected existing node as append anchor."
         guidanceWaitingAnchorActionbar: "<#FACC15>Placement paused. <#CBD5E1>Walk through a node or use <#38BDF8>/bkeditor continue</#38BDF8>."
         continueWaitingNode: "<#FACC15>Waiting for node. <#CBD5E1>Walk through a node to continue placement."
         continueResumed: "<#22C55E>Automatic placement resumed."
-        settingsSummary: "<#CBD5E1>Settings: <#38BDF8><value></#38BDF8>"
+        sessionFinished: "<#22C55E>Route creation finished."
+        sessionSaving: "<#CBD5E1>Saving editor session..."
+        sessionCancelled: "<#FACC15>Editor session cancelled."
+        undoNodes: "<#22C55E>Undid <#38BDF8><count></#38BDF8> node(s)."
+        settingsSummary: "<#CBD5E1>Settings: node-distance=<#38BDF8><node_distance></#38BDF8>, placement=<#38BDF8><placement></#38BDF8>, continue-requires-node=<#38BDF8><continue_requires_node></#38BDF8>, preset=<#38BDF8><preset></#38BDF8>."
+        nodeDistanceSet: "<#22C55E>Node distance set to <#38BDF8><value></#38BDF8>."
+        placementModeSet: "<#22C55E>Placement mode set to <#38BDF8><mode></#38BDF8>."
+        continueRequiresNodeSet: "<#22C55E>Continue requires node set to <#38BDF8><value></#38BDF8>."
+        presetSet: "<#22C55E>Editor preset set to <#38BDF8><preset></#38BDF8>."
         warpListEmpty: "<#FACC15>No persisted warps."
         warpListActiveEmpty: "<#FACC15>No warps target the active graph."
         warpListAll: "<#CBD5E1>All warps: <#38BDF8><entries></#38BDF8>."
         warpListActive: "<#CBD5E1>Active graph warps: <#38BDF8><entries></#38BDF8>."
+
+      selection:
+        selectedNode: "<#CBD5E1>Selected node <#38BDF8><node_id></#38BDF8> in graph <#38BDF8><graph></#38BDF8>."
+        selectedNodeWithEndpoints: "<#CBD5E1>Selected node <#38BDF8><node_id></#38BDF8> in graph <#38BDF8><graph></#38BDF8>. Edge endpoints: <#38BDF8><source></#38BDF8> -> <#38BDF8><target></#38BDF8>."
+        selectedEdge: "<#CBD5E1>Selected edge <#38BDF8><edge_id></#38BDF8> in graph <#38BDF8><graph></#38BDF8>."
+        selectedEdgeDetailed: "<#CBD5E1>Selected edge <#38BDF8><edge_id></#38BDF8> from <#38BDF8><source></#38BDF8> to <#38BDF8><target></#38BDF8> in graph <#38BDF8><graph></#38BDF8>."
+        selectedInterGraphEdge: "<#CBD5E1>Selected inter-graph edge <#38BDF8><edge_id></#38BDF8>."
+        selectedInterGraphEdgeDetailed: "<#CBD5E1>Selected inter-graph edge <#38BDF8><edge_id></#38BDF8> from <#38BDF8><source></#38BDF8> to <#38BDF8><target></#38BDF8>."
+        cleared: "<#22C55E>Cleared graph selection."
+        teleportedNode: "<#22C55E>Teleported to selected node."
+        teleportedEdge: "<#22C55E>Teleported to selected edge."
+        edgeIncomplete: "<#F43F5E>The selected edge is incomplete."
+
+      edge:
+        created: "<#22C55E>Set <#38BDF8><type></#38BDF8> edge between selected nodes."
+        typeUpdated: "<#22C55E>Set selected edge type to <#38BDF8><type></#38BDF8>."
+        stateUpdated: "<#22C55E>Set selected edge state to <#38BDF8><state></#38BDF8>."
+        traversalUpdated: "<#22C55E>Set selected edge traversal to <#38BDF8><traversal></#38BDF8>."
+        removed: "<#22C55E>Removed <#38BDF8><count></#38BDF8> selected edge record(s)."
+
+      reference:
+        added: "<#22C55E>Added reference graph <#38BDF8><graph></#38BDF8> to the editor view."
+        removed: "<#22C55E>Removed reference graph <#38BDF8><graph></#38BDF8> from the editor view."
+        cleared: "<#22C55E>Cleared reference graphs from the editor view."
+
+      connections:
+        empty: "<#FACC15>Selected node has no known connections."
+        header: "<#CBD5E1>Selected node connections:"
+        line: "<#CBD5E1><scope> <direction> to <#38BDF8><node_id></#38BDF8> in graph <#38BDF8><graph></#38BDF8> at <#38BDF8><location></#38BDF8> [<traversal>, <state>]."
+        scope:
+          local: "local"
+          inter-graph: "inter-graph"
+        direction:
+          out: "out"
+          in: "in"
+          undirected: "undirected"
+        traversal:
+          normal: "normal"
+          teleport: "teleport"
+        state:
+          open: "open"
+          blocked: "blocked"
+
+      graph:
+        deleted: "<#22C55E>Deleted graph <#38BDF8><graph></#38BDF8>, removed <#38BDF8><warps></#38BDF8> warp(s) and <#38BDF8><edges></#38BDF8> inter-graph edge record(s)."
+
+      node:
+        deleted: "<#22C55E>Deleted selected node <#38BDF8><node_id></#38BDF8>."
+
+      warp:
+        created: "<#22C55E>Created warp <#38BDF8><key></#38BDF8> for node <#38BDF8><node_id></#38BDF8>."
+        updated: "<#22C55E>Updated warp <#38BDF8><key></#38BDF8> <#CBD5E1><property></#CBD5E1>."
+        removed: "<#22C55E>Removed warp <#38BDF8><key></#38BDF8>."
+
+      error:
+        commandFailed: "<#F43F5E>Editor command failed. Check the console for details."
+        graphLoadEditing: "<#F43F5E>Failed to load graph data, aborting editing."
+        graphLoadRename: "<#F43F5E>Failed to load graph data, aborting rename."
+        graphSave: "<#F43F5E>Failed to save the graph, aborting editing."
+        graphSaveWithReason: "<#F43F5E>Failed to save the graph: <#38BDF8><reason></#38BDF8>"
+        graphLoadViewUpdate: "<#F43F5E>Failed to load graph data, aborting view update."
+        graphNetworkLoadViewClear: "<#F43F5E>Failed to load graph network data, aborting view clear."
+        warpLoadDeletion: "<#F43F5E>Failed to load warp data, aborting deletion."
+        warpLoadUpdate: "<#F43F5E>Failed to load warp data, aborting update."
+        warpLoadRemoval: "<#F43F5E>Failed to load warp data, aborting removal."
 
 #################
 # DO NOT TOUCH! #

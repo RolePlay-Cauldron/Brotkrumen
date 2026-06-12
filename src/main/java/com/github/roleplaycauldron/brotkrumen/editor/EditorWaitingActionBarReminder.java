@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.editor;
 
-import net.kyori.adventure.text.Component;
+import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -15,6 +16,8 @@ public final class EditorWaitingActionBarReminder {
     private static final long PERIOD_TICKS = 20L;
 
     private final EditorService editorService;
+
+    private Localization localization;
 
     /**
      * Creates a reminder sender.
@@ -31,6 +34,9 @@ public final class EditorWaitingActionBarReminder {
      * @param plugin plugin scheduler owner
      */
     public void start(final JavaPlugin plugin) {
+        if (plugin instanceof final Brotkrumen brotkrumen) {
+            localization = brotkrumen.getLocalization();
+        }
         plugin.getServer().getScheduler().runTaskTimer(plugin,
                 () -> sendWaitingAnchorActionBars(playerId -> plugin.getServer().getPlayer(playerId)),
                 PERIOD_TICKS, PERIOD_TICKS);
@@ -43,7 +49,9 @@ public final class EditorWaitingActionBarReminder {
             }
             final Player player = playerLookup.apply(playerId);
             if (player != null) {
-                player.sendActionBar(Component.text(EditorService.waitingAnchorActionBarMessage()));
+                player.sendActionBar(localization == null
+                        ? net.kyori.adventure.text.Component.empty()
+                        : localization.getFormattedMessage(EditorService.waitingAnchorActionBarMessage()));
             }
         }
     }
