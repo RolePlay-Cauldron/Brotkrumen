@@ -235,7 +235,7 @@ class EditorServiceTest {
         graph.addUndirectedEdge(first.graphId(), second.graphId(), 1.0D);
 
         assertTrue(service.selectNearbyEdge(PLAYER_ID, location(2.0D)).success());
-        assertTrue(service.showSelection(PLAYER_ID).message().contains("Selected edge"));
+        assertEquals("commands.bkeditor.selection.selectedEdgeDetailed", service.showSelection(PLAYER_ID).message());
 
         final EditorService.SelectionTeleportResult teleport = service.teleportToSelection(PLAYER_ID, location(2.0D));
         assertTrue(teleport.result().success());
@@ -495,12 +495,17 @@ class EditorServiceTest {
         assertTrue(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
         assertTrue(service.updateSelectedEdgeTraversal(PLAYER_ID, EditorService.EdgeTraversal.TELEPORT).success());
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
-        assertTrue(service.selectedNodeConnections(PLAYER_ID).component().toString().contains("inter-graph"));
+        final EditorService.EditorResult connections = service.selectedNodeConnections(PLAYER_ID);
+        assertEquals("commands.bkeditor.connections.header", connections.message());
+        assertTrue(connections.extraMessages().stream()
+                .anyMatch(message -> "commands.bkeditor.connections.scope.inter-graph"
+                        .equals(message.localizedReplacements().get("scope"))));
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
 
-        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito.<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
-                && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
-                && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
+        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
+                .<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
+                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
+                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
         assertTrue(active.getNodeById(activeNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT));
         assertFalse(reference.getNodeById(referenceNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT),
                 "Reference graph copy should be mutated, not the persisted source instance");
@@ -513,7 +518,8 @@ class EditorServiceTest {
         when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
         when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
 
-        assertTrue(service.startGraphCreation(PLAYER_ID, "Route", defaultSettings(EditorService.PlacementMode.PREVIEW)).success());
+        assertTrue(service.startGraphCreation(PLAYER_ID, "Route",
+                defaultSettings(EditorService.PlacementMode.PREVIEW)).success());
         service.getWorkingGraph(PLAYER_ID).addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
         assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
         assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
@@ -554,7 +560,9 @@ class EditorServiceTest {
         final EditorService.EditorResult deleted = service.deletePersistedGraph("DeleteMe");
 
         assertTrue(deleted.success());
-        assertTrue(deleted.message().contains("removed 1 warp and 2 inter-graph edge records"));
+        assertEquals("commands.bkeditor.graph.deleted", deleted.message());
+        assertEquals("1", deleted.replacements().get("warps"));
+        assertEquals("2", deleted.replacements().get("edges"));
         verify(graphRepository).deleteGraph(9);
         verify(graphRepository).reloadGraphs();
 

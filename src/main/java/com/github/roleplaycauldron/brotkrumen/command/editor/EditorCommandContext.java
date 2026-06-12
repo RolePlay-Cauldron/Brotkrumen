@@ -2,16 +2,21 @@ package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
+import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
+import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
+import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -30,30 +35,42 @@ public final class EditorCommandContext {
 
     private static final int FALLBACK_NODE_DISTANCE = 10;
 
-    private final JavaPlugin javaPlugin;
+    private final JavaPlugin plugin;
 
-    /**
-     * The service for editor operations.
-     */
+    private final WrappedLogger log;
+
+    private final Localization localization;
+
     private final EditorService editorOperations;
+
+    private final EditorCommandFeedback feedback;
 
     /**
      * The service for graph data.
      */
     private final GraphRepository graphs;
 
+    private final BukkitScheduler scheduler;
+
     /**
      * Initializes the editor command context.
      *
-     * @param plugin        The JavaPlugin instance.
-     * @param editorService The EditorService for editor operations.
+     * @param plugin           The BukkitScheduler instance.
+     * @param loggerFactory    The LoggerFactory instance.
+     * @param editorOperations The EditorService for editor operations.
      * @param graphRepository  The graph repository for graph data.
+     * @param localization     The localization service.
      */
-    public EditorCommandContext(final JavaPlugin plugin, final EditorService editorService,
-                                final GraphRepository graphRepository) {
-        this.javaPlugin = plugin;
-        this.editorOperations = editorService;
+    public EditorCommandContext(final JavaPlugin plugin, final LoggerFactory loggerFactory,
+                                final EditorService editorOperations, final GraphRepository graphRepository,
+                                final Localization localization) {
+        this.plugin = plugin;
+        this.log = loggerFactory.create(EditorCommandContext.class);
+        this.localization = localization;
+        this.editorOperations = editorOperations;
+        this.feedback = new EditorCommandFeedback(localization);
         this.graphs = graphRepository;
+        this.scheduler = plugin.getServer().getScheduler();
     }
 
     /**
@@ -63,6 +80,15 @@ public final class EditorCommandContext {
      */
     public EditorService editorService() {
         return editorOperations;
+    }
+
+    /**
+     * Retrieves feedback rendering helpers.
+     *
+     * @return feedback renderer
+     */
+    public EditorCommandFeedback getFeedback() {
+        return feedback;
     }
 
     /**
@@ -83,7 +109,7 @@ public final class EditorCommandContext {
     public CompletableFuture<Suggestions> suggestGraphNames(final SuggestionsBuilder builder) {
         final String remaining = builder.getRemainingLowerCase();
         final CompletableFuture<Suggestions> suggestions = new CompletableFuture<>();
-        javaPlugin.getServer().getScheduler().runTaskAsynchronously(javaPlugin, () -> {
+        scheduler.runTaskAsynchronously(plugin, () -> {
             try {
                 graphs.getAllGraphs().stream()
                         .map(Graph::getName)
@@ -91,7 +117,7 @@ public final class EditorCommandContext {
                         .forEach(builder::suggest);
                 suggestions.complete(builder.build());
             } catch (final RuntimeException failure) {
-                javaPlugin.getLogger().warning("Graph suggestions failed: " + failure.getMessage());
+                log.warnF("Graph suggestions failed: %s", failure.getMessage());
                 suggestions.complete(builder.build());
             }
         });
@@ -106,29 +132,30 @@ public final class EditorCommandContext {
      */
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public void runEditorOperationAsync(final Player player, final Supplier<EditorService.EditorResult> operation) {
-        javaPlugin.getServer().getScheduler().runTaskAsynchronously(javaPlugin, () -> {
+        scheduler.runTaskAsynchronously(plugin, () -> {
             final EditorService.EditorResult result;
             try {
                 result = operation.get();
             } catch (final RuntimeException failure) {
-                javaPlugin.getLogger().warning("Editor command failed: " + failure.getMessage());
-                javaPlugin.getServer().getScheduler().runTask(javaPlugin, () -> player.sendMessage(
-                        EditorCommandFeedback.localization(this).getPrefixedMessageFromString(
-                                "<#F43F5E>Editor command failed. Check the console for details.")));
+                log.warnF("Editor command failed: %s", failure.getMessage());
+                scheduler.runTask(plugin, () -> player.sendMessage(
+                        localization.getPrefixedMessage("commands.bkeditor.error.commandFailed")));
                 return;
             }
-            javaPlugin.getServer().getScheduler().runTask(javaPlugin, () ->
-                    EditorCommandFeedback.send(this, player, result));
+            scheduler.runTask(plugin, () -> feedback.send(player, result));
         });
     }
 
     /**
-     * Returns the plugin instance used by this command context.
+     * Runs an action that requires a player sender.
      *
-     * @return plugin instance
+     * @param context command context
+     * @param action  player action
+     * @return command result
      */
-    public JavaPlugin plugin() {
-        return javaPlugin;
+    public int withPlayer(final CommandContext<CommandSourceStack> context, final Function<Player, Integer> action) {
+        final Player player = player(context);
+        return player == null ? feedback.playerOnly(context) : action.apply(player);
     }
 
     /**
@@ -137,13 +164,13 @@ public final class EditorCommandContext {
      * @return The default EditorSettings.
      */
     public EditorService.EditorSettings defaultSettings() {
-        final int nodeDistance = Math.max(1, javaPlugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG,
+        final int nodeDistance = Math.max(1, plugin.getConfig().getInt(DEFAULT_NODE_DISTANCE_CONFIG,
                 FALLBACK_NODE_DISTANCE));
         final EditorService.PlacementMode placementMode = EditorService.PlacementMode.parse(
-                        javaPlugin.getConfig().getString(DEFAULT_PLACEMENT_MODE_CONFIG, "auto"))
+                        plugin.getConfig().getString(DEFAULT_PLACEMENT_MODE_CONFIG, "auto"))
                 .orElse(EditorService.PlacementMode.AUTO);
-        final boolean continueRequiresNode = javaPlugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
-        final String preset = javaPlugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
+        final boolean continueRequiresNode = plugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
+        final String preset = plugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
         return new EditorService.EditorSettings(nodeDistance, placementMode, continueRequiresNode, preset)
                 .normalized();
     }
