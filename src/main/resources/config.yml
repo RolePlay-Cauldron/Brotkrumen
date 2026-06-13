@@ -115,6 +115,21 @@ commands:
     # Whether guided resolve marks the final selected path node with a dedicated visual role.
     goalMarkerEnabled: true
 
+    # Cancels guided resolve when the player stays too far away from the visible route.
+    cancelWhenAway:
+
+      # Whether guided resolve should cancel after the player leaves the route range.
+      enabled: true
+
+      # Distance, in blocks, from current guided path nodes and edges that remains valid.
+      distance: 10.0
+
+      # Whether players receive a warning before resolve guidance is cancelled.
+      warningEnabled: true
+
+      # Grace period, in seconds, after the warning before resolve guidance is cancelled.
+      warningGraceSeconds: 5
+
     # Default teleport rules for /bk resolve.
     # Supported presets:
     # - DISABLED: No teleportation allowed.

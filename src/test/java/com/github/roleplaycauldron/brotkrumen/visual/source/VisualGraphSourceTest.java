@@ -500,6 +500,30 @@ class VisualGraphSourceTest {
 
     @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void guidedPathSourceChecksViewerDistanceToCurrentEdges() {
+        final UUID first = UUID.randomUUID();
+        final UUID second = UUID.randomUUID();
+        final NodeRef firstRef = new NodeRef(1, first);
+        final NodeRef secondRef = new NodeRef(1, second);
+        final Graph graph = new Graph(1, "Long Edge");
+        graph.addNode(new Node(first, 0, 0, 0, null));
+        graph.addNode(new Node(second, 10, 0, 0, null));
+        graph.addDirectedEdge(first, second, 1.0D, Set.of(EdgeFlag.DIRECTED));
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 5.5D, 1.2D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(new SingleGraphVisualSource(graph),
+                new PathResult(List.of(firstRef, secondRef), List.of()), location, new GuidedPathOptions(2, 1.0D, 0));
+
+        assertTrue(source.viewerWithinCurrentPath(1.0D),
+                "Viewer near the edge segment should remain in range even away from nodes");
+        assertFalse(source.viewerWithinCurrentPath(0.5D), "Viewer outside edge range should be out of range");
+
+        location.currentLocation = new Location(null, 5.5D, 4.0D, 0.5D);
+
+        assertFalse(source.viewerWithinCurrentPath(1.0D), "Viewer far from nodes and edge should be out of range");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void guidedPathOptionsLoadConfigDefaultsAndFallbacks() {
         final MemoryConfiguration config = new MemoryConfiguration();
         config.set("windowSize", 6);

@@ -187,4 +187,23 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
     public int currentProgressIndex() {
         return progressIndex;
     }
+
+    /**
+     * Returns whether the viewer is within range of the current guided path window.
+     *
+     * @param distance maximum distance from a visible guided node or edge
+     * @return true when the viewer is within range
+     */
+    public boolean viewerWithinCurrentPath(final double distance) {
+        if (locationSource == null) {
+            return true;
+        }
+        final Location location = locationSource.location();
+        if (location == null) {
+            return true;
+        }
+        final VisualGraphSnapshot snapshot = delegate.snapshot();
+        advanceProgress(snapshot);
+        return GuidedPathDistanceChecker.viewerWithinRange(location, snapshot, visiblePath(), distance);
+    }
 }
