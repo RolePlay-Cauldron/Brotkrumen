@@ -39,6 +39,8 @@ messages:
           showingPathToNodeTarget: "<#22C55E>Pfad zum angeforderten Knoten-Ziel wird angezeigt."
           guidanceComplete: "<#22C55E>Resolve-Hinweis abgeschlossen."
           cancelledForPlayer: "<#FACC15>Resolve-Hinweis für <#38BDF8><player></#38BDF8> abgebrochen."
+          cancelWarning: "<#FACC15>Resolve-Hinweis wird gleich abgebrochen. Kehre zum Pfad zurÃ¼ck, um ihn aktiv zu halten."
+          cancelledAway: "<#FACC15>Resolve-Hinweis abgebrochen, weil du dich zu weit vom Pfad entfernt hast."
           autoTeleportPending: "<#FACC15>Teleport in <#38BDF8><seconds></#38BDF8> Sekunden."
           autoTeleportCancelled: "<#FACC15>Ausstehender Teleport abgebrochen."
         error:

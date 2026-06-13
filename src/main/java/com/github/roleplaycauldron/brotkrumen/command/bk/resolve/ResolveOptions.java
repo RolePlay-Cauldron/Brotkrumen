@@ -13,10 +13,12 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
  * @param teleportRules             teleport rules
  * @param autoTeleportOptions       automatic teleport options
+ * @param awayCancellationOptions   away-cancellation options
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,
                              double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled,
-                             String teleportRules, ResolveAutoTeleportOptions autoTeleportOptions) {
+                             String teleportRules, ResolveAutoTeleportOptions autoTeleportOptions,
+                             ResolveAwayCancellationOptions awayCancellationOptions) {
 
     private static final String NEAREST_NODE_RADIUS = "commands.resolve.nearestNodeRadius";
 
@@ -31,6 +33,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
     private static final String TELEPORT_RULES = "commands.resolve.teleportRules";
 
     private static final String AUTO_TELEPORT = "commands.resolve.autoTeleport";
+
+    private static final String CANCEL_WHEN_AWAY = "commands.resolve.cancelWhenAway";
 
     private static final String VIEW_DISTANCE = "visualizer.viewDistance";
 
@@ -54,6 +58,9 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
         viewDistance = Math.max(0.0D, viewDistance);
         finishRadius = Math.max(0.0D, finishRadius);
         finishCleanupDelaySeconds = Math.max(0, finishCleanupDelaySeconds);
+        if (awayCancellationOptions == null) {
+            awayCancellationOptions = ResolveAwayCancellationOptions.defaults();
+        }
     }
 
     /**
@@ -71,7 +78,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
                 config.getInt(FINISH_CLEANUP_DELAY, DEFAULT_FINISH_CLEANUP_DELAY),
                 config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED),
                 config.getString(TELEPORT_RULES, DEFAULT_TELEPORT_RULES),
-                ResolveAutoTeleportOptions.fromConfig(config.getConfigurationSection(AUTO_TELEPORT))
+                ResolveAutoTeleportOptions.fromConfig(config.getConfigurationSection(AUTO_TELEPORT)),
+                ResolveAwayCancellationOptions.fromConfig(config.getConfigurationSection(CANCEL_WHEN_AWAY))
         );
     }
 

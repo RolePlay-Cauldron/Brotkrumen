@@ -373,14 +373,18 @@ public final class BkResolveSubcommand {
         final Runnable completionCallback = () -> onGuidedPathCompleted(playerId, token, options);
         final ResolveAutoTeleportController autoTeleportController = autoTeleportController(playerId, token, result,
                 source, options.autoTeleportOptions());
+        final ResolveAwayCancellationController awayCancellationController = awayCancellationController(playerId, token,
+                source, options.awayCancellationOptions());
         if (result.backend() == ResolveBackend.BLOCK_DISPLAY) {
             return new GuidedPathAutoTeleportVisualizer(commandContext.loggerFactory(), source,
                     new BlockDisplayGraphRenderer(commandContext.plugin(), playerId),
-                    new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController);
+                    new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController,
+                    awayCancellationController);
         }
         return new GuidedPathAutoTeleportVisualizer(commandContext.loggerFactory(), source,
                 new ParticleGraphRenderer(commandContext.plugin(), playerId, commandContext.effectExecutor()),
-                new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController);
+                new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController,
+                awayCancellationController);
     }
 
     private ResolveAutoTeleportController autoTeleportController(final UUID playerId, final long token,
@@ -396,6 +400,17 @@ public final class BkResolveSubcommand {
                 },
                 () -> System.currentTimeMillis() / MILLIS_PER_TICK,
                 () -> commandContext.sessionManager().isCurrent(playerId, token),
+                localization);
+    }
+
+    private ResolveAwayCancellationController awayCancellationController(final UUID playerId, final long token,
+                                                                         final GuidedPathVisualGraphSource source,
+                                                                         final ResolveAwayCancellationOptions options) {
+        return new ResolveAwayCancellationController(source, options,
+                () -> commandContext.plugin().getServer().getPlayer(playerId),
+                () -> System.currentTimeMillis() / MILLIS_PER_TICK,
+                () -> commandContext.sessionManager().isCurrent(playerId, token),
+                () -> commandContext.sessionManager().clearIfCurrent(playerId, token),
                 localization);
     }
 

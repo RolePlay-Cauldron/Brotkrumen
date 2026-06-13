@@ -42,6 +42,8 @@ messages:
           showingPathToNodeTarget: "<#22C55E>Showing path to requested node target."
           guidanceComplete: "<#22C55E>Resolve guidance complete."
           cancelledForPlayer: "<#FACC15>Cancelled resolve guidance for <#38BDF8><player></#38BDF8>."
+          cancelWarning: "<#FACC15>Resolve guidance is about to be cancelled. Return to the path to keep it active."
+          cancelledAway: "<#FACC15>Resolve guidance cancelled because you moved too far away from the path."
           autoTeleportPending: "<#FACC15>Teleporting in <#38BDF8><seconds></#38BDF8> seconds."
           autoTeleportCancelled: "<#FACC15>Pending teleport cancelled."
 

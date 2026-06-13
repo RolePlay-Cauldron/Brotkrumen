@@ -50,6 +50,13 @@ class ResolveServiceTest {
         assertTrue(options.autoTeleportOptions().warpEnabled(), "Warp auto teleport should be enabled");
         assertTrue(options.autoTeleportOptions().startFromWarpWhenNoNearbyNode(), "Warp-start fallback should be enabled");
         assertEquals(5.0D, options.autoTeleportOptions().cancelRange(), "Cancel range should default to five blocks");
+        assertTrue(options.awayCancellationOptions().enabled(), "Away-cancellation should be enabled by default");
+        assertEquals(10.0D, options.awayCancellationOptions().distance(),
+                "Away-cancellation distance should default to ten blocks");
+        assertTrue(options.awayCancellationOptions().warningEnabled(),
+                "Away-cancellation warning should be enabled by default");
+        assertEquals(2, options.awayCancellationOptions().warningGraceSeconds(),
+                "Away-cancellation grace should default to two seconds");
     }
 
     @Test
@@ -68,6 +75,10 @@ class ResolveServiceTest {
         config.set("commands.resolve.autoTeleport.interGraphTeleportEnabled", false);
         config.set("commands.resolve.autoTeleport.warpEnabled", false);
         config.set("commands.resolve.autoTeleport.startFromWarpWhenNoNearbyNode", false);
+        config.set("commands.resolve.cancelWhenAway.enabled", false);
+        config.set("commands.resolve.cancelWhenAway.distance", 12.0D);
+        config.set("commands.resolve.cancelWhenAway.warningEnabled", false);
+        config.set("commands.resolve.cancelWhenAway.warningGraceSeconds", 4);
 
         final ResolveOptions options = ResolveOptions.fromConfig(config);
 
@@ -85,6 +96,15 @@ class ResolveServiceTest {
         assertFalse(options.autoTeleportOptions().interGraphTeleportEnabled(), "Configured inter-graph flag should be loaded");
         assertFalse(options.autoTeleportOptions().warpEnabled(), "Configured warp flag should be loaded");
         assertFalse(options.autoTeleportOptions().startFromWarpWhenNoNearbyNode(), "Configured fallback flag should be loaded");
+        assertFalse(options.awayCancellationOptions().enabled(), "Configured away-cancellation flag should be loaded");
+        assertEquals(12.0D, options.awayCancellationOptions().distance(),
+                "Configured away-cancellation distance should be loaded");
+        assertFalse(options.awayCancellationOptions().warningEnabled(),
+                "Configured away-cancellation warning flag should be loaded");
+        assertEquals(4, options.awayCancellationOptions().warningGraceSeconds(),
+                "Configured away-cancellation grace should be loaded");
+        assertEquals(80L, options.awayCancellationOptions().warningGraceTicks(),
+                "Configured away-cancellation grace should convert to ticks");
     }
 
     @Test
@@ -95,6 +115,15 @@ class ResolveServiceTest {
         assertEquals(0, options.delaySeconds(), "Negative delay should normalize to zero");
         assertEquals(0, options.cooldownSeconds(), "Negative cooldown should normalize to zero");
         assertEquals(0.0D, options.cancelRange(), "Negative cancel range should normalize to zero");
+    }
+
+    @Test
+    void normalizesAwayCancellationOptions() {
+        final ResolveAwayCancellationOptions options = new ResolveAwayCancellationOptions(true, -1.0D, true, -2);
+
+        assertEquals(0.0D, options.distance(), "Negative away-cancellation distance should normalize to zero");
+        assertEquals(0, options.warningGraceSeconds(), "Negative grace should normalize to zero");
+        assertEquals(0L, options.warningGraceTicks(), "Zero grace should convert to zero ticks");
     }
 
     @Test
