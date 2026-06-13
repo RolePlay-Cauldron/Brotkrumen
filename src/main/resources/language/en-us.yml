@@ -171,7 +171,7 @@ messages:
       connections:
         empty: "<#FACC15>Selected node has no known connections."
         header: "<#CBD5E1>Selected node connections:"
-        line: "<#CBD5E1><scope> <direction> to <#38BDF8><node_id></#38BDF8> in graph <#38BDF8><graph></#38BDF8> at <#38BDF8><location></#38BDF8> [<traversal>, <state>]."
+        line: "<#38BDF8><scope></#38BDF8> <#38BDF8><direction></#38BDF8> <#CBD5E1>to <#38BDF8><node_id></#38BDF8> <#CBD5E1>in graph <#38BDF8><graph></#38BDF8> <#CBD5E1>at <#38BDF8><location></#38BDF8> <#CBD5E1>[<#38BDF8><traversal></#38BDF8><#CBD5E1>, <#38BDF8><state></#38BDF8><#CBD5E1>]."
         scope:
           local: "local"
           inter-graph: "inter-graph"
@@ -194,7 +194,7 @@ messages:
 
       warp:
         created: "<#22C55E>Created warp <#38BDF8><key></#38BDF8> for node <#38BDF8><node_id></#38BDF8>."
-        updated: "<#22C55E>Updated warp <#38BDF8><key></#38BDF8> <#CBD5E1><property></#CBD5E1>."
+        updated: "<#22C55E>Updated warp <#38BDF8><key></#38BDF8> <#CBD5E1>property <#38BDF8><property></#38BDF8>."
         removed: "<#22C55E>Removed warp <#38BDF8><key></#38BDF8>."
 
       error:
