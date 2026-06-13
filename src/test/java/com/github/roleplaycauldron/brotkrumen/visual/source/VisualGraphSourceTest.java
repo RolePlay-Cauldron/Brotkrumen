@@ -542,7 +542,7 @@ class VisualGraphSourceTest {
     @Test
     void guidedPathSourceAdvancesProgressMonotonically() {
         final PathFixture fixture = pathFixture();
-        final MutableLocationSource location = new MutableLocationSource(new Location(null, 2.5D, 0.5D, 0.5D));
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 2.0D, 0.5D, 0.5D));
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
                 new SingleGraphVisualSource(fixture.graph()),
                 new PathResult(fixture.refs(), List.of()),
@@ -602,6 +602,44 @@ class VisualGraphSourceTest {
         source.snapshot();
 
         assertTrue(source.complete(), "Reaching the final path node should report completion");
+        assertEquals(fixture.refs().size() - 1, source.currentProgressIndex(),
+                "Final node should become the current progress index");
+    }
+
+    @Test
+    void guidedPathSourceShowsOnlyGoalWhenFinalReachedWithoutLookBehind() {
+        final PathFixture fixture = pathFixture();
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 3.5D, 0.5D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(fixture.graph()),
+                new PathResult(fixture.refs(), List.of()),
+                location,
+                new GuidedPathOptions(3, 1.0D, 0)
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertEquals(List.of(fixture.refs().getLast()), snapshot.nodes().stream().map(VisualNode::ref).toList(),
+                "Final window with no look-behind should expose only the goal node");
+        assertTrue(snapshot.edges().isEmpty(), "Final window with only one node should expose no path edges");
+    }
+
+    @Test
+    void guidedPathSourceShowsConfiguredLookBehindWhenFinalReached() {
+        final PathFixture fixture = pathFixture();
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 3.5D, 0.5D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(fixture.graph()),
+                new PathResult(fixture.refs(), List.of()),
+                location,
+                new GuidedPathOptions(3, 1.0D, 2)
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
+        assertEquals(fixture.refs().subList(1, 4), snapshot.nodes().stream().map(VisualNode::ref).toList(),
+                "Final window should expose the goal and configured previous nodes");
+        assertEquals(2, snapshot.edges().size(), "Final window should expose edges between final visible nodes");
     }
 
     @Test

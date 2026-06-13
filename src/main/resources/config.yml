@@ -90,7 +90,15 @@ visualizer:
   # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
   spawnDistanceBuffer: 16.0
 
-  ## ToDo Config for how many nodes behind will get shown (min 0, default 1)
+  # Guided path visualization settings used by /bk resolve.
+  guidedPath:
+
+    # Number of forward path nodes shown from the current progress node.
+    windowSize: 4
+
+    # Number of previous path nodes kept visible behind the current progress node.
+    # Minimum: 0
+    lookBehind: 1
 
 ############
 # Commands #
@@ -114,6 +122,27 @@ commands:
 
     # Whether guided resolve marks the final selected path node with a dedicated visual role.
     goalMarkerEnabled: true
+
+    # Effects played when guided resolve reaches the final goal node.
+    goal:
+
+      # Whether the localized completion chat message is sent.
+      message:
+        enabled: true
+
+      # Whether a completion sound is played for the target player.
+      sound:
+        enabled: true
+        name: 'entity.player.levelup'
+        volume: 1.0
+        pitch: 1.0
+
+      # Whether the localized completion title and subtitle are sent.
+      title:
+        enabled: false
+        fadeInTicks: 10
+        stayTicks: 40
+        fadeOutTicks: 10
 
     # Cancels guided resolve when the player stays too far away from the visible route.
     cancelWhenAway:
@@ -153,7 +182,7 @@ commands:
       enabled: true
 
       # Delay, in seconds, before an automatic teleport is executed.
-      delaySeconds: 0
+      delaySeconds: 3
 
       # Whether players receive a message before delayed automatic teleports.
       messageEnabled: true
@@ -178,8 +207,6 @@ commands:
 
       # Whether /bk resolve may start from the cheapest allowed warp target when no node is nearby.
       startFromWarpWhenNoNearbyNode: true
-
-    ## ToDo new settings for goal. Chat message, sound, title, subtitle?
 
 ##########
 # Editor #

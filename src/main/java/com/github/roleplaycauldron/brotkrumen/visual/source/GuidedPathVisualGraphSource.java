@@ -130,6 +130,7 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
 
         final VisualNode finalNode = snapshot.nodesByRef().get(path.getLast());
         if (finalNode != null && isReached(location, finalNode.node())) {
+            progressIndex = path.size() - 1;
             completed = true;
         }
     }

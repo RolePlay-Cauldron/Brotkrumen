@@ -41,6 +41,8 @@ messages:
           showingPathToGraph: "<#22C55E>Showing path to graph <#38BDF8><graph></#38BDF8>."
           showingPathToNodeTarget: "<#22C55E>Showing path to requested node target."
           guidanceComplete: "<#22C55E>Resolve guidance complete."
+          guidanceCompleteTitle: "<#22C55E>Destination reached"
+          guidanceCompleteSubtitle: "<#CBD5E1>Resolve guidance complete"
           cancelledForPlayer: "<#FACC15>Cancelled resolve guidance for <#38BDF8><player></#38BDF8>."
           cancelWarning: "<#FACC15>Resolve guidance is about to be cancelled. Return to the path to keep it active."
           cancelledAway: "<#FACC15>Resolve guidance cancelled because you moved too far away from the path."

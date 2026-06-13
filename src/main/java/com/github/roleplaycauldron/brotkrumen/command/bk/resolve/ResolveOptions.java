@@ -11,13 +11,15 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param finishRadius              completion radius for guided resolve finish detection
  * @param finishCleanupDelaySeconds delay after completion before resolve guidance cleanup
  * @param goalMarkerEnabled         whether guided resolve highlights the final goal node
+ * @param goalOptions               goal completion effect options
  * @param teleportRules             teleport rules
  * @param autoTeleportOptions       automatic teleport options
  * @param awayCancellationOptions   away-cancellation options
  */
 public record ResolveOptions(double nearestNodeRadius, double viewDistance, ResolveBackend backend,
                              double finishRadius, int finishCleanupDelaySeconds, boolean goalMarkerEnabled,
-                             String teleportRules, ResolveAutoTeleportOptions autoTeleportOptions,
+                             ResolveGoalOptions goalOptions, String teleportRules,
+                             ResolveAutoTeleportOptions autoTeleportOptions,
                              ResolveAwayCancellationOptions awayCancellationOptions) {
 
     private static final String NEAREST_NODE_RADIUS = "commands.resolve.nearestNodeRadius";
@@ -29,6 +31,8 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
     private static final String FINISH_CLEANUP_DELAY = "commands.resolve.finishCleanupDelaySeconds";
 
     private static final String GOAL_MARKER_ENABLED = "commands.resolve.goalMarkerEnabled";
+
+    private static final String GOAL = "commands.resolve.goal";
 
     private static final String TELEPORT_RULES = "commands.resolve.teleportRules";
 
@@ -58,6 +62,9 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
         viewDistance = Math.max(0.0D, viewDistance);
         finishRadius = Math.max(0.0D, finishRadius);
         finishCleanupDelaySeconds = Math.max(0, finishCleanupDelaySeconds);
+        if (goalOptions == null) {
+            goalOptions = ResolveGoalOptions.defaults();
+        }
         if (awayCancellationOptions == null) {
             awayCancellationOptions = ResolveAwayCancellationOptions.defaults();
         }
@@ -77,6 +84,7 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
                 config.getDouble(FINISH_RADIUS, DEFAULT_FINISH_RADIUS),
                 config.getInt(FINISH_CLEANUP_DELAY, DEFAULT_FINISH_CLEANUP_DELAY),
                 config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED),
+                ResolveGoalOptions.fromConfig(config.getConfigurationSection(GOAL)),
                 config.getString(TELEPORT_RULES, DEFAULT_TELEPORT_RULES),
                 ResolveAutoTeleportOptions.fromConfig(config.getConfigurationSection(AUTO_TELEPORT)),
                 ResolveAwayCancellationOptions.fromConfig(config.getConfigurationSection(CANCEL_WHEN_AWAY))
