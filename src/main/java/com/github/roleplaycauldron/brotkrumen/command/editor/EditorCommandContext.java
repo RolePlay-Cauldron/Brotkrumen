@@ -29,6 +29,10 @@ public final class EditorCommandContext {
 
     private static final String DEFAULT_PLACEMENT_MODE_CONFIG = "editor.defaultPlacementMode";
 
+    private static final String DEFAULT_EDIT_PLACEMENT_MODE_CONFIG = "editor.defaultEditPlacementMode";
+
+    private static final String PLACE_NODES_ON_GROUND_CONFIG = "editor.placeNodesOnGround";
+
     private static final String CONTINUE_REQUIRES_NODE_CONFIG = "editor.continueRequiresNode";
 
     private static final String DEFAULT_PRESET_CONFIG = "editor.defaultPreset";
@@ -169,9 +173,14 @@ public final class EditorCommandContext {
         final EditorService.PlacementMode placementMode = EditorService.PlacementMode.parse(
                         plugin.getConfig().getString(DEFAULT_PLACEMENT_MODE_CONFIG, "auto"))
                 .orElse(EditorService.PlacementMode.AUTO);
+        final EditorService.PlacementMode editPlacementMode = EditorService.PlacementMode.parse(
+                        plugin.getConfig().getString(DEFAULT_EDIT_PLACEMENT_MODE_CONFIG, "preview"))
+                .orElse(EditorService.PlacementMode.PREVIEW);
+        final boolean placeNodesOnGround = plugin.getConfig().getBoolean(PLACE_NODES_ON_GROUND_CONFIG, false);
         final boolean continueRequiresNode = plugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
         final String preset = plugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
-        return new EditorService.EditorSettings(nodeDistance, placementMode, continueRequiresNode, preset)
+        return new EditorService.EditorSettings(nodeDistance, placementMode, editPlacementMode, placeNodesOnGround,
+                continueRequiresNode, preset)
                 .normalized();
     }
 

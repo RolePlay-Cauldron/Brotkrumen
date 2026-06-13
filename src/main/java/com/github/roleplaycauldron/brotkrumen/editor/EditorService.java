@@ -21,6 +21,7 @@ import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -582,15 +583,29 @@ public class EditorService {
     }
 
     private void addNodeToPath(final EditorSession session, final Location loc) {
-        final Node created = session.graph.addNode(new Node(null, loc));
+        final Location placement = placementLocation(session, loc);
+        final Node created = session.graph.addNode(new Node(null, placement));
 
         if (session.lastPlacedNode != null) {
             session.graph.addEdge(session.lastPlacedNode.graphId(), created.graphId(),
-                    distance(session.lastPlacedNode, loc), Set.of(EdgeFlag.UNDIRECTED));
+                    distance(session.lastPlacedNode, placement), Set.of(EdgeFlag.UNDIRECTED));
         }
 
         session.lastPlacedNode = created;
         session.createdNodes.addLast(created);
+    }
+
+    private Location placementLocation(final EditorSession session, final Location loc) {
+        if (!session.placeNodesOnGround) {
+            return loc;
+        }
+        final World world = loc.getWorld();
+        if (world == null) {
+            return loc;
+        }
+        final Location grounded = loc.clone();
+        grounded.setY(world.getHighestBlockYAt(loc) + 1.0D);
+        return grounded;
     }
 
     /**
@@ -1548,6 +1563,7 @@ public class EditorService {
         return EditorResult.success("commands.bkeditor.status.settingsSummary", Map.of(
                 "node_distance", String.valueOf(session.nodeDistance),
                 "placement", session.placementMode.configValue(),
+                "place_nodes_on_ground", String.valueOf(session.placeNodesOnGround),
                 "continue_requires_node", String.valueOf(session.continueRequiresNode),
                 "preset", session.preset));
     }
@@ -1627,7 +1643,7 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        final Node node = session.graph.addNode(new Node(null, loc));
+        final Node node = session.graph.addNode(new Node(null, placementLocation(session, loc)));
         session.selectedNode = node;
         session.selectedNodeRef = new NodeRef(session.graph.getGraphId(), node.graphId());
         session.selectedEdge = null;
@@ -2131,6 +2147,23 @@ public class EditorService {
     }
 
     /**
+     * Updates whether new editor nodes are snapped to the ground.
+     *
+     * @param playerId           editor player id
+     * @param placeNodesOnGround true to snap new nodes to the highest block at the player's X/Z position
+     * @return operation result
+     */
+    public EditorResult updatePlaceNodesOnGround(final UUID playerId, final boolean placeNodesOnGround) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure("commands.bkeditor.common.notEditing");
+        }
+        session.placeNodesOnGround = placeNodesOnGround;
+        return EditorResult.success("commands.bkeditor.status.placeNodesOnGroundSet",
+                Map.of("value", String.valueOf(placeNodesOnGround)));
+    }
+
+    /**
      * Gets the graph currently being created or edited.
      *
      * @param playerId editor player id
@@ -2389,11 +2422,26 @@ public class EditorService {
      *
      * @param nodeDistance         minimum distance between nodes
      * @param placementMode        placement mode
+     * @param editPlacementMode    initial placement mode for existing graph edit sessions
+     * @param placeNodesOnGround   whether new nodes should be snapped to the world's highest block
      * @param continueRequiresNode whether continuation requires an existing node
      * @param preset               visualizer preset
      */
-    public record EditorSettings(int nodeDistance, PlacementMode placementMode, boolean continueRequiresNode,
-                                 String preset) {
+    public record EditorSettings(int nodeDistance, PlacementMode placementMode, PlacementMode editPlacementMode,
+                                 boolean placeNodesOnGround, boolean continueRequiresNode, String preset) {
+
+        /**
+         * Creates editor settings using the legacy edit defaults.
+         *
+         * @param nodeDistance         minimum distance between nodes
+         * @param placementMode        placement mode
+         * @param continueRequiresNode whether continuation requires an existing node
+         * @param preset               visualizer preset
+         */
+        public EditorSettings(final int nodeDistance, final PlacementMode placementMode,
+                              final boolean continueRequiresNode, final String preset) {
+            this(nodeDistance, placementMode, PlacementMode.WAITING_FOR_ANCHOR, false, continueRequiresNode, preset);
+        }
 
         /**
          * Returns a normalized version of the settings.
@@ -2402,6 +2450,7 @@ public class EditorService {
          */
         public EditorSettings normalized() {
             return new EditorSettings(nodeDistance, Objects.requireNonNullElse(placementMode, PlacementMode.AUTO),
+                    Objects.requireNonNullElse(editPlacementMode, PlacementMode.PREVIEW), placeNodesOnGround,
                     continueRequiresNode, preset == null || preset.isBlank() ? "default" : preset.toLowerCase(Locale.ROOT));
         }
     }
@@ -2586,6 +2635,15 @@ public class EditorService {
         }
     }
 
+    /**
+     * Represents a session for editing or creating graphs and managing nodes, edges, and related elements.
+     * This class provides state management and utilities for graph editing workflows.
+     * It operates in either creation mode or editing mode, determined at instantiation.
+     * <p>
+     * The session encapsulates settings, selected elements, placement modes, and temporary structures
+     * used during editing or creation of graphs.
+     */
+    @SuppressWarnings("PMD.TooManyFields")
     private static final class EditorSession {
 
         private final EditorMode mode;
@@ -2599,6 +2657,10 @@ public class EditorService {
         private final Map<Integer, Graph> referenceGraphs = new ConcurrentHashMap<>();
 
         private final Graph graph;
+
+        private final PlacementMode editPlacementMode;
+
+        private boolean placeNodesOnGround;
 
         private GraphNetwork workspaceNetwork = new GraphNetwork();
 
@@ -2634,7 +2696,9 @@ public class EditorService {
             this.mode = mode;
             this.graph = graph;
             this.nodeDistance = settings.nodeDistance;
-            this.placementMode = mode == EditorMode.EDIT ? PlacementMode.WAITING_FOR_ANCHOR : settings.placementMode;
+            this.placementMode = mode == EditorMode.EDIT ? settings.editPlacementMode : settings.placementMode;
+            this.editPlacementMode = settings.editPlacementMode;
+            this.placeNodesOnGround = settings.placeNodesOnGround;
             this.continueRequiresNode = settings.continueRequiresNode;
             this.preset = settings.preset;
         }
@@ -2648,7 +2712,8 @@ public class EditorService {
         }
 
         private EditorSettings settings() {
-            return new EditorSettings(nodeDistance, placementMode, continueRequiresNode, preset);
+            return new EditorSettings(nodeDistance, placementMode, editPlacementMode, placeNodesOnGround,
+                    continueRequiresNode, preset);
         }
 
         private List<InterGraphEdge> visibleInterGraphEdges() {

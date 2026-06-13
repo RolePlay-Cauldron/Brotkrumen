@@ -224,13 +224,17 @@ editor:
   # Default placement mode for new editor sessions: auto, preview, or waiting-for-anchor.
   defaultPlacementMode: 'auto'
 
-  ## ToDo Config for placement mode when editing a graph and not creating a new one (default preview)
+  # Default placement mode when editing an existing graph: auto, preview, or waiting-for-anchor.
+  # Preview avoids appending to an existing graph until placement is explicitly resumed.
+  defaultEditPlacementMode: 'preview'
 
-  ## ToDo Config option to place nodes on ground even if the player is in the air (default false)
+  # When enabled, newly placed editor nodes are snapped to the highest block at the player's X/Z position.
+  # When disabled, nodes are placed at the player's exact location.
+  placeNodesOnGround: false
 
   # When enabled, continuing after undo requires walking through a node before automatic placement resumes.
   continueRequiresNode: true
 
   # Temporary editor preview preset selected when a session starts.
-  defaultPreset: 'default' ## ToDo think of a better way to do this. Maybe add a list of presets to the comments too.
+  defaultPreset: 'default'
 

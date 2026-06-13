@@ -122,7 +122,7 @@ messages:
 
       status:
         sessionStartedCreate: "<#22C55E>Editor started. <#CBD5E1>Tracing steps for graph <#38BDF8><graph></#38BDF8>."
-        sessionStartedEdit: "<#22C55E>Editor started. <#CBD5E1>Editing graph <#38BDF8><graph></#38BDF8>. Walk through an existing node to append nodes."
+        sessionStartedEdit: "<#22C55E>Editor started. <#CBD5E1>Editing graph <#38BDF8><graph></#38BDF8>."
         graphRenamed: "<#22C55E>Graph renamed. <#CBD5E1>Active graph is now <#38BDF8><graph></#38BDF8>."
         previewEnabled: "<#22C55E>Preview mode enabled."
         nodePlaced: "<#22C55E>Node placed."
@@ -136,9 +136,10 @@ messages:
         sessionSaving: "<#CBD5E1>Saving editor session..."
         sessionCancelled: "<#FACC15>Editor session cancelled."
         undoNodes: "<#22C55E>Undid <#38BDF8><count></#38BDF8> node(s)."
-        settingsSummary: "<#CBD5E1>Settings: node-distance=<#38BDF8><node_distance></#38BDF8>, placement=<#38BDF8><placement></#38BDF8>, continue-requires-node=<#38BDF8><continue_requires_node></#38BDF8>, preset=<#38BDF8><preset></#38BDF8>."
+        settingsSummary: "<#CBD5E1>Settings: node-distance=<#38BDF8><node_distance></#38BDF8>, placement=<#38BDF8><placement></#38BDF8>, place-nodes-on-ground=<#38BDF8><place_nodes_on_ground></#38BDF8>, continue-requires-node=<#38BDF8><continue_requires_node></#38BDF8>, preset=<#38BDF8><preset></#38BDF8>."
         nodeDistanceSet: "<#22C55E>Node distance set to <#38BDF8><value></#38BDF8>."
         placementModeSet: "<#22C55E>Placement mode set to <#38BDF8><mode></#38BDF8>."
+        placeNodesOnGroundSet: "<#22C55E>Place nodes on ground set to <#38BDF8><value></#38BDF8>."
         continueRequiresNodeSet: "<#22C55E>Continue requires node set to <#38BDF8><value></#38BDF8>."
         presetSet: "<#22C55E>Editor preset set to <#38BDF8><preset></#38BDF8>."
         warpListEmpty: "<#FACC15>No persisted warps."

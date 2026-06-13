@@ -33,6 +33,10 @@ class ResourceDefaultsTest {
                 "Default goal sound should be documented");
         assertFalse(config.getBoolean("commands.resolve.goal.title.enabled"),
                 "Default goal title should be disabled");
+        assertEquals("preview", config.getString("editor.defaultEditPlacementMode"),
+                "Existing graph edit sessions should default to preview mode");
+        assertFalse(config.getBoolean("editor.placeNodesOnGround"),
+                "Ground-snapped editor placement should default to disabled");
     }
 
     @Test
@@ -44,10 +48,14 @@ class ResourceDefaultsTest {
                 "English title key should exist");
         assertTrue(english.contains("messages.commands.bk.resolve.status.guidanceCompleteSubtitle"),
                 "English subtitle key should exist");
+        assertTrue(english.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
+                "English editor ground placement setting key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteTitle"),
                 "German title key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteSubtitle"),
                 "German subtitle key should exist");
+        assertTrue(german.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
+                "German editor ground placement setting key should exist");
     }
 
     private YamlConfiguration resourceYaml(final String path) {

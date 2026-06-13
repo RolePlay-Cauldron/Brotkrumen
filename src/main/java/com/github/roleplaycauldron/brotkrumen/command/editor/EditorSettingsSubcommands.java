@@ -30,6 +30,7 @@ public final class EditorSettingsSubcommands {
      *
      * @return settings subcommand
      */
+    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
     public LiteralArgumentBuilder<CommandSourceStack> settings() {
         return Commands.literal("settings")
                 .then(Commands.literal("show")
@@ -57,6 +58,14 @@ public final class EditorSettingsSubcommands {
                                     return builder.buildFuture();
                                 })
                                 .executes(this::updateContinueRequiresNode)))
+                .then(Commands.literal("place-nodes-on-ground")
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                .suggests((context, builder) -> {
+                                    builder.suggest("true");
+                                    builder.suggest("false");
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::updatePlaceNodesOnGround)))
                 .then(Commands.literal("preset")
                         .then(Commands.argument("presetName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -82,6 +91,12 @@ public final class EditorSettingsSubcommands {
     private int updateContinueRequiresNode(final CommandContext<CommandSourceStack> context) {
         return commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
                 commandContext.editorService().updateContinueRequiresNode(player.getUniqueId(),
+                        BoolArgumentType.getBool(context, "enabled"))));
+    }
+
+    private int updatePlaceNodesOnGround(final CommandContext<CommandSourceStack> context) {
+        return commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
+                commandContext.editorService().updatePlaceNodesOnGround(player.getUniqueId(),
                         BoolArgumentType.getBool(context, "enabled"))));
     }
 
