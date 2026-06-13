@@ -421,7 +421,8 @@ public final class BkResolveSubcommand {
         final ConfigurationSection section = commandContext.plugin().getConfig()
                 .getConfigurationSection(GUIDED_PATH_CONFIG);
         final GuidedPathOptions configured = GuidedPathOptions.fromConfig(section);
-        return new GuidedPathOptions(configured.windowSize(), options.finishRadius(), configured.lookBehind());
+        return new GuidedPathOptions(configured.windowSize(), options.finishRadius(), configured.lookBehind(),
+                configured.keepLookBehindOnCompletion());
     }
 
     private ViewerLocationSource viewerLocationSource(final UUID playerId) {

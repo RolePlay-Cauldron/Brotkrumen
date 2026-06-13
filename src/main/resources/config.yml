@@ -100,6 +100,10 @@ visualizer:
     # Minimum: 0
     lookBehind: 1
 
+    # Whether previous path nodes remain visible after the final goal node is reached.
+    # When disabled, only the goal node remains visible during resolve cleanup.
+    keepLookBehindOnCompletion: false
+
 ############
 # Commands #
 ############

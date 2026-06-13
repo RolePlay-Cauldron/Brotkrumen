@@ -23,6 +23,8 @@ class ResourceDefaultsTest {
                 "Default guided path window size should be documented");
         assertEquals(1, config.getInt("visualizer.guidedPath.lookBehind"),
                 "Default guided path look-behind should be documented");
+        assertFalse(config.getBoolean("visualizer.guidedPath.keepLookBehindOnCompletion"),
+                "Default guided path completion look-behind should be disabled");
         assertTrue(config.getBoolean("commands.resolve.goal.message.enabled"),
                 "Default goal message should be enabled");
         assertTrue(config.getBoolean("commands.resolve.goal.sound.enabled"),

@@ -536,6 +536,8 @@ class VisualGraphSourceTest {
         assertEquals(2.5D, configured.activationRadius(), "Configured activation radius should be loaded");
         assertEquals(GuidedPathOptions.defaults().lookBehind(), configured.lookBehind(),
                 "Missing look-behind should use fallback default");
+        assertFalse(configured.keepLookBehindOnCompletion(),
+                "Missing completion look-behind flag should use fallback default");
         assertEquals(GuidedPathOptions.defaults(), missing, "Missing section should use built-in defaults");
     }
 
@@ -625,7 +627,7 @@ class VisualGraphSourceTest {
     }
 
     @Test
-    void guidedPathSourceShowsConfiguredLookBehindWhenFinalReached() {
+    void guidedPathSourceHidesLookBehindWhenFinalReachedByDefault() {
         final PathFixture fixture = pathFixture();
         final MutableLocationSource location = new MutableLocationSource(new Location(null, 3.5D, 0.5D, 0.5D));
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
@@ -637,8 +639,26 @@ class VisualGraphSourceTest {
 
         final VisualGraphSnapshot snapshot = source.snapshot();
 
+        assertEquals(List.of(fixture.refs().getLast()), snapshot.nodes().stream().map(VisualNode::ref).toList(),
+                "Final window should hide previous nodes by default");
+        assertTrue(snapshot.edges().isEmpty(), "Final window with only the goal node should expose no path edges");
+    }
+
+    @Test
+    void guidedPathSourceShowsLookBehindWhenFinalReachedAndConfigured() {
+        final PathFixture fixture = pathFixture();
+        final MutableLocationSource location = new MutableLocationSource(new Location(null, 3.5D, 0.5D, 0.5D));
+        final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
+                new SingleGraphVisualSource(fixture.graph()),
+                new PathResult(fixture.refs(), List.of()),
+                location,
+                new GuidedPathOptions(3, 1.0D, 2, true)
+        );
+
+        final VisualGraphSnapshot snapshot = source.snapshot();
+
         assertEquals(fixture.refs().subList(1, 4), snapshot.nodes().stream().map(VisualNode::ref).toList(),
-                "Final window should expose the goal and configured previous nodes");
+                "Final window should expose previous nodes when completion look-behind is enabled");
         assertEquals(2, snapshot.edges().size(), "Final window should expose edges between final visible nodes");
     }
 

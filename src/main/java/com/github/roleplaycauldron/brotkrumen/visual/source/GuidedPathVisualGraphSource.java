@@ -147,15 +147,22 @@ public class GuidedPathVisualGraphSource implements VisualGraphSource {
     }
 
     private List<NodeRef> visiblePath() {
-        final int start = Math.max(0, progressIndex - options.lookBehind());
+        final int start = Math.max(0, progressIndex - effectiveLookBehind());
         final int endExclusive = Math.min(path.size(), progressIndex + options.windowSize());
         return path.subList(start, endExclusive);
     }
 
     private boolean isVisiblePathEdge(final VisualEdge edge) {
-        final int start = Math.max(0, progressIndex - options.lookBehind());
+        final int start = Math.max(0, progressIndex - effectiveLookBehind());
         final int endExclusive = Math.min(path.size(), progressIndex + options.windowSize());
         return PathEdgeMatcher.matchesPathWindow(edge, path, start, endExclusive);
+    }
+
+    private int effectiveLookBehind() {
+        if (completed && !options.keepLookBehindOnCompletion()) {
+            return 0;
+        }
+        return options.lookBehind();
     }
 
     private double activationRadiusSquared() {

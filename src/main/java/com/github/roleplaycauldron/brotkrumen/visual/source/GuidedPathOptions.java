@@ -8,14 +8,29 @@ import org.bukkit.configuration.ConfigurationSection;
  * @param windowSize       number of forward path nodes to expose
  * @param activationRadius distance at which a node is considered reached
  * @param lookBehind       number of previous nodes kept visible
+ * @param keepLookBehindOnCompletion whether previous nodes stay visible after completion
  */
-public record GuidedPathOptions(int windowSize, double activationRadius, int lookBehind) {
+public record GuidedPathOptions(int windowSize, double activationRadius, int lookBehind,
+                                boolean keepLookBehindOnCompletion) {
 
     private static final int DEFAULT_WINDOW_SIZE = 4;
 
     private static final double DEFAULT_ACTIVATION_RADIUS = 4.0D;
 
     private static final int DEFAULT_LOOK_BEHIND = 1;
+
+    private static final boolean DEFAULT_KEEP_LOOK_BEHIND_ON_COMPLETION = false;
+
+    /**
+     * Creates options using the default completion look-behind behavior.
+     *
+     * @param windowSize       number of forward path nodes to expose
+     * @param activationRadius distance at which a node is considered reached
+     * @param lookBehind       number of previous nodes kept visible
+     */
+    public GuidedPathOptions(final int windowSize, final double activationRadius, final int lookBehind) {
+        this(windowSize, activationRadius, lookBehind, DEFAULT_KEEP_LOOK_BEHIND_ON_COMPLETION);
+    }
 
     /**
      * Creates options and normalizes invalid values.
@@ -36,7 +51,8 @@ public record GuidedPathOptions(int windowSize, double activationRadius, int loo
      * @return default options
      */
     public static GuidedPathOptions defaults() {
-        return new GuidedPathOptions(DEFAULT_WINDOW_SIZE, DEFAULT_ACTIVATION_RADIUS, DEFAULT_LOOK_BEHIND);
+        return new GuidedPathOptions(DEFAULT_WINDOW_SIZE, DEFAULT_ACTIVATION_RADIUS, DEFAULT_LOOK_BEHIND,
+                DEFAULT_KEEP_LOOK_BEHIND_ON_COMPLETION);
     }
 
     /**
@@ -53,7 +69,8 @@ public record GuidedPathOptions(int windowSize, double activationRadius, int loo
         return new GuidedPathOptions(
                 section.getInt("windowSize", defaults.windowSize()),
                 section.getDouble("activationRadius", defaults.activationRadius()),
-                section.getInt("lookBehind", defaults.lookBehind())
+                section.getInt("lookBehind", defaults.lookBehind()),
+                section.getBoolean("keepLookBehindOnCompletion", defaults.keepLookBehindOnCompletion())
         );
     }
 }
