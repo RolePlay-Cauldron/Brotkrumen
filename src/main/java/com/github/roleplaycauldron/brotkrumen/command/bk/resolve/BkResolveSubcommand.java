@@ -68,6 +68,8 @@ public final class BkResolveSubcommand {
 
     private final Localization localization;
 
+    private final ResolveGoalNotifier goalNotifier;
+
     /**
      * Initializes an instance of the BkResolveSubcommand class, which is responsible for
      * handling the `/bk resolve` subcommand in the Brotkrumen plugin. This subcommand
@@ -83,6 +85,7 @@ public final class BkResolveSubcommand {
     public BkResolveSubcommand(final BkCommandContext commandContext, final Localization localization) {
         this.commandContext = commandContext;
         this.localization = localization;
+        this.goalNotifier = new ResolveGoalNotifier(localization);
     }
 
     /**
@@ -418,7 +421,8 @@ public final class BkResolveSubcommand {
         final ConfigurationSection section = commandContext.plugin().getConfig()
                 .getConfigurationSection(GUIDED_PATH_CONFIG);
         final GuidedPathOptions configured = GuidedPathOptions.fromConfig(section);
-        return new GuidedPathOptions(configured.windowSize(), options.finishRadius(), configured.lookBehind());
+        return new GuidedPathOptions(configured.windowSize(), options.finishRadius(), configured.lookBehind(),
+                configured.keepLookBehindOnCompletion());
     }
 
     private ViewerLocationSource viewerLocationSource(final UUID playerId) {
@@ -434,7 +438,7 @@ public final class BkResolveSubcommand {
         }
         final Player player = commandContext.plugin().getServer().getPlayer(playerId);
         if (player != null) {
-            player.sendMessage(localization.getPrefixedMessage("commands.bk.resolve.status.guidanceComplete"));
+            goalNotifier.notify(player, options.goalOptions());
         }
         final long cleanupDelayTicks = options.finishCleanupDelayTicks();
         if (cleanupDelayTicks <= NO_CLEANUP_DELAY_TICKS) {

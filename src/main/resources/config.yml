@@ -90,7 +90,19 @@ visualizer:
   # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
   spawnDistanceBuffer: 16.0
 
-  ## ToDo Config for how many nodes behind will get shown (min 0, default 1)
+  # Guided path visualization settings used by /bk resolve.
+  guidedPath:
+
+    # Number of forward path nodes shown from the current progress node.
+    windowSize: 4
+
+    # Number of previous path nodes kept visible behind the current progress node.
+    # Minimum: 0
+    lookBehind: 1
+
+    # Whether previous path nodes remain visible after the final goal node is reached.
+    # When disabled, only the goal node remains visible during resolve cleanup.
+    keepLookBehindOnCompletion: false
 
 ############
 # Commands #
@@ -114,6 +126,27 @@ commands:
 
     # Whether guided resolve marks the final selected path node with a dedicated visual role.
     goalMarkerEnabled: true
+
+    # Effects played when guided resolve reaches the final goal node.
+    goal:
+
+      # Whether the localized completion chat message is sent.
+      message:
+        enabled: true
+
+      # Whether a completion sound is played for the target player.
+      sound:
+        enabled: true
+        name: 'entity.player.levelup'
+        volume: 1.0
+        pitch: 1.0
+
+      # Whether the localized completion title and subtitle are sent.
+      title:
+        enabled: false
+        fadeInTicks: 10
+        stayTicks: 40
+        fadeOutTicks: 10
 
     # Cancels guided resolve when the player stays too far away from the visible route.
     cancelWhenAway:
@@ -153,7 +186,7 @@ commands:
       enabled: true
 
       # Delay, in seconds, before an automatic teleport is executed.
-      delaySeconds: 0
+      delaySeconds: 3
 
       # Whether players receive a message before delayed automatic teleports.
       messageEnabled: true
@@ -179,8 +212,6 @@ commands:
       # Whether /bk resolve may start from the cheapest allowed warp target when no node is nearby.
       startFromWarpWhenNoNearbyNode: true
 
-    ## ToDo new settings for goal. Chat message, sound, title, subtitle?
-
 ##########
 # Editor #
 ##########
@@ -193,13 +224,17 @@ editor:
   # Default placement mode for new editor sessions: auto, preview, or waiting-for-anchor.
   defaultPlacementMode: 'auto'
 
-  ## ToDo Config for placement mode when editing a graph and not creating a new one (default preview)
+  # Default placement mode when editing an existing graph: auto, preview, or waiting-for-anchor.
+  # Preview avoids appending to an existing graph until placement is explicitly resumed.
+  defaultEditPlacementMode: 'preview'
 
-  ## ToDo Config option to place nodes on ground even if the player is in the air (default false)
+  # When enabled, newly placed editor nodes are snapped to the highest block at the player's X/Z position.
+  # When disabled, nodes are placed at the player's exact location.
+  placeNodesOnGround: false
 
   # When enabled, continuing after undo requires walking through a node before automatic placement resumes.
   continueRequiresNode: true
 
   # Temporary editor preview preset selected when a session starts.
-  defaultPreset: 'default' ## ToDo think of a better way to do this. Maybe add a list of presets to the comments too.
+  defaultPreset: 'default'
 

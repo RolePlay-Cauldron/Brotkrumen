@@ -113,6 +113,39 @@ class EditorServiceTest {
     }
 
     @Test
+    void editPlacementModeCanStartInPreview() {
+        final Graph graph = new Graph(7, "Existing");
+        graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
+
+        final EditorService.EditorSettings settings = new EditorService.EditorSettings(4,
+                EditorService.PlacementMode.AUTO, EditorService.PlacementMode.PREVIEW, false, true, "default");
+
+        assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", settings).success());
+        assertFalse(service.isWaitingForAppendAnchor(PLAYER_ID));
+        assertTrue(service.handleMovement(PLAYER_ID, location(0.0D)).success());
+        assertFalse(service.placeNode(PLAYER_ID, location(5.0D)).success());
+
+        assertEquals(1, service.getWorkingGraph(PLAYER_ID).getNodes().size());
+    }
+
+    @Test
+    void placementCanSnapNewNodesToGround() {
+        when(world.getHighestBlockYAt(any(Location.class))).thenReturn(63);
+        startCreation(new EditorService.EditorSettings(4, EditorService.PlacementMode.PREVIEW,
+                EditorService.PlacementMode.PREVIEW, true, true, "default"));
+
+        assertTrue(service.placeNode(PLAYER_ID, location(2.0D, 80.0D, 3.0D)).success());
+
+        final Node node = service.getWorkingGraph(PLAYER_ID).getNodes().iterator().next();
+        assertAll(
+                () -> assertEquals(2.0D, node.x()),
+                () -> assertEquals(64.0D, node.y()),
+                () -> assertEquals(3.0D, node.z())
+        );
+    }
+
+    @Test
     void continueCanWaitForNodeBeforeAutoPlacement() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
@@ -196,10 +229,13 @@ class EditorServiceTest {
         assertTrue(service.updateNodeDistance(PLAYER_ID, 9).success());
         assertTrue(service.updatePlacementMode(PLAYER_ID, EditorService.PlacementMode.AUTO).success());
         assertTrue(service.updateContinueRequiresNode(PLAYER_ID, true).success());
+        assertTrue(service.updatePlaceNodesOnGround(PLAYER_ID, true).success());
         assertTrue(service.updatePreset(PLAYER_ID, "prism").success());
 
-        assertEquals(new EditorService.EditorSettings(9, EditorService.PlacementMode.AUTO, true, "prism"),
+        assertEquals(new EditorService.EditorSettings(9, EditorService.PlacementMode.AUTO,
+                        EditorService.PlacementMode.WAITING_FOR_ANCHOR, true, true, "prism"),
                 service.getSettings(PLAYER_ID));
+        assertEquals("true", service.settingsSummary(PLAYER_ID).replacements().get("place_nodes_on_ground"));
         assertTrue(service.cancel(PLAYER_ID).success());
         assertNull(service.getSettings(PLAYER_ID));
     }
@@ -592,5 +628,9 @@ class EditorServiceTest {
 
     private Location location(final double x) {
         return new Location(world, x, 0.0D, 0.0D);
+    }
+
+    private Location location(final double x, final double y, final double z) {
+        return new Location(world, x, y, z);
     }
 }

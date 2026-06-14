@@ -43,6 +43,16 @@ class ResolveServiceTest {
         assertEquals(4.0D, options.finishRadius(), "Finish radius should use default when not configured");
         assertEquals(5, options.finishCleanupDelaySeconds(), "Cleanup delay should default to 5 seconds");
         assertTrue(options.goalMarkerEnabled(), "Goal marker should be enabled by default");
+        assertTrue(options.goalOptions().messageEnabled(), "Goal message should be enabled by default");
+        assertTrue(options.goalOptions().soundEnabled(), "Goal sound should be enabled by default");
+        assertEquals("entity.player.levelup", options.goalOptions().soundName(),
+                "Goal sound should use the default configured sound");
+        assertEquals(1.0F, options.goalOptions().soundVolume(), "Goal sound volume should default to one");
+        assertEquals(1.0F, options.goalOptions().soundPitch(), "Goal sound pitch should default to one");
+        assertFalse(options.goalOptions().titleEnabled(), "Goal title should be disabled by default");
+        assertEquals(10, options.goalOptions().titleFadeInTicks(), "Goal title fade-in should default to ten ticks");
+        assertEquals(40, options.goalOptions().titleStayTicks(), "Goal title stay should default to forty ticks");
+        assertEquals(10, options.goalOptions().titleFadeOutTicks(), "Goal title fade-out should default to ten ticks");
         assertEquals("LOCAL_INTERGRAPH_WARP", options.teleportRules(), "Teleport rules should allow all by default");
         assertTrue(options.autoTeleportOptions().enabled(), "Auto teleport should be enabled by default");
         assertTrue(options.autoTeleportOptions().localTeleportEnabled(), "Local auto teleport should be enabled");
@@ -65,6 +75,15 @@ class ResolveServiceTest {
         config.set("commands.resolve.finishRadius", 6.5D);
         config.set("commands.resolve.finishCleanupDelaySeconds", 9);
         config.set("commands.resolve.goalMarkerEnabled", false);
+        config.set("commands.resolve.goal.message.enabled", false);
+        config.set("commands.resolve.goal.sound.enabled", true);
+        config.set("commands.resolve.goal.sound.name", "block.note_block.pling");
+        config.set("commands.resolve.goal.sound.volume", 0.75D);
+        config.set("commands.resolve.goal.sound.pitch", 1.4D);
+        config.set("commands.resolve.goal.title.enabled", true);
+        config.set("commands.resolve.goal.title.fadeInTicks", 5);
+        config.set("commands.resolve.goal.title.stayTicks", 30);
+        config.set("commands.resolve.goal.title.fadeOutTicks", 7);
         config.set("commands.resolve.autoTeleport.enabled", false);
         config.set("commands.resolve.autoTeleport.delaySeconds", 4);
         config.set("commands.resolve.autoTeleport.messageEnabled", false);
@@ -86,6 +105,16 @@ class ResolveServiceTest {
         assertEquals(9, options.finishCleanupDelaySeconds(), "Configured cleanup delay should be loaded");
         assertFalse(options.goalMarkerEnabled(), "Configured goal marker flag should be loaded");
         assertEquals(180L, options.finishCleanupDelayTicks(), "Cleanup delay should convert to ticks");
+        assertFalse(options.goalOptions().messageEnabled(), "Configured goal message flag should be loaded");
+        assertTrue(options.goalOptions().soundEnabled(), "Configured goal sound flag should be loaded");
+        assertEquals("block.note_block.pling", options.goalOptions().soundName(),
+                "Configured goal sound name should be loaded");
+        assertEquals(0.75F, options.goalOptions().soundVolume(), "Configured goal sound volume should be loaded");
+        assertEquals(1.4F, options.goalOptions().soundPitch(), "Configured goal sound pitch should be loaded");
+        assertTrue(options.goalOptions().titleEnabled(), "Configured goal title flag should be loaded");
+        assertEquals(5, options.goalOptions().titleFadeInTicks(), "Configured goal title fade-in should be loaded");
+        assertEquals(30, options.goalOptions().titleStayTicks(), "Configured goal title stay should be loaded");
+        assertEquals(7, options.goalOptions().titleFadeOutTicks(), "Configured goal title fade-out should be loaded");
         assertFalse(options.autoTeleportOptions().enabled(), "Configured auto teleport flag should be loaded");
         assertEquals(4, options.autoTeleportOptions().delaySeconds(), "Configured delay should be loaded");
         assertFalse(options.autoTeleportOptions().messageEnabled(), "Configured message flag should be loaded");
@@ -124,6 +153,19 @@ class ResolveServiceTest {
         assertEquals(0.0D, options.distance(), "Negative away-cancellation distance should normalize to zero");
         assertEquals(0, options.warningGraceSeconds(), "Negative grace should normalize to zero");
         assertEquals(0L, options.warningGraceTicks(), "Zero grace should convert to zero ticks");
+    }
+
+    @Test
+    void normalizesGoalOptions() {
+        final ResolveGoalOptions options = new ResolveGoalOptions(true, true, " ", -1.0F, -2.0F, true,
+                -3, -4, -5);
+
+        assertEquals("entity.player.levelup", options.soundName(), "Blank sound should use the default");
+        assertEquals(0.0F, options.soundVolume(), "Negative sound volume should normalize to zero");
+        assertEquals(0.0F, options.soundPitch(), "Negative sound pitch should normalize to zero");
+        assertEquals(0, options.titleFadeInTicks(), "Negative fade-in should normalize to zero");
+        assertEquals(0, options.titleStayTicks(), "Negative stay should normalize to zero");
+        assertEquals(0, options.titleFadeOutTicks(), "Negative fade-out should normalize to zero");
     }
 
     @Test
