@@ -16,6 +16,18 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockEdgeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.BlockNodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
+import com.github.roleplaycauldron.brotkrumen.visual.render.EdgeRenderStrategy;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
@@ -40,6 +52,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -146,6 +159,27 @@ public class EditorService {
     /* default */
     static String waitingAnchorActionBarMessage() {
         return WAITING_FOR_ANCHOR_ACTION_BAR;
+    }
+
+    private static GraphNetworkDesignProfile editorPresetProfile(final String preset) {
+        final ParticleDesignSet particleDesign = switch (normalizedPreset(preset)) {
+            case "ember" -> ParticleDesignSet.emberPreset();
+            case "prism" -> ParticleDesignSet.prismPreset();
+            default -> ParticleDesignSet.defaults();
+        };
+        final BlockDisplayDesignSet blockDisplayDesign = switch (normalizedPreset(preset)) {
+            case "ember" -> BlockDisplayDesignSet.emberPreset();
+            case "prism" -> BlockDisplayDesignSet.prismPreset();
+            default -> BlockDisplayDesignSet.defaults();
+        };
+        return GraphNetworkDesignProfile.builder()
+                .particleDefaultDesign(particleDesign)
+                .blockDisplayDefaultDesign(blockDisplayDesign)
+                .build();
+    }
+
+    private static String normalizedPreset(final String preset) {
+        return preset == null || preset.isBlank() ? "default" : preset.toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -2120,7 +2154,8 @@ public class EditorService {
         visualizerRegistry.register(playerId,
                 GraphVisualizerFactory.particleEditorWorkspace(plugin, loggerFactory, () -> session.graph,
                         session.referenceGraphs::values, session::visibleInterGraphEdges,
-                        () -> session.workspaceVersion, playerId, effectExecutor));
+                        () -> session.workspaceVersion, playerId, effectExecutor,
+                        new EditorPresetGraphDesignResolver(() -> session.preset)));
     }
 
     private void unregisterVisualizer(final UUID playerId) {
@@ -2632,6 +2667,38 @@ public class EditorService {
          */
         public static SelectionTeleportResult failure(final String message) {
             return new SelectionTeleportResult(EditorResult.failure(message), null);
+        }
+    }
+
+    private record EditorPresetGraphDesignResolver(Supplier<String> preset) implements GraphDesignResolver {
+
+        @Override
+        public ParticleNodeDesign resolveParticleNode(final VisualNode node) {
+            return delegate().resolveParticleNode(node);
+        }
+
+        @Override
+        public ParticleEdgeDesign resolveParticleEdge(final VisualEdge edge) {
+            return delegate().resolveParticleEdge(edge);
+        }
+
+        @Override
+        public BlockNodeDesign resolveBlockNode(final VisualNode node) {
+            return delegate().resolveBlockNode(node);
+        }
+
+        @Override
+        public BlockEdgeDesign resolveBlockEdge(final VisualEdge edge) {
+            return delegate().resolveBlockEdge(edge);
+        }
+
+        @Override
+        public EdgeRenderStrategy resolveEdgeRenderStrategy(final VisualEdge edge) {
+            return delegate().resolveEdgeRenderStrategy(edge);
+        }
+
+        private GraphDesignResolver delegate() {
+            return new ProfileGraphDesignResolver(editorPresetProfile(preset.get()));
         }
     }
 

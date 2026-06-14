@@ -6,22 +6,32 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
+import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNode;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeId;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +46,8 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.UnitTestContainsTooManyAsserts",
-        "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.ShortVariable"})
+        "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.ShortVariable", "PMD.AvoidAccessibilityAlteration",
+        "PMD.CouplingBetweenObjects"})
 class EditorServiceTest {
 
     private static final UUID PLAYER_ID = UUID.randomUUID();
@@ -238,6 +249,29 @@ class EditorServiceTest {
         assertEquals("true", service.settingsSummary(PLAYER_ID).replacements().get("place_nodes_on_ground"));
         assertTrue(service.cancel(PLAYER_ID).success());
         assertNull(service.getSettings(PLAYER_ID));
+    }
+
+    @Test
+    void activeEditorVisualizerUsesChangedPresetAfterRefresh() throws ReflectiveOperationException {
+        final VisualizerRegistry registry = mock(VisualizerRegistry.class);
+        final EditorService presetService = new EditorService(registry, null, loggerFactory, null, graphRepository,
+                graphNetworkRepository, warpRepository);
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+
+        assertTrue(presetService.startGraphCreation(PLAYER_ID, "Route",
+                new EditorService.EditorSettings(4, EditorService.PlacementMode.PREVIEW, false, "ember")).success());
+
+        final ArgumentCaptor<Visualizer> visualizerCaptor = ArgumentCaptor.forClass(Visualizer.class);
+        verify(registry).register(eq(PLAYER_ID), visualizerCaptor.capture());
+        final GraphDesignResolver designs = visualizerDesigns(visualizerCaptor.getValue());
+        final VisualNode node = visualNode(VisualNodeRole.LOCAL_TELEPORT);
+
+        assertEquals(Particle.ASH, designs.resolveParticleNode(node).particle());
+
+        assertTrue(presetService.updatePreset(PLAYER_ID, "prism").success());
+
+        verify(registry).refresh(PLAYER_ID);
+        assertEquals(Particle.PORTAL, designs.resolveParticleNode(node).particle());
     }
 
     @Test
@@ -624,6 +658,18 @@ class EditorServiceTest {
 
     private EditorService.EditorSettings defaultSettings(final EditorService.PlacementMode placementMode) {
         return new EditorService.EditorSettings(4, placementMode, true, "default");
+    }
+
+    private GraphDesignResolver visualizerDesigns(final Visualizer visualizer) throws ReflectiveOperationException {
+        final Field field = Visualizer.class.getDeclaredField("designs");
+        field.setAccessible(true);
+        return (GraphDesignResolver) field.get(visualizer);
+    }
+
+    private VisualNode visualNode(final VisualNodeRole role) {
+        final UUID nodeId = UUID.randomUUID();
+        final NodeRef ref = new NodeRef(-1, nodeId);
+        return new VisualNode(new VisualNodeId(ref), ref, new Node(nodeId, 0.0D, 0.0D, 0.0D, WORLD_ID), role);
     }
 
     private Location location(final double x) {

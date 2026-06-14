@@ -180,9 +180,33 @@ public final class GraphVisualizerFactory {
                                                      final Supplier<Collection<InterGraphEdge>> interGraphEdges,
                                                      final Supplier<Long> workspaceVersion,
                                                      final UUID viewerId, final EffectExecutor executor) {
+        return particleEditorWorkspace(plugin, loggerFactory, activeGraph, referenceGraphs, interGraphEdges,
+                workspaceVersion, viewerId, executor, ProfileGraphDesignResolver.defaults());
+    }
+
+    /**
+     * Creates a Spellbook particle visualizer for an editor workspace.
+     *
+     * @param plugin           plugin
+     * @param loggerFactory    logger factory
+     * @param activeGraph      active graph supplier
+     * @param referenceGraphs  visible reference graph supplier
+     * @param interGraphEdges  visible inter-graph edges supplier
+     * @param workspaceVersion workspace version supplier
+     * @param viewerId         viewer id
+     * @param executor         effect executor
+     * @param designs          design resolver
+     * @return visualizer
+     */
+    public static Visualizer particleEditorWorkspace(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                                     final Supplier<Graph> activeGraph,
+                                                     final Supplier<Collection<Graph>> referenceGraphs,
+                                                     final Supplier<Collection<InterGraphEdge>> interGraphEdges,
+                                                     final Supplier<Long> workspaceVersion,
+                                                     final UUID viewerId, final EffectExecutor executor,
+                                                     final GraphDesignResolver designs) {
         return visualizer(loggerFactory, new EditorWorkspaceVisualSource(activeGraph, referenceGraphs, interGraphEdges,
-                        workspaceVersion), particleRenderer(plugin, viewerId, executor),
-                ProfileGraphDesignResolver.defaults());
+                workspaceVersion), particleRenderer(plugin, viewerId, executor), designs);
     }
 
     /**
