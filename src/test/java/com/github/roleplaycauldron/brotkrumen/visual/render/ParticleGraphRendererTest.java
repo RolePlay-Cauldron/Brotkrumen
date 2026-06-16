@@ -3,6 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.visual.render;
 import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.visual.TestVisualDesigns;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
@@ -123,7 +124,7 @@ class ParticleGraphRendererTest {
 
     @Test
     void interGraphParticlePresetsUseDirectionSpecificShapes() throws ReflectiveOperationException {
-        final ParticleDesignSet set = ParticleDesignSet.prismPreset();
+        final ParticleDesignSet set = TestVisualDesigns.prismParticle();
 
         assertAll(
                 () -> assertInstanceOf(MovingPointShape.class,

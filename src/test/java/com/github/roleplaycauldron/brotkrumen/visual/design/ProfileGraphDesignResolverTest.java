@@ -3,6 +3,7 @@ package com.github.roleplaycauldron.brotkrumen.visual.design;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
+import com.github.roleplaycauldron.brotkrumen.visual.TestVisualDesigns;
 import com.github.roleplaycauldron.brotkrumen.visual.model.InterGraphVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
@@ -90,7 +91,9 @@ class ProfileGraphDesignResolverTest {
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void roleSpecificDesignsWinBeforeFallbacks() {
         final NodeRef ref = new NodeRef(1, UUID.randomUUID());
-        final ParticleDesignSet set = ParticleDesignSet.emberPreset();
+        final ParticleDesignSet set = TestVisualDesigns.emberParticle();
+        final ParticleDesignSet prismParticle = TestVisualDesigns.prismParticle();
+        final BlockDisplayDesignSet prismBlock = TestVisualDesigns.prismBlock();
         final VisualNode teleportNode = visualNode(ref, VisualNodeRole.LOCAL_TELEPORT);
         final VisualEdge teleportEdge = new VisualEdge(new InterGraphVisualEdgeId(UUID.randomUUID()), ref,
                 new NodeRef(1, UUID.randomUUID()), VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.TELEPORT),
@@ -106,34 +109,34 @@ class ProfileGraphDesignResolverTest {
                 "Teleport edge role should use role design");
         assertEquals(EdgeRenderStrategy.ENDPOINTS_ONLY, resolver.resolveEdgeRenderStrategy(teleportEdge),
                 "Teleport edges should default to endpoint-only rendering");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.LOCAL_TELEPORT),
+        assertNotNull(prismParticle.nodeDesign(VisualNodeRole.LOCAL_TELEPORT),
                 "Preset should include local teleport node design");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.INTERGRAPH_TELEPORT),
+        assertNotNull(prismParticle.nodeDesign(VisualNodeRole.INTERGRAPH_TELEPORT),
                 "Preset should include intergraph teleport node design");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.WARP),
+        assertNotNull(prismParticle.nodeDesign(VisualNodeRole.WARP),
                 "Preset should include warp node design");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
+        assertNotNull(prismParticle.nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
                 "Preset should include guided goal marker node design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.TELEPORT),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.TELEPORT),
                 "Teleport edge role should fall back to default edge design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.DIRECTED_LOCAL),
                 "Preset should include directed edge design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL),
                 "Preset should include undirected edge design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.BLOCKED),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.BLOCKED),
                 "Preset should include blocked edge design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_INTER_GRAPH),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.DIRECTED_INTER_GRAPH),
                 "Preset should include directed inter-graph edge design");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.UNDIRECTED_INTER_GRAPH),
                 "Preset should include undirected inter-graph edge design");
-        assertNotEquals(BlockDisplayDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL).blockMaterial(),
-                BlockDisplayDesignSet.prismPreset().edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL).blockMaterial(),
+        assertNotEquals(prismBlock.edgeDesign(VisualEdgeRole.DIRECTED_LOCAL).blockMaterial(),
+                prismBlock.edgeDesign(VisualEdgeRole.UNDIRECTED_LOCAL).blockMaterial(),
                 "Block-display directed and undirected edge roles should be visually distinct");
-        assertNotNull(ParticleDesignSet.prismPreset().nodeDesign(VisualNodeRole.DEFAULT).effect(),
+        assertNotNull(prismParticle.nodeDesign(VisualNodeRole.DEFAULT).effect(),
                 "Particle node presets should expose EffectInstance data");
-        assertNotNull(ParticleDesignSet.prismPreset().edgeDesign(VisualEdgeRole.DEFAULT_LOCAL).effect(),
+        assertNotNull(prismParticle.edgeDesign(VisualEdgeRole.DEFAULT_LOCAL).effect(),
                 "Particle edge presets should expose EffectInstance data");
-        assertNotNull(BlockDisplayDesignSet.prismPreset().nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
+        assertNotNull(prismBlock.nodeDesign(VisualNodeRole.GUIDED_PATH_GOAL),
                 "Block-display presets should include guided goal marker node design");
     }
 
@@ -148,7 +151,7 @@ class ProfileGraphDesignResolverTest {
                 VisualEdgeKind.LOCAL, 1.0D, Set.of(EdgeFlag.TELEPORT), VisualEdgeRole.TELEPORT);
 
         final ProfileGraphDesignResolver resolver = new ProfileGraphDesignResolver(GraphNetworkDesignProfile.builder()
-                .particleGraphDesign(1, ParticleDesignSet.emberPreset())
+                .particleGraphDesign(1, TestVisualDesigns.emberParticle())
                 .particleNodeOverride(ref, nodeOverride)
                 .particleEdgeOverride(edgeId, edgeOverride)
                 .edgeRenderStrategy(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.FULL_EDGE)
