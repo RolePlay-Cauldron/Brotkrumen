@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.GodClass"})
 public class Graph {
+    private static final String FALLBACK_PRESET = "ember";
+
     private final int graphId;
 
     private final Map<UUID, Node> nodes;
@@ -24,6 +26,10 @@ public class Graph {
     private final Map<UUID, Edge> edgesById;
 
     private String name;
+
+    private String spellbookEffectPreset;
+
+    private String blockDisplayPreset;
 
     private long modCount;
 
@@ -35,8 +41,23 @@ public class Graph {
      * @param name    the name of the graph
      */
     public Graph(final int graphId, final String name) {
+        this(graphId, name, FALLBACK_PRESET, FALLBACK_PRESET);
+    }
+
+    /**
+     * Create a new graph with renderer-specific visual presets.
+     *
+     * @param graphId               the database id of the graph. If you create a new one not saved yet, use -1 for the id.
+     * @param name                  the name of the graph
+     * @param spellbookEffectPreset preset used by Spellbook effect rendering
+     * @param blockDisplayPreset    preset used by block-display rendering
+     */
+    public Graph(final int graphId, final String name, final String spellbookEffectPreset,
+                 final String blockDisplayPreset) {
         this.graphId = graphId;
         this.name = name;
+        this.spellbookEffectPreset = normalizePreset(spellbookEffectPreset);
+        this.blockDisplayPreset = normalizePreset(blockDisplayPreset);
         this.nodes = new HashMap<>();
         this.adj = new HashMap<>();
         this.edgesById = new HashMap<>();
@@ -62,8 +83,26 @@ public class Graph {
      * @param adjacency the edges of the graph containing the nodeId as a key
      */
     public Graph(final int graphId, final String name, final Map<UUID, Node> nodes, final Map<UUID, List<Edge>> adjacency) {
+        this(graphId, name, FALLBACK_PRESET, FALLBACK_PRESET, nodes, adjacency);
+    }
+
+    /**
+     * Create a new graph based on the given nodes, edges, and visual presets.
+     *
+     * @param graphId               the database id of the graph. If you create a new one not saved yet, use -1 for the id.
+     * @param name                  the name of the graph
+     * @param spellbookEffectPreset preset used by Spellbook effect rendering
+     * @param blockDisplayPreset    preset used by block-display rendering
+     * @param nodes                 the nodes of the graph containing the graphId as a key
+     * @param adjacency             the edges of the graph containing the nodeId as a key
+     */
+    public Graph(final int graphId, final String name, final String spellbookEffectPreset,
+                 final String blockDisplayPreset, final Map<UUID, Node> nodes,
+                 final Map<UUID, List<Edge>> adjacency) {
         this.graphId = graphId;
         this.name = name;
+        this.spellbookEffectPreset = normalizePreset(spellbookEffectPreset);
+        this.blockDisplayPreset = normalizePreset(blockDisplayPreset);
         this.nodes = new HashMap<>(nodes);
         this.adj = adjacency.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> new ArrayList<>(entry.getValue())));
@@ -484,6 +523,44 @@ public class Graph {
     }
 
     /**
+     * Gets the graph's stored Spellbook effect preset.
+     *
+     * @return normalized preset name
+     */
+    public String getSpellbookEffectPreset() {
+        return spellbookEffectPreset;
+    }
+
+    /**
+     * Sets the graph's stored Spellbook effect preset.
+     *
+     * @param preset preset name
+     */
+    public void setSpellbookEffectPreset(final String preset) {
+        this.spellbookEffectPreset = normalizePreset(preset);
+        modCount++;
+    }
+
+    /**
+     * Gets the graph's stored block-display preset.
+     *
+     * @return normalized preset name
+     */
+    public String getBlockDisplayPreset() {
+        return blockDisplayPreset;
+    }
+
+    /**
+     * Sets the graph's stored block-display preset.
+     *
+     * @param preset preset name
+     */
+    public void setBlockDisplayPreset(final String preset) {
+        this.blockDisplayPreset = normalizePreset(preset);
+        modCount++;
+    }
+
+    /**
      * Get the database id of the graph.
      *
      * @return The database id of the graph.
@@ -518,6 +595,13 @@ public class Graph {
                         .map(edge -> new Edge(edge.dbId(), edge.edgeId(), edge.source(), edge.target(), edge.cost(), edge.flags()))
                         .toList()));
 
-        return new Graph(graphId, name, copiedNodes, copiedAdjacency);
+        return new Graph(graphId, name, spellbookEffectPreset, blockDisplayPreset, copiedNodes, copiedAdjacency);
+    }
+
+    private String normalizePreset(final String preset) {
+        if (preset == null || preset.isBlank()) {
+            return FALLBACK_PRESET;
+        }
+        return preset.trim().replace('_', '-').toLowerCase(java.util.Locale.ROOT);
     }
 }

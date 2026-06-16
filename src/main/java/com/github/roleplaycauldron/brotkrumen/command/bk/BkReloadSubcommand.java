@@ -42,6 +42,7 @@ public final class BkReloadSubcommand {
     private int execute(final CommandContext<CommandSourceStack> context) {
         commandContext.plugin().reloadConfig();
         commandContext.plugin().reloadLocalization();
+        commandContext.plugin().reloadVisualPresets();
         commandContext.plugin().getServer().getScheduler().runTaskAsynchronously(commandContext.plugin(), () -> {
             try {
                 commandContext.graphRepository().reloadGraphs();

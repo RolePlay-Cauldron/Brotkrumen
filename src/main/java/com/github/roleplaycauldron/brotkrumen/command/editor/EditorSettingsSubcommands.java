@@ -69,7 +69,8 @@ public final class EditorSettingsSubcommands {
                 .then(Commands.literal("preset")
                         .then(Commands.argument("presetName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
-                                    EditorService.supportedPresets().forEach(builder::suggest);
+                                    commandContext.editorService().supportedPresetsForActiveRenderer()
+                                            .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
                                 .executes(this::updatePreset)));

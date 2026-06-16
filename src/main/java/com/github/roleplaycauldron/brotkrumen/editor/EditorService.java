@@ -16,6 +16,9 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.DynamicPresetGraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualizerRenderSettings;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
@@ -62,7 +65,7 @@ public class EditorService {
     private static final String SELECTION_SELECTED_NODE_WITH_ENDPOINTS =
             "commands.bkeditor.selection.selectedNodeWithEndpoints";
 
-    private static final Set<String> SUPPORTED_PRESETS = Set.of("default", "ember", "prism");
+    private static final Set<String> SUPPORTED_PRESETS = Set.of("ember", "prism");
 
     private final Map<UUID, EditorSession> playerEditors = new ConcurrentHashMap<>();
 
@@ -143,6 +146,33 @@ public class EditorService {
         return SUPPORTED_PRESETS;
     }
 
+    /**
+     * Checks if the given preset is supported by the active renderer.
+     *
+     * @param preset preset name
+     * @return true when compatible
+     */
+    public boolean isSupportedPresetForActiveRenderer(final String preset) {
+        if (plugin == null || plugin.getVisualPresetRegistry() == null) {
+            return isSupportedPreset(preset);
+        }
+        final VisualRenderer renderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
+        return plugin.getVisualPresetRegistry().supports(preset, renderer);
+    }
+
+    /**
+     * Returns preset names supported by the active renderer.
+     *
+     * @return preset names
+     */
+    public Set<String> supportedPresetsForActiveRenderer() {
+        if (plugin == null || plugin.getVisualPresetRegistry() == null) {
+            return supportedPresets();
+        }
+        final VisualRenderer renderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
+        return plugin.getVisualPresetRegistry().presetNames(renderer);
+    }
+
     /* default */
     static String waitingAnchorActionBarMessage() {
         return WAITING_FOR_ANCHOR_ACTION_BAR;
@@ -174,7 +204,7 @@ public class EditorService {
             return EditorResult.failure("commands.bkeditor.common.graphAlreadyExists");
         }
 
-        final EditorSession session = EditorSession.create(new Graph(graphName), settings.normalized());
+        final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
         return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
@@ -218,10 +248,18 @@ public class EditorService {
 
     private EditorResult startGraphCreationWithoutNameCheck(final UUID playerId, final String graphName,
                                                             final EditorSettings settings) {
-        final EditorSession session = EditorSession.create(new Graph(graphName), settings.normalized());
+        final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
         return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
+    }
+
+    private Graph newGraph(final String graphName) {
+        final VisualizerRenderSettings renderSettings = plugin == null
+                ? VisualizerRenderSettings.defaults()
+                : VisualizerRenderSettings.fromConfig(plugin.getConfig());
+        return new Graph(-1, graphName, renderSettings.defaultSpellbookEffectPreset(),
+                renderSettings.defaultBlockDisplayPreset());
     }
 
     /**
@@ -370,7 +408,7 @@ public class EditorService {
         if (settings.nodeDistance <= 0) {
             return EditorResult.failure("commands.bkeditor.common.nodeDistancePositive");
         }
-        if (!isSupportedPreset(settings.preset)) {
+        if (!isSupportedPresetForActiveRenderer(settings.preset)) {
             return EditorResult.failure("commands.bkeditor.common.unknownPreset");
         }
         return EditorResult.success("");
@@ -2114,13 +2152,36 @@ public class EditorService {
     }
 
     private void registerVisualizer(final UUID playerId, final EditorSession session) {
-        if (visualizerRegistry == null) {
+        if (visualizerRegistry == null || plugin == null) {
+            return;
+        }
+        final VisualizerRenderSettings renderSettings = VisualizerRenderSettings.fromConfig(plugin.getConfig());
+        final DynamicPresetGraphDesignResolver resolver = new DynamicPresetGraphDesignResolver(
+                () -> session.graph,
+                session.referenceGraphs::values,
+                plugin::getVisualPresetRegistry,
+                () -> VisualizerRenderSettings.fromConfig(plugin.getConfig()),
+                () -> temporaryPresetOverride(session, VisualRenderer.SPELLBOOK_EFFECT),
+                () -> temporaryPresetOverride(session, VisualRenderer.BLOCK_DISPLAY));
+        if (renderSettings.defaultRenderer() == VisualRenderer.BLOCK_DISPLAY) {
+            visualizerRegistry.register(playerId,
+                    GraphVisualizerFactory.blockDisplayEditorWorkspace(plugin, loggerFactory, () -> session.graph,
+                            session.referenceGraphs::values, session::visibleInterGraphEdges,
+                            () -> session.workspaceVersion, playerId, resolver));
             return;
         }
         visualizerRegistry.register(playerId,
                 GraphVisualizerFactory.particleEditorWorkspace(plugin, loggerFactory, () -> session.graph,
                         session.referenceGraphs::values, session::visibleInterGraphEdges,
-                        () -> session.workspaceVersion, playerId, effectExecutor));
+                        () -> session.workspaceVersion, playerId, effectExecutor, resolver));
+    }
+
+    private Map<Integer, String> temporaryPresetOverride(final EditorSession session, final VisualRenderer renderer) {
+        if (session.preset == null || session.preset.isBlank() || plugin == null) {
+            return Map.of();
+        }
+        final VisualRenderer activeRenderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
+        return activeRenderer == renderer ? Map.of(session.graph.getGraphId(), session.preset) : Map.of();
     }
 
     private void unregisterVisualizer(final UUID playerId) {
@@ -2186,7 +2247,7 @@ public class EditorService {
         if (session == null) {
             return EditorResult.failure("commands.bkeditor.common.notEditing");
         }
-        if (!isSupportedPreset(preset)) {
+        if (!isSupportedPresetForActiveRenderer(preset)) {
             return EditorResult.failure("commands.bkeditor.common.unknownPreset");
         }
         session.preset = preset.toLowerCase(Locale.ROOT);

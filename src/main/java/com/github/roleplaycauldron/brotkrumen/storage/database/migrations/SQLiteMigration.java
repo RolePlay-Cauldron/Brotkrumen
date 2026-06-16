@@ -35,7 +35,9 @@ public final class SQLiteMigration {
                 .addFirstStartupQuery(
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_graph` ("
                                 + "`id` INTEGER PRIMARY KEY AUTOINCREMENT, "
-                                + "`name` TEXT NOT NULL UNIQUE"
+                                + "`name` TEXT NOT NULL UNIQUE, "
+                                + "`spellbook_effect_preset` TEXT NOT NULL DEFAULT 'ember', "
+                                + "`block_display_preset` TEXT NOT NULL DEFAULT 'ember'"
                                 + ")"
                 )
                 .addFirstStartupQuery(
