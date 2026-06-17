@@ -65,8 +65,6 @@ public class EditorService {
     private static final String SELECTION_SELECTED_NODE_WITH_ENDPOINTS =
             "commands.bkeditor.selection.selectedNodeWithEndpoints";
 
-    private static final Set<String> SUPPORTED_PRESETS = Set.of("ember", "prism");
-
     private final Map<UUID, EditorSession> playerEditors = new ConcurrentHashMap<>();
 
     private final VisualizerRegistry visualizerRegistry;
@@ -128,25 +126,6 @@ public class EditorService {
     }
 
     /**
-     * Checks if the given preset is supported.
-     *
-     * @param preset the preset to check
-     * @return true if supported
-     */
-    public static boolean isSupportedPreset(final String preset) {
-        return preset != null && SUPPORTED_PRESETS.contains(preset.toLowerCase(Locale.ROOT));
-    }
-
-    /**
-     * Returns a set of all supported presets.
-     *
-     * @return supported presets
-     */
-    public static Set<String> supportedPresets() {
-        return SUPPORTED_PRESETS;
-    }
-
-    /**
      * Checks if the given preset is supported by the active renderer.
      *
      * @param preset preset name
@@ -154,7 +133,7 @@ public class EditorService {
      */
     public boolean isSupportedPresetForActiveRenderer(final String preset) {
         if (plugin == null || plugin.getVisualPresetRegistry() == null) {
-            return isSupportedPreset(preset);
+            return false;
         }
         final VisualRenderer renderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
         return plugin.getVisualPresetRegistry().supports(preset, renderer);
@@ -167,7 +146,7 @@ public class EditorService {
      */
     public Set<String> supportedPresetsForActiveRenderer() {
         if (plugin == null || plugin.getVisualPresetRegistry() == null) {
-            return supportedPresets();
+            return Set.of();
         }
         final VisualRenderer renderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
         return plugin.getVisualPresetRegistry().presetNames(renderer);

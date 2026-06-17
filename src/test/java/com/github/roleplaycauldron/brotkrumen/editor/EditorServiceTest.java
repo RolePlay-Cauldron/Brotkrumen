@@ -18,9 +18,12 @@ import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
+import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +73,15 @@ class EditorServiceTest {
     @Mock
     private WrappedLogger logger;
 
+    @Mock
+    private Brotkrumen plugin;
+
+    @Mock
+    private Server server;
+
+    @Mock
+    private BukkitScheduler scheduler;
+
     private EditorService service;
 
     private EditorWaitingActionBarReminder reminder;
@@ -78,8 +90,28 @@ class EditorServiceTest {
     void setUp() {
         lenient().when(world.getUID()).thenReturn(WORLD_ID);
         lenient().when(loggerFactory.create(any())).thenReturn(logger);
-        service = new EditorService(null, null, loggerFactory, null, graphRepository, graphNetworkRepository, warpRepository);
+        lenient().when(plugin.getConfig()).thenReturn(new YamlConfiguration());
+        lenient().when(plugin.getVisualPresetRegistry()).thenReturn(new VisualPresetRegistry(Map.of(
+                "ember", new VisualPreset("ember", TestVisualDesigns.emberParticle(), TestVisualDesigns.emberBlock()),
+                "prism", new VisualPreset("prism", TestVisualDesigns.prismParticle(), TestVisualDesigns.prismBlock())
+        )));
+        lenient().when(plugin.getServer()).thenReturn(server);
+        lenient().when(server.getScheduler()).thenReturn(scheduler);
+        runScheduledTasksImmediately();
+        service = new EditorService(null, plugin, loggerFactory, null, graphRepository, graphNetworkRepository,
+                warpRepository);
         reminder = new EditorWaitingActionBarReminder(service);
+    }
+
+    private void runScheduledTasksImmediately() {
+        lenient().doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(1).run();
+            return mock(BukkitTask.class);
+        }).when(scheduler).runTask(any(org.bukkit.plugin.Plugin.class), any(Runnable.class));
+        lenient().doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(1).run();
+            return mock(BukkitTask.class);
+        }).when(scheduler).runTaskAsynchronously(any(org.bukkit.plugin.Plugin.class), any(Runnable.class));
     }
 
     @Test
@@ -273,12 +305,27 @@ class EditorServiceTest {
     }
 
     @Test
+    void presetSettingRequiresRuntimeRegistry() {
+        final Brotkrumen noRegistryPlugin = mock(Brotkrumen.class);
+        when(noRegistryPlugin.getVisualPresetRegistry()).thenReturn(null);
+        final EditorService noRegistryService = new EditorService(null, noRegistryPlugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+
+        assertTrue(noRegistryService.supportedPresetsForActiveRenderer().isEmpty());
+        assertFalse(noRegistryService.startGraphCreation(PLAYER_ID, "Route",
+                new EditorService.EditorSettings(3, EditorService.PlacementMode.PREVIEW, false, "ember")).success());
+    }
+
+    @Test
     void newGraphsReceiveConfiguredRendererSpecificPresetDefaults() {
         final YamlConfiguration config = new YamlConfiguration();
         config.set("visualizer.defaultSpellbookEffectPreset", "Prism_Value");
         config.set("visualizer.defaultBlockDisplayPreset", "Ember_Value");
         final Brotkrumen plugin = mock(Brotkrumen.class);
         when(plugin.getConfig()).thenReturn(config);
+        when(plugin.getVisualPresetRegistry()).thenReturn(new VisualPresetRegistry(Map.of(
+                "ember", new VisualPreset("ember", TestVisualDesigns.emberParticle(), TestVisualDesigns.emberBlock())
+        )));
         final EditorService pluginBackedService = new EditorService(null, plugin, loggerFactory, null,
                 graphRepository, graphNetworkRepository, warpRepository);
         when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
