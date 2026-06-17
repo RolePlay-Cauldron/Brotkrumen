@@ -134,6 +134,25 @@ class GraphNetworkTest {
     }
 
     @Test
+    void removesInterGraphEdgesTouchingNodeInEitherDirection() {
+        final Graph graphOne = new Graph(1, "One");
+        final Graph graphTwo = new Graph(2, "Two");
+        final UUID nodeOne = UUID.randomUUID();
+        final UUID nodeTwo = UUID.randomUUID();
+        graphOne.addNode(new Node(nodeOne, 0, 0, 0, null));
+        graphTwo.addNode(new Node(nodeTwo, 10, 10, 10, null));
+
+        final GraphNetwork network = new GraphNetwork();
+        network.addGraph(graphOne);
+        network.addGraph(graphTwo);
+        network.addUndirectedInterGraphEdge(new NodeRef(1, nodeOne), new NodeRef(2, nodeTwo), 5.0);
+
+        assertEquals(2, network.removeInterGraphEdgesTouching(new NodeRef(1, nodeOne)),
+                "Both directions should be removed when a node is deleted");
+        assertTrue(network.getInterGraphEdges().isEmpty(), "No edge may reference the deleted node");
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void cleansUpDisconnectedGraphs() {
         final Graph graphOne = new Graph(1, "One");

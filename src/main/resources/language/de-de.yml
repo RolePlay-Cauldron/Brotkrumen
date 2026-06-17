@@ -4,7 +4,7 @@ prefix: "<#64748B>[<gradient:#38BDF8:#6366F1>Brotkrumen</gradient><#64748B>] <#C
 messages:
   # Platzhalter-Konventionen für Command-Feedback:
   # <player>, <graph>, <entries>, <token>, <hooks>, <storage>, <schema_version>,
-  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <value>, <key>
+  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <renderer>, <value>, <key>
   commands:
     common:
       playerOnlyEditor: "<#F43F5E>Nur Spieler können den Graph-Editor verwenden."
@@ -80,6 +80,7 @@ messages:
         graphNotFound: "<#F43F5E>Kein Graph mit diesem Namen vorhanden."
         alreadyEditing: "<#F43F5E>Du bearbeitest bereits einen Graph."
         settingsRequired: "<#F43F5E>Editor-Einstellungen sind erforderlich."
+        rendererRequired: "<#F43F5E>Renderer muss spellbookEffect oder blockDisplay sein."
         unknownPreset: "<#F43F5E>Unbekanntes Editor-Preset."
         nodeDistancePositive: "<#F43F5E>Der Knotenabstand muss größer als null sein."
         noSelection: "<#F43F5E>Kein Graph-Element ist ausgewählt."
@@ -133,6 +134,7 @@ messages:
         placeNodesOnGroundSet: "<#22C55E>Place nodes on ground auf <#38BDF8><value></#38BDF8> gesetzt."
         continueRequiresNodeSet: "<#22C55E>Knoten zum Fortsetzen erforderlich auf <#38BDF8><value></#38BDF8> gesetzt."
         presetSet: "<#22C55E>Editor-Preset auf <#38BDF8><preset></#38BDF8> gesetzt."
+        graphPresetSet: "<#22C55E>Graph-Preset fuer <#38BDF8><renderer></#38BDF8> auf <#38BDF8><preset></#38BDF8> gesetzt."
         warpListEmpty: "<#FACC15>Keine gespeicherten Warps."
         warpListActiveEmpty: "<#FACC15>Keine Warps zielen auf den aktiven Graph."
         warpListAll: "<#CBD5E1>Alle Warps: <#38BDF8><entries></#38BDF8>."

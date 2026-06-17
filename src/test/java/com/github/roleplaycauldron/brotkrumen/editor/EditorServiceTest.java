@@ -7,6 +7,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
@@ -14,6 +15,7 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.brotkrumen.visual.TestVisualDesigns;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPreset;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
@@ -340,6 +342,32 @@ class EditorServiceTest {
     }
 
     @Test
+    void graphPresetUpdatesPersistedRendererSpecificPresetFields() {
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        assertTrue(service.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+
+        assertTrue(service.updateGraphPreset(PLAYER_ID, VisualRenderer.SPELLBOOK_EFFECT, "Prism").success());
+        assertTrue(service.updateGraphPreset(PLAYER_ID, VisualRenderer.BLOCK_DISPLAY, "Ember").success());
+
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertEquals("prism", graph.getSpellbookEffectPreset());
+        assertEquals("ember", graph.getBlockDisplayPreset());
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+        verify(graphRepository).saveGraph(argThat(saved -> "prism".equals(saved.getSpellbookEffectPreset())
+                && "ember".equals(saved.getBlockDisplayPreset())));
+    }
+
+    @Test
+    void graphPresetUpdateRejectsMissingRenderer() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        final EditorService.EditorResult result = service.updateGraphPreset(PLAYER_ID, null, "ember");
+
+        assertFalse(result.success());
+        assertEquals("commands.bkeditor.common.rendererRequired", result.message());
+    }
+
+    @Test
     void placementModeParsingAcceptsCommandNames() {
         assertEquals(Optional.of(EditorService.PlacementMode.AUTO), EditorService.PlacementMode.parse("auto"));
         assertEquals(Optional.of(EditorService.PlacementMode.PREVIEW), EditorService.PlacementMode.parse("preview"));
@@ -613,6 +641,32 @@ class EditorServiceTest {
     }
 
     @Test
+    void deleteSelectedNodeRemovesPersistedInterGraphEdgesTouchingIt() {
+        final Graph active = new Graph(1, "Active");
+        final Graph reference = new Graph(2, "Reference");
+        final Node activeNode = active.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        final Node referenceNode = reference.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
+        final InterGraphEdge edge = new InterGraphEdge(10, UUID.randomUUID(),
+                new NodeRef(1, activeNode.graphId()), new NodeRef(2, referenceNode.graphId()), 1.0D,
+                Set.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED), true);
+        when(graphRepository.getGraphByName("Active")).thenReturn(Optional.of(active));
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphNetworkRepository.loadInterGraphEdges(any())).thenReturn(Set.of(edge));
+
+        assertTrue(service.startGraphEdit(PLAYER_ID, "Active", defaultSettings()).success());
+        assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.deleteSelectedNode(PLAYER_ID).success());
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+
+        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
+                .<com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork>argThat(network ->
+                        network.getInterGraphEdges().isEmpty()
+                                && network.hasGraph(1)
+                                && network.hasGraph(2)));
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void referenceGraphViewEnablesCrossGraphEdgeAuthoringLifecycle() {
         final Graph active = new Graph(1, "Active");
@@ -638,9 +692,12 @@ class EditorServiceTest {
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
 
         verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
-                .<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
-                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
-                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
+                .<com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork>argThat(network ->
+                        network.getInterGraphEdges().size() == 2
+                                && network.getInterGraphEdges().stream()
+                                .allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
+                                && network.getInterGraphEdges().stream()
+                                .allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
         assertTrue(active.getNodeById(activeNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT));
         assertFalse(reference.getNodeById(referenceNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT),
                 "Reference graph copy should be mutated, not the persisted source instance");
@@ -662,6 +719,7 @@ class EditorServiceTest {
 
         assertFalse(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
         verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(any(com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork.class));
     }
 
     @Test
@@ -682,6 +740,7 @@ class EditorServiceTest {
         assertTrue(service.cancel(PLAYER_ID).success());
 
         verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(any(com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork.class));
     }
 
     @Test

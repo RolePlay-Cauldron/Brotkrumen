@@ -4,7 +4,7 @@ prefix: "<#64748B>[<gradient:#38BDF8:#6366F1>Brotkrumen</gradient><#64748B>] <#C
 messages:
   # Placeholder conventions for command feedback:
   # <player>, <graph>, <entries>, <token>, <hooks>, <storage>, <schema_version>,
-  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <value>, <key>
+  # <online_players>, <max_players>, <node_id>, <edge_id>, <count>, <preset>, <renderer>, <value>, <key>
 
   commands:
     common:
@@ -88,6 +88,7 @@ messages:
         graphNotFound: "<#F43F5E>No graph with that name exists."
         alreadyEditing: "<#F43F5E>You are already editing a graph."
         settingsRequired: "<#F43F5E>Editor settings are required."
+        rendererRequired: "<#F43F5E>Renderer must be spellbookEffect or blockDisplay."
         unknownPreset: "<#F43F5E>Unknown editor preset."
         nodeDistancePositive: "<#F43F5E>Node distance must be greater than zero."
         noSelection: "<#F43F5E>No graph element is selected."
@@ -142,6 +143,7 @@ messages:
         placeNodesOnGroundSet: "<#22C55E>Place nodes on ground set to <#38BDF8><value></#38BDF8>."
         continueRequiresNodeSet: "<#22C55E>Continue requires node set to <#38BDF8><value></#38BDF8>."
         presetSet: "<#22C55E>Editor preset set to <#38BDF8><preset></#38BDF8>."
+        graphPresetSet: "<#22C55E>Graph <#38BDF8><renderer></#38BDF8> preset set to <#38BDF8><preset></#38BDF8>."
         warpListEmpty: "<#FACC15>No persisted warps."
         warpListActiveEmpty: "<#FACC15>No warps target the active graph."
         warpListAll: "<#CBD5E1>All warps: <#38BDF8><entries></#38BDF8>."

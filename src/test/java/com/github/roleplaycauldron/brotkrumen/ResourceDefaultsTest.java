@@ -60,12 +60,16 @@ class ResourceDefaultsTest {
                 "English subtitle key should exist");
         assertTrue(english.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
                 "English editor ground placement setting key should exist");
+        assertTrue(english.contains("messages.commands.bkeditor.status.graphPresetSet"),
+                "English graph preset setting key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteTitle"),
                 "German title key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteSubtitle"),
                 "German subtitle key should exist");
         assertTrue(german.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
                 "German editor ground placement setting key should exist");
+        assertTrue(german.contains("messages.commands.bkeditor.status.graphPresetSet"),
+                "German graph preset setting key should exist");
     }
 
     private YamlConfiguration resourceYaml(final String path) {

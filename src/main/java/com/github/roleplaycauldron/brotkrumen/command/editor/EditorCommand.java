@@ -58,6 +58,7 @@ public class EditorCommand {
                 .then(placementSubcommands.continuePlacement())
                 .then(placementSubcommands.undo())
                 .then(settingsSubcommands.settings())
+                .then(settingsSubcommands.preset())
                 .then(viewSubcommands.view())
                 .then(selectionSubcommands.select())
                 .then(selectionSubcommands.selection())

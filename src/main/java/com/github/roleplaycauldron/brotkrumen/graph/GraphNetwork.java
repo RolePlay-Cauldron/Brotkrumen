@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * Aggregates multiple graphs plus inter-graph edges.
  */
-@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods", "PMD.CyclomaticComplexity"})
+@SuppressWarnings({"PMD.GodClass", "PMD.TooManyMethods", "PMD.CyclomaticComplexity", "PMD.CouplingBetweenObjects"})
 public class GraphNetwork {
 
     private final Map<Integer, Graph> graphsByDbId;
@@ -224,6 +224,16 @@ public class GraphNetwork {
     }
 
     /**
+     * Checks whether a node reference resolves in this network.
+     *
+     * @param nodeRef node reference
+     * @return true when the graph and node are present
+     */
+    public boolean hasNode(final NodeRef nodeRef) {
+        return getNode(nodeRef) != null;
+    }
+
+    /**
      * Constructs a temporary unified graph by combining multiple individual graphs and their relationships
      * from the current graph network. This method merges all nodes and edges from registered graphs, as well as
      * inter-graph edges, into a single unified graph structure.
@@ -326,6 +336,34 @@ public class GraphNetwork {
         if (outgoingInterEdges.remove(source) != null) {
             invalidateCache();
         }
+    }
+
+    /**
+     * Removes all inter-graph edges using the specified node as either source or target.
+     *
+     * @param node node reference
+     * @return removed edge count
+     */
+    public int removeInterGraphEdgesTouching(final NodeRef node) {
+        int removed = 0;
+        final List<InterGraphEdge> outgoing = outgoingInterEdges.remove(node);
+        if (outgoing != null) {
+            removed += outgoing.size();
+        }
+        final List<NodeRef> emptySources = new ArrayList<>();
+        for (final Map.Entry<NodeRef, List<InterGraphEdge>> entry : outgoingInterEdges.entrySet()) {
+            final int before = entry.getValue().size();
+            entry.getValue().removeIf(edge -> edge.target().equals(node));
+            removed += before - entry.getValue().size();
+            if (entry.getValue().isEmpty()) {
+                emptySources.add(entry.getKey());
+            }
+        }
+        emptySources.forEach(outgoingInterEdges::remove);
+        if (removed > 0) {
+            invalidateCache();
+        }
+        return removed;
     }
 
     /**
