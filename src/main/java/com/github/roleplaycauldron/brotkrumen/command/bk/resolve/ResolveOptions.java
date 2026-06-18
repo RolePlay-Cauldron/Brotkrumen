@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualizerRenderSettings;
 import org.bukkit.configuration.file.FileConfiguration;
 
 /**
@@ -23,8 +24,6 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
                              ResolveAwayCancellationOptions awayCancellationOptions) {
 
     private static final String NEAREST_NODE_RADIUS = "commands.resolve.nearestNodeRadius";
-
-    private static final String VISUALIZER_BACKEND = "commands.resolve.visualizerBackend";
 
     private static final String FINISH_RADIUS = "commands.resolve.finishRadius";
 
@@ -80,7 +79,7 @@ public record ResolveOptions(double nearestNodeRadius, double viewDistance, Reso
         return new ResolveOptions(
                 config.getDouble(NEAREST_NODE_RADIUS, DEFAULT_NEAREST_NODE_RADIUS),
                 config.getDouble(VIEW_DISTANCE, DEFAULT_VIEW_DISTANCE),
-                ResolveBackend.parse(config.getString(VISUALIZER_BACKEND, "particle")),
+                ResolveBackend.fromRenderer(VisualizerRenderSettings.fromConfig(config).defaultRenderer()),
                 config.getDouble(FINISH_RADIUS, DEFAULT_FINISH_RADIUS),
                 config.getInt(FINISH_CLEANUP_DELAY, DEFAULT_FINISH_CLEANUP_DELAY),
                 config.getBoolean(GOAL_MARKER_ENABLED, DEFAULT_GOAL_MARKER_ENABLED),

@@ -290,8 +290,11 @@ public class GraphNetworkRepositoryImpl implements GraphNetworkRepository {
 
         final Map<Integer, Graph> graphById = graphs.stream()
                 .collect(Collectors.toMap(Graph::getGraphId, Function.identity()));
+        final Set<InterGraphEdge> validEdges = edges.stream()
+                .filter(edge -> hasEndpointNodes(edge, graphById))
+                .collect(Collectors.toSet());
 
-        final Map<Integer, Set<Integer>> adjacency = buildAdjacency(graphById.keySet(), edges);
+        final Map<Integer, Set<Integer>> adjacency = buildAdjacency(graphById.keySet(), validEdges);
 
         final List<GraphNetwork> networks = new ArrayList<>();
         final Set<Integer> visited = new HashSet<>();
@@ -303,10 +306,19 @@ public class GraphNetworkRepositoryImpl implements GraphNetworkRepository {
 
             final Set<Integer> component = collectComponent(graphId, adjacency, visited);
             if (component.size() >= MINIMUM_NETWORK_GRAPH_COUNT) {
-                networks.add(buildNetwork(component, graphById, edges));
+                networks.add(buildNetwork(component, graphById, validEdges));
             }
         }
 
         return networks;
+    }
+
+    private boolean hasEndpointNodes(final InterGraphEdge edge, final Map<Integer, Graph> graphById) {
+        final Graph source = graphById.get(edge.source().graphDbId());
+        final Graph target = graphById.get(edge.target().graphDbId());
+        return source != null
+                && target != null
+                && source.getNodeById(edge.source().nodeId()) != null
+                && target.getNodeById(edge.target().nodeId()) != null;
     }
 }

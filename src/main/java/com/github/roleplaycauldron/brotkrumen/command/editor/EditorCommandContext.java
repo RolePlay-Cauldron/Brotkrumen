@@ -178,7 +178,7 @@ public final class EditorCommandContext {
                 .orElse(EditorService.PlacementMode.PREVIEW);
         final boolean placeNodesOnGround = plugin.getConfig().getBoolean(PLACE_NODES_ON_GROUND_CONFIG, false);
         final boolean continueRequiresNode = plugin.getConfig().getBoolean(CONTINUE_REQUIRES_NODE_CONFIG, true);
-        final String preset = plugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "default");
+        final String preset = plugin.getConfig().getString(DEFAULT_PRESET_CONFIG, "ember");
         return new EditorService.EditorSettings(nodeDistance, placementMode, editPlacementMode, placeNodesOnGround,
                 continueRequiresNode, preset)
                 .normalized();

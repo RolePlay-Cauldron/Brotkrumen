@@ -1,0 +1,265 @@
+ember:
+  particle:
+    nodes:
+      DEFAULT:
+        shape:
+          type: cube
+          size: 0.45
+          points-per-edge: 5
+        particle:
+          type: FLAME
+      LOCAL_TELEPORT:
+        shape:
+          type: sphere
+          radius: 0.55
+          points: 36
+        particle:
+          type: ASH
+      INTERGRAPH_TELEPORT:
+        shape:
+          type: cube
+          size: 0.5
+          points-per-edge: 5
+        particle:
+          type: LAVA
+      WARP:
+        shape:
+          type: sphere
+          radius: 0.55
+          points: 36
+        particle:
+          type: PORTAL
+      GUIDED_PATH_GOAL:
+        shape:
+          type: sphere
+          radius: 0.65
+          points: 36
+        particle:
+          type: HAPPY_VILLAGER
+    edges:
+      DEFAULT_LOCAL:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: FLAME
+      DIRECTED_LOCAL:
+        shape:
+          type: moving-point
+          speed: 1.0
+          spacing: 0.2
+          amount-points: 20
+        particle:
+          type: FLAME
+      UNDIRECTED_LOCAL:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: FLAME
+      BLOCKED:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: SMOKE
+      INTER_GRAPH:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: LAVA
+      DIRECTED_INTER_GRAPH:
+        shape:
+          type: moving-point
+          speed: 1.0
+          spacing: 0.2
+          amount-points: 20
+        particle:
+          type: LAVA
+      UNDIRECTED_INTER_GRAPH:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: LAVA
+  block-display:
+    nodes:
+      DEFAULT:
+        material: COAL_BLOCK
+        scale: 0.45
+      LOCAL_TELEPORT:
+        material: MAGMA_BLOCK
+        scale: 0.55
+      INTERGRAPH_TELEPORT:
+        material: REDSTONE_BLOCK
+        scale: 0.5
+      WARP:
+        material: OBSIDIAN
+        scale: 0.55
+      GUIDED_PATH_GOAL:
+        material: GOLD_BLOCK
+        scale: 0.65
+    edges:
+      DEFAULT_LOCAL:
+        material: ORANGE_WOOL
+        thickness: 0.16
+        node-clearance: 0.8
+      DIRECTED_LOCAL:
+        material: GREEN_STAINED_GLASS
+        thickness: 0.16
+        node-clearance: 0.8
+      UNDIRECTED_LOCAL:
+        material: LIME_STAINED_GLASS
+        thickness: 0.18
+        node-clearance: 0.8
+      BLOCKED:
+        material: RED_WOOL
+        thickness: 0.16
+        node-clearance: 0.8
+      INTER_GRAPH:
+        material: GOLD_BLOCK
+        thickness: 0.16
+        node-clearance: 0.8
+      DIRECTED_INTER_GRAPH:
+        material: WHITE_STAINED_GLASS
+        thickness: 0.16
+        node-clearance: 0.8
+      UNDIRECTED_INTER_GRAPH:
+        material: WHITE_STAINED_GLASS
+        thickness: 0.18
+        node-clearance: 0.8
+
+prism:
+  particle:
+    nodes:
+      DEFAULT:
+        shape:
+          type: cube
+          size: 0.45
+          points-per-edge: 5
+        particle:
+          type: END_ROD
+      LOCAL_TELEPORT:
+        shape:
+          type: sphere
+          radius: 0.55
+          points: 36
+        particle:
+          type: PORTAL
+      INTERGRAPH_TELEPORT:
+        shape:
+          type: cube
+          size: 0.5
+          points-per-edge: 5
+        particle:
+          type: REVERSE_PORTAL
+      WARP:
+        shape:
+          type: sphere
+          radius: 0.55
+          points: 36
+        particle:
+          type: WITCH
+      GUIDED_PATH_GOAL:
+        shape:
+          type: sphere
+          radius: 0.65
+          points: 36
+        particle:
+          type: HAPPY_VILLAGER
+    edges:
+      DEFAULT_LOCAL:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: END_ROD
+      DIRECTED_LOCAL:
+        shape:
+          type: moving-point
+          speed: 1.0
+          spacing: 0.2
+          amount-points: 20
+        particle:
+          type: END_ROD
+      UNDIRECTED_LOCAL:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: END_ROD
+      BLOCKED:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: SMOKE
+      INTER_GRAPH:
+        shape:
+          type: moving-point
+          speed: 1.0
+          spacing: 0.18
+          amount-points: 20
+        particle:
+          type: WITCH
+      DIRECTED_INTER_GRAPH:
+        shape:
+          type: moving-point
+          speed: 1.0
+          spacing: 0.2
+          amount-points: 20
+        particle:
+          type: WITCH
+      UNDIRECTED_INTER_GRAPH:
+        shape:
+          type: line
+          points: 20
+        particle:
+          type: WITCH
+  block-display:
+    nodes:
+      DEFAULT:
+        material: LAPIS_BLOCK
+        scale: 0.45
+      LOCAL_TELEPORT:
+        material: AMETHYST_BLOCK
+        scale: 0.55
+      INTERGRAPH_TELEPORT:
+        material: PURPUR_BLOCK
+        scale: 0.5
+      WARP:
+        material: END_STONE
+        scale: 0.55
+      GUIDED_PATH_GOAL:
+        material: SEA_LANTERN
+        scale: 0.65
+    edges:
+      DEFAULT_LOCAL:
+        material: LIGHT_BLUE_STAINED_GLASS
+        thickness: 0.16
+        node-clearance: 0.8
+      DIRECTED_LOCAL:
+        material: CYAN_STAINED_GLASS
+        thickness: 0.18
+        node-clearance: 0.8
+      UNDIRECTED_LOCAL:
+        material: BLUE_STAINED_GLASS
+        thickness: 0.2
+        node-clearance: 0.8
+      BLOCKED:
+        material: RED_STAINED_GLASS
+        thickness: 0.22
+        node-clearance: 0.8
+      INTER_GRAPH:
+        material: BLACK_STAINED_GLASS
+        thickness: 0.22
+        node-clearance: 0.8
+      DIRECTED_INTER_GRAPH:
+        material: GRAY_STAINED_GLASS
+        thickness: 0.22
+        node-clearance: 0.8
+      UNDIRECTED_INTER_GRAPH:
+        material: GRAY_STAINED_GLASS
+        thickness: 0.24
+        node-clearance: 0.8

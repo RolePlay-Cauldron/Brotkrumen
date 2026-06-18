@@ -33,6 +33,8 @@ public final class MySQLMigration {
                         "CREATE TABLE IF NOT EXISTS `" + tablePrefix + "_graph` ("
                                 + "`id` INT NOT NULL AUTO_INCREMENT, "
                                 + "`name` VARCHAR(255) NOT NULL, "
+                                + "`spellbook_effect_preset` VARCHAR(255) NOT NULL DEFAULT 'ember', "
+                                + "`block_display_preset` VARCHAR(255) NOT NULL DEFAULT 'ember', "
                                 + "PRIMARY KEY (`id`), "
                                 + "UNIQUE KEY `uk_" + tablePrefix + "_graph_name` (`name`)"
                                 + ")"

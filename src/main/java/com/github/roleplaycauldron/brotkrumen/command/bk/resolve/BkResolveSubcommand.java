@@ -15,6 +15,8 @@ import com.github.roleplaycauldron.brotkrumen.visual.GuidedPathAutoTeleportVisua
 import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetProfileFactory;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualizerRenderSettings;
 import com.github.roleplaycauldron.brotkrumen.visual.render.BlockDisplayGraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.render.ParticleGraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GraphNetworkVisualSource;
@@ -352,19 +354,23 @@ public final class BkResolveSubcommand {
 
     private Visualizer graphVisualizer(final UUID playerId,
                                        final ResolveResult result) {
+        final ProfileGraphDesignResolver designs = new ProfileGraphDesignResolver(
+                VisualPresetProfileFactory.forGraph(result.graph(), commandContext.plugin().getVisualPresetRegistry(),
+                        visualizerRenderSettings()));
         if (result.backend() == ResolveBackend.BLOCK_DISPLAY) {
             return GraphVisualizerFactory.blockDisplayGraph(commandContext.plugin(), commandContext.loggerFactory(),
-                    result.graph(), playerId);
+                    result.graph(), playerId, designs);
         }
         return GraphVisualizerFactory.particleGraph(commandContext.plugin(), commandContext.loggerFactory(),
-                result.graph(), playerId, commandContext.effectExecutor());
+                result.graph(), playerId, commandContext.effectExecutor(), designs);
     }
 
     private Visualizer pathVisualizer(final UUID playerId,
                                       final long token,
                                       final ResolveOptions options,
                                       final ResolveResult result) {
-        final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.defaults();
+        final GraphNetworkDesignProfile profile = VisualPresetProfileFactory.forGraphs(result.network().getGraphs(),
+                commandContext.plugin().getVisualPresetRegistry(), visualizerRenderSettings(), Map.of(), Map.of());
         final GuidedPathOptions guidedPathOptions = resolveGuidedPathOptions(options);
         final GuidedPathVisualGraphSource source = new GuidedPathVisualGraphSource(
                 new GraphNetworkVisualSource(result.network()),
@@ -388,6 +394,10 @@ public final class BkResolveSubcommand {
                 new ParticleGraphRenderer(commandContext.plugin(), playerId, commandContext.effectExecutor()),
                 new ProfileGraphDesignResolver(profile), completionCallback, autoTeleportController,
                 awayCancellationController);
+    }
+
+    private VisualizerRenderSettings visualizerRenderSettings() {
+        return VisualizerRenderSettings.fromConfig(commandContext.plugin().getConfig());
     }
 
     private ResolveAutoTeleportController autoTeleportController(final UUID playerId, final long token,

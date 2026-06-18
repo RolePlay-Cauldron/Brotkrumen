@@ -204,7 +204,7 @@ class GraphTest {
     @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void copyPreservesIdsAndCanBeMutatedIndependently() {
-        final Graph graph = new Graph(7, "Original");
+        final Graph graph = new Graph(7, "Original", "Prism_Value", "Ember_Value");
         final Node nodeOne = graph.addNode(new Node(uuidOne, 2, 3, 4, null));
         final Node nodeTwo = graph.addNode(new Node(uuidTwo, 3, 4, 5, null));
         final Edge edge = graph.addDirectedEdge(nodeOne.graphId(), nodeTwo.graphId(), 1.0);
@@ -214,12 +214,37 @@ class GraphTest {
         copy.removeEdge(copy.getEdgeById(edge.edgeId()));
 
         assertEquals(7, copy.getGraphId(), "Copy should preserve graph id");
+        assertEquals("prism-value", copy.getSpellbookEffectPreset(),
+                "Copy should preserve normalized spellbookEffect preset");
+        assertEquals("ember-value", copy.getBlockDisplayPreset(),
+                "Copy should preserve normalized block-display preset");
         assertEquals("Original", graph.getName(), "Original graph name should be unchanged");
         assertEquals("Changed", copy.getName(), "Copy graph name should change independently");
         assertNotNull(graph.getEdgeById(edge.edgeId()), "Original graph edge should be unchanged");
         assertNull(copy.getEdgeById(edge.edgeId()), "Copy graph edge should be removed independently");
         assertNotSame(graph.getNodeById(nodeOne.graphId()), copy.getNodeById(nodeOne.graphId()),
                 "Copy should contain detached node instances");
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void rendererPresetFieldsAreNormalizedAndFallbackWhenBlank() {
+        final Graph graph = new Graph(9, "Visual", "Prism_Value", " ");
+
+        assertEquals("prism-value", graph.getSpellbookEffectPreset(),
+                "Spellbook effect preset should normalize for storage");
+        assertEquals("ember", graph.getBlockDisplayPreset(),
+                "Blank block-display preset should use the configured storage fallback");
+
+        final long before = graph.getModCount();
+        graph.setSpellbookEffectPreset("My_Custom");
+        graph.setBlockDisplayPreset(null);
+
+        assertEquals("my-custom", graph.getSpellbookEffectPreset(),
+                "Setter should normalize spellbookEffect presets");
+        assertEquals("ember", graph.getBlockDisplayPreset(),
+                "Null block-display preset should use fallback");
+        assertEquals(before + 2, graph.getModCount(), "Changing preset fields should update graph modification state");
     }
 
     @Test

@@ -5,17 +5,18 @@ import com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathResult;
-import com.github.roleplaycauldron.brotkrumen.visual.design.BlockDisplayDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.GraphNetworkDesignProfile;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleDesignSet;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleEdgeDesign;
+import com.github.roleplaycauldron.brotkrumen.visual.design.ParticleNodeDesign;
 import com.github.roleplaycauldron.brotkrumen.visual.design.ProfileGraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.model.LocalVisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdge;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualGraphSnapshot;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.render.GraphRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathOptions;
 import com.github.roleplaycauldron.brotkrumen.visual.source.GuidedPathVisualGraphSource;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,8 +76,8 @@ class VisualizerTest {
         final GraphNetwork network = new GraphNetwork();
         network.addGraph(graph);
         final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.builder()
-                .particleGraphDesign(1, ParticleDesignSet.emberPreset())
-                .blockDisplayGraphDesign(1, BlockDisplayDesignSet.emberPreset())
+                .particleGraphDesign(1, TestVisualDesigns.emberParticle())
+                .blockDisplayGraphDesign(1, TestVisualDesigns.emberBlock())
                 .build();
 
         final Visualizer graphVisualizer = GraphVisualizerFactory.blockDisplayGraph(null, null, graph, UUID.randomUUID());
@@ -124,8 +126,8 @@ class VisualizerTest {
         final ParticleEdgeDesign roleDesign = ParticleEdgeDesign.line(Particle.CLOUD, 4);
         final GraphNetworkDesignProfile profile = GraphNetworkDesignProfile.builder()
                 .particleDefaultDesign(new ParticleDesignSet(
-                        ParticleDesignSet.defaults().nodeDesigns(),
-                        java.util.Map.of(
+                        Map.of(VisualNodeRole.DEFAULT, ParticleNodeDesign.cube(Particle.FLAME, 0.4f)),
+                        Map.of(
                                 VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.line(Particle.FLAME, 20),
                                 VisualEdgeRole.UNDIRECTED_LOCAL, roleDesign
                         )

@@ -37,6 +37,16 @@ class ResourceDefaultsTest {
                 "Existing graph edit sessions should default to preview mode");
         assertFalse(config.getBoolean("editor.placeNodesOnGround"),
                 "Ground-snapped editor placement should default to disabled");
+        assertEquals("spellbookEffect", config.getString("visualizer.defaultRenderer"),
+                "Default renderer should be configured once under visualizer settings");
+        assertEquals("ember", config.getString("visualizer.defaultSpellbookEffectPreset"),
+                "Spellbook effect default preset should be documented");
+        assertEquals("ember", config.getString("visualizer.defaultBlockDisplayPreset"),
+                "Block-display default preset should be documented");
+        assertFalse(config.contains("commands.resolve.visualizerBackend"),
+                "Resolve should use visualizer.defaultRenderer instead of its legacy backend setting");
+        assertEquals("ember", config.getString("editor.defaultPreset"),
+                "Editor temporary preset default should reference a bundled preset");
     }
 
     @Test
@@ -50,12 +60,16 @@ class ResourceDefaultsTest {
                 "English subtitle key should exist");
         assertTrue(english.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
                 "English editor ground placement setting key should exist");
+        assertTrue(english.contains("messages.commands.bkeditor.status.graphPresetSet"),
+                "English graph preset setting key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteTitle"),
                 "German title key should exist");
         assertTrue(german.contains("messages.commands.bk.resolve.status.guidanceCompleteSubtitle"),
                 "German subtitle key should exist");
         assertTrue(german.contains("messages.commands.bkeditor.status.placeNodesOnGroundSet"),
                 "German editor ground placement setting key should exist");
+        assertTrue(german.contains("messages.commands.bkeditor.status.graphPresetSet"),
+                "German graph preset setting key should exist");
     }
 
     private YamlConfiguration resourceYaml(final String path) {

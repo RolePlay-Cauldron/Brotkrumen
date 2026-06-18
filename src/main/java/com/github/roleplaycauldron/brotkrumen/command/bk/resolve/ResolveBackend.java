@@ -1,5 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
+
 import java.util.Locale;
 
 /**
@@ -29,6 +31,19 @@ public enum ResolveBackend {
         final String normalized = raw.trim().toLowerCase(Locale.ROOT);
         if ("block-display".equals(normalized) || "block_display".equals(normalized)
                 || "blockdisplay".equals(normalized)) {
+            return BLOCK_DISPLAY;
+        }
+        return PARTICLE;
+    }
+
+    /**
+     * Converts a configured visual renderer to a resolve backend.
+     *
+     * @param renderer visual renderer
+     * @return resolve backend
+     */
+    public static ResolveBackend fromRenderer(final VisualRenderer renderer) {
+        if (renderer == VisualRenderer.BLOCK_DISPLAY) {
             return BLOCK_DISPLAY;
         }
         return PARTICLE;

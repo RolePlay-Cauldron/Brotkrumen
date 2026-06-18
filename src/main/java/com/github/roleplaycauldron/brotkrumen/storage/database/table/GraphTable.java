@@ -55,7 +55,7 @@ public class GraphTable {
      * @throws StorageException if a database access error occurs during the operation
      */
     public Optional<Graph> findByName(final BrotkrumenConnectionProvider conProvider, final String name) {
-        final String sql = "SELECT `id`, `name` FROM `" + tableName + "` WHERE `name` = ?";
+        final String sql = "SELECT `id`, `name`, `spellbook_effect_preset`, `block_display_preset` FROM `" + tableName + "` WHERE `name` = ?";
 
         try (Connection con = conProvider.getConnection();
              PreparedStatement statement = con.prepareStatement(sql)) {
@@ -83,7 +83,7 @@ public class GraphTable {
      * @throws StorageException if a database access error occurs during the operation
      */
     public Optional<Graph> findById(final BrotkrumenConnectionProvider conProvider, final int graphId) {
-        final String sql = "SELECT `id`, `name` FROM `" + tableName + "` WHERE `id` = ?";
+        final String sql = "SELECT `id`, `name`, `spellbook_effect_preset`, `block_display_preset` FROM `" + tableName + "` WHERE `id` = ?";
 
         try (Connection con = conProvider.getConnection();
              PreparedStatement statement = con.prepareStatement(sql)) {
@@ -110,7 +110,7 @@ public class GraphTable {
      * @throws StorageException if a database access error occurs during the operation
      */
     public Set<Graph> getAllGraphs(final BrotkrumenConnectionProvider conProvider) {
-        final String sql = "SELECT `id`, `name` FROM `" + tableName + "`";
+        final String sql = "SELECT `id`, `name`, `spellbook_effect_preset`, `block_display_preset` FROM `" + tableName + "`";
         final Set<Graph> graphs = new LinkedHashSet<>();
 
         try (Connection con = conProvider.getConnection();
@@ -190,7 +190,8 @@ public class GraphTable {
     }
 
     private void updateGraph(final BrotkrumenConnectionProvider conProvider, final Graph graph) {
-        final String updateGraphSql = "UPDATE `" + tableName + "` SET `name` = ? WHERE `id` = ?";
+        final String updateGraphSql = "UPDATE `" + tableName + "` SET `name` = ?, "
+                + "`spellbook_effect_preset` = ?, `block_display_preset` = ? WHERE `id` = ?";
 
         try (Connection con = conProvider.getConnection()) {
             con.setAutoCommit(false);
@@ -198,7 +199,9 @@ public class GraphTable {
             try {
                 try (PreparedStatement statement = con.prepareStatement(updateGraphSql)) {
                     statement.setString(1, graph.getName());
-                    statement.setInt(2, graph.getGraphId());
+                    statement.setString(2, graph.getSpellbookEffectPreset());
+                    statement.setString(3, graph.getBlockDisplayPreset());
+                    statement.setInt(4, graph.getGraphId());
                     statement.executeUpdate();
                 }
 
@@ -286,7 +289,8 @@ public class GraphTable {
     }
 
     private void createGraph(final BrotkrumenConnectionProvider conProvider, final Graph graph) {
-        final String insertGraphSql = "INSERT INTO `" + tableName + "` (`name`) VALUES (?)";
+        final String insertGraphSql = "INSERT INTO `" + tableName + "` (`name`, `spellbook_effect_preset`, "
+                + "`block_display_preset`) VALUES (?, ?, ?)";
 
         try (Connection con = conProvider.getConnection()) {
             con.setAutoCommit(false);
@@ -294,6 +298,8 @@ public class GraphTable {
             final int generatedGraphId;
             try (PreparedStatement statement = con.prepareStatement(insertGraphSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
                 statement.setString(1, graph.getName());
+                statement.setString(2, graph.getSpellbookEffectPreset());
+                statement.setString(3, graph.getBlockDisplayPreset());
                 statement.executeUpdate();
 
                 try (ResultSet resultSet = statement.getGeneratedKeys()) {
@@ -321,6 +327,8 @@ public class GraphTable {
     private Graph mapGraph(final Connection con, final ResultSet resultSet) throws SQLException {
         final int graphId = resultSet.getInt("id");
         final String name = resultSet.getString("name");
+        final String spellbookEffectPreset = resultSet.getString("spellbook_effect_preset");
+        final String blockDisplayPreset = resultSet.getString("block_display_preset");
 
         final Set<Node> nodes = nodeTable.getAllNodesForGraph(con, graphId);
         final Set<Edge> edges = edgeTable.getAllEdgesForGraph(con, graphId);
@@ -339,6 +347,6 @@ public class GraphTable {
             adjacency.computeIfAbsent(edge.source(), ignored -> new java.util.ArrayList<>()).add(edge);
         }
 
-        return new Graph(graphId, name, nodeMap, adjacency);
+        return new Graph(graphId, name, spellbookEffectPreset, blockDisplayPreset, nodeMap, adjacency);
     }
 }

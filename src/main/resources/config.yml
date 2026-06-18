@@ -82,6 +82,16 @@ data:
 
 visualizer:
 
+  # Default visualizer renderer for editor previews and /bk resolve.
+  # Supported values: spellbookEffect, blockDisplay
+  defaultRenderer: 'spellbookEffect'
+
+  # Default preset used when a graph has no usable Spellbook effect preset.
+  defaultSpellbookEffectPreset: 'ember'
+
+  # Default preset used when a graph has no usable block-display preset.
+  defaultBlockDisplayPreset: 'ember'
+
   # Controls the base distance, in blocks, used to decide which graph nodes and edges are visible to a viewer.
   # Larger values can increase the number of active rendered elements.
   viewDistance: 16.0
@@ -114,9 +124,6 @@ commands:
     # Maximum distance, in blocks, used to find the player's nearest graph node.
     # At runtime this is clamped to visualizer.viewDistance.
     nearestNodeRadius: 15.0
-
-    # Default visualizer backends used by /bk resolve: particle or block-display.
-    visualizerBackend: 'particle'
 
     # Distance, in blocks, used to detect when guided resolve reached the final path node.
     finishRadius: 4.0
@@ -236,5 +243,5 @@ editor:
   continueRequiresNode: true
 
   # Temporary editor preview preset selected when a session starts.
-  defaultPreset: 'default'
+  defaultPreset: 'ember'
 

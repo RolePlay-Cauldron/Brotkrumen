@@ -104,6 +104,23 @@ class GraphNetworkRepositoryImplTest {
     }
 
     @Test
+    void loadGraphNetworksSkipsEdgesWithMissingEndpointNodes() {
+        final Graph graph1 = new Graph(1, "G1");
+        final Graph graph2 = new Graph(2, "G2");
+        final UUID node1 = UUID.randomUUID();
+        final UUID missingNode = UUID.randomUUID();
+        graph1.addNode(new Node(node1, 0, 0, 0, null));
+        graph2.addNode(new Node(UUID.randomUUID(), 0, 0, 0, null));
+        final InterGraphEdge staleEdge = new InterGraphEdge(10, UUID.randomUUID(), new NodeRef(1, node1),
+                new NodeRef(2, missingNode), 1.0, Set.of(), true);
+        when(graphRepository.getAllGraphs()).thenReturn(Set.of(graph1, graph2));
+        when(interGraphEdgeTable.getAllEdges(provider)).thenReturn(Set.of(staleEdge));
+
+        assertTrue(service.reloadGraphNetworks().isEmpty(),
+                "Stale edges must not fail reload or create generated networks");
+    }
+
+    @Test
     void loadsAndDeletesEdgesForGraphIds() {
         final Set<Integer> graphIds = Set.of(1, 2);
         final InterGraphEdge edge = new InterGraphEdge(10, UUID.randomUUID(),

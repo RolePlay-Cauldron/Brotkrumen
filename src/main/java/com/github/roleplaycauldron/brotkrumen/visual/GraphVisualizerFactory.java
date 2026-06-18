@@ -157,8 +157,26 @@ public final class GraphVisualizerFactory {
     public static Visualizer particleGraph(final Brotkrumen plugin, final LoggerFactory loggerFactory,
                                            final Graph graph, final UUID viewerId,
                                            final EffectExecutor executor) {
+        return particleGraph(plugin, loggerFactory, graph, viewerId, executor, ProfileGraphDesignResolver.defaults());
+    }
+
+    /**
+     * Creates a Spellbook particle visualizer for one graph.
+     *
+     * @param plugin        plugin
+     * @param loggerFactory logger factory
+     * @param graph         graph
+     * @param viewerId      viewer id
+     * @param executor      effect executor
+     * @param designs       design resolver
+     * @return visualizer
+     */
+    public static Visualizer particleGraph(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                           final Graph graph, final UUID viewerId,
+                                           final EffectExecutor executor,
+                                           final GraphDesignResolver designs) {
         return visualizer(loggerFactory, graphSource(graph), particleRenderer(plugin, viewerId, executor),
-                ProfileGraphDesignResolver.defaults());
+                designs);
     }
 
     /**
@@ -180,9 +198,57 @@ public final class GraphVisualizerFactory {
                                                      final Supplier<Collection<InterGraphEdge>> interGraphEdges,
                                                      final Supplier<Long> workspaceVersion,
                                                      final UUID viewerId, final EffectExecutor executor) {
+        return particleEditorWorkspace(plugin, loggerFactory, activeGraph, referenceGraphs, interGraphEdges,
+                workspaceVersion, viewerId, executor, ProfileGraphDesignResolver.defaults());
+    }
+
+    /**
+     * Creates a Spellbook particle visualizer for an editor workspace.
+     *
+     * @param plugin           plugin
+     * @param loggerFactory    logger factory
+     * @param activeGraph      active graph supplier
+     * @param referenceGraphs  visible reference graph supplier
+     * @param interGraphEdges  visible inter-graph edges supplier
+     * @param workspaceVersion workspace version supplier
+     * @param viewerId         viewer id
+     * @param executor         effect executor
+     * @param designs          design resolver
+     * @return visualizer
+     */
+    public static Visualizer particleEditorWorkspace(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                                     final Supplier<Graph> activeGraph,
+                                                     final Supplier<Collection<Graph>> referenceGraphs,
+                                                     final Supplier<Collection<InterGraphEdge>> interGraphEdges,
+                                                     final Supplier<Long> workspaceVersion,
+                                                     final UUID viewerId, final EffectExecutor executor,
+                                                     final GraphDesignResolver designs) {
         return visualizer(loggerFactory, new EditorWorkspaceVisualSource(activeGraph, referenceGraphs, interGraphEdges,
                         workspaceVersion), particleRenderer(plugin, viewerId, executor),
-                ProfileGraphDesignResolver.defaults());
+                designs);
+    }
+
+    /**
+     * Creates a block-display visualizer for an editor workspace.
+     *
+     * @param plugin           plugin
+     * @param loggerFactory    logger factory
+     * @param activeGraph      active graph supplier
+     * @param referenceGraphs  visible reference graph supplier
+     * @param interGraphEdges  visible inter-graph edges supplier
+     * @param workspaceVersion workspace version supplier
+     * @param viewerId         viewer id
+     * @param designs          design resolver
+     * @return visualizer
+     */
+    public static Visualizer blockDisplayEditorWorkspace(final Brotkrumen plugin, final LoggerFactory loggerFactory,
+                                                         final Supplier<Graph> activeGraph,
+                                                         final Supplier<Collection<Graph>> referenceGraphs,
+                                                         final Supplier<Collection<InterGraphEdge>> interGraphEdges,
+                                                         final Supplier<Long> workspaceVersion,
+                                                         final UUID viewerId, final GraphDesignResolver designs) {
+        return visualizer(loggerFactory, new EditorWorkspaceVisualSource(activeGraph, referenceGraphs, interGraphEdges,
+                workspaceVersion), blockDisplayRenderer(plugin, viewerId), designs);
     }
 
     /**

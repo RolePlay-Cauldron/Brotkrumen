@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -69,10 +70,36 @@ public final class EditorSettingsSubcommands {
                 .then(Commands.literal("preset")
                         .then(Commands.argument("presetName", StringArgumentType.word())
                                 .suggests((context, builder) -> {
-                                    EditorService.supportedPresets().forEach(builder::suggest);
+                                    commandContext.editorService().supportedPresetsForActiveRenderer()
+                                            .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
                                 .executes(this::updatePreset)));
+    }
+
+    /**
+     * Builds the persistent graph preset subcommand.
+     *
+     * @return preset subcommand
+     */
+    public LiteralArgumentBuilder<CommandSourceStack> preset() {
+        return Commands.literal("preset")
+                .then(Commands.argument("renderer", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            for (final VisualRenderer renderer : VisualRenderer.values()) {
+                                builder.suggest(renderer.configValue());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .then(Commands.argument("presetName", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    final VisualRenderer renderer = VisualRenderer.parse(
+                                            StringArgumentType.getString(context, "renderer")).orElse(null);
+                                    commandContext.editorService().supportedPresetsForRenderer(renderer)
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::updateGraphPreset)));
     }
 
     private int updateNodeDistance(final CommandContext<CommandSourceStack> context) {
@@ -103,6 +130,14 @@ public final class EditorSettingsSubcommands {
     private int updatePreset(final CommandContext<CommandSourceStack> context) {
         return commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
                 commandContext.editorService().updatePreset(player.getUniqueId(),
+                        StringArgumentType.getString(context, "presetName"))));
+    }
+
+    private int updateGraphPreset(final CommandContext<CommandSourceStack> context) {
+        final VisualRenderer renderer = VisualRenderer.parse(StringArgumentType.getString(context, "renderer"))
+                .orElse(null);
+        return commandContext.withPlayer(context, player -> commandContext.getFeedback().send(player,
+                commandContext.editorService().updateGraphPreset(player.getUniqueId(), renderer,
                         StringArgumentType.getString(context, "presetName"))));
     }
 }

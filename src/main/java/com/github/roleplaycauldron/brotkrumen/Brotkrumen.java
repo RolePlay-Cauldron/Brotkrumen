@@ -26,6 +26,9 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRep
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepositoryImpl;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepositoryImpl;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetLoadException;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetLoader;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetRegistry;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import com.github.roleplaycauldron.spellbook.core.scheduler.SimplePaperScheduler;
@@ -45,7 +48,7 @@ import java.util.Locale;
 /**
  * Starting point of the plugin.
  */
-@SuppressWarnings("PMD.CouplingBetweenObjects")
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods"})
 public class Brotkrumen extends JavaPlugin {
 
     /**
@@ -72,6 +75,11 @@ public class Brotkrumen extends JavaPlugin {
      * The runtime localization service.
      */
     private Localization localization;
+
+    /**
+     * Runtime visual preset cache.
+     */
+    private VisualPresetRegistry visualPresetRegistry;
 
     /**
      * The service for graph-related operations.
@@ -112,6 +120,9 @@ public class Brotkrumen extends JavaPlugin {
 
         saveDefaultConfig();
         loadLocalization(loggerFactory);
+        if (!loadVisualPresets()) {
+            return;
+        }
 
         final ConfigurationSection databaseSection = getConfig().getConfigurationSection("data");
         if (databaseSection == null || databaseSection.getKeys(false).isEmpty()) {
@@ -206,6 +217,17 @@ public class Brotkrumen extends JavaPlugin {
         );
     }
 
+    private boolean loadVisualPresets() {
+        try {
+            this.visualPresetRegistry = new VisualPresetLoader(this, loggerFactory.create(VisualPresetLoader.class))
+                    .loadForStartup();
+            return true;
+        } catch (final VisualPresetLoadException failure) {
+            log.error("Could not start the plugin because visual presets are unavailable: " + failure.getMessage());
+            return false;
+        }
+    }
+
     private void registerCommands(final EffectExecutor executor, final EditorService editorService) {
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, loggerFactory, editorService, graphRepository, localization);
@@ -250,6 +272,23 @@ public class Brotkrumen extends JavaPlugin {
         final String defaultLocaleTag = configuredDefaultLocaleTag(getConfig().getString("localization.defaultLocale"));
         saveConfiguredDefaultLocaleResource(defaultLocaleTag);
         localization.reload(defaultLocaleTag);
+    }
+
+    /**
+     * Reloads visual presets from presets.yml.
+     */
+    public void reloadVisualPresets() {
+        this.visualPresetRegistry = new VisualPresetLoader(this, loggerFactory.create(VisualPresetLoader.class))
+                .reload(visualPresetRegistry);
+    }
+
+    /**
+     * Returns the current visual preset cache.
+     *
+     * @return visual preset registry
+     */
+    public VisualPresetRegistry getVisualPresetRegistry() {
+        return visualPresetRegistry;
     }
 
     /**

@@ -4,7 +4,10 @@ import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeId;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeKind;
 import com.github.roleplaycauldron.brotkrumen.visual.model.VisualEdgeRole;
+import com.github.roleplaycauldron.brotkrumen.visual.model.VisualNodeRole;
 import com.github.roleplaycauldron.brotkrumen.visual.render.EdgeRenderStrategy;
+import org.bukkit.Material;
+import org.bukkit.Particle;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -236,11 +239,11 @@ public final class GraphNetworkDesignProfile {
 
         private final Map<VisualEdgeRole, EdgeRenderStrategy> renderStrategiesByRole = defaultEdgeRenderStrategies();
 
-        private ParticleDesignSet defaultParticleDesignSet = ParticleDesignSet.defaults();
+        private ParticleDesignSet defaultParticleDesignSet = createDefaultParticleDesignSet();
 
         private ParticleDesignSet networkParticleDesignSet;
 
-        private BlockDisplayDesignSet defaultBlockDisplayDesignSet = BlockDisplayDesignSet.defaults();
+        private BlockDisplayDesignSet defaultBlockDisplayDesignSet = createDefaultBlockDisplayDesignSet();
 
         private BlockDisplayDesignSet networkBlockDisplayDesignSet;
 
@@ -263,6 +266,22 @@ public final class GraphNetworkDesignProfile {
             result.put(VisualEdgeRole.UNDIRECTED_INTER_GRAPH, EdgeRenderStrategy.FULL_EDGE);
             result.put(VisualEdgeRole.TELEPORT, EdgeRenderStrategy.ENDPOINTS_ONLY);
             return result;
+        }
+
+        private static ParticleDesignSet createDefaultParticleDesignSet() {
+            final Map<VisualNodeRole, ParticleNodeDesign> nodes = new EnumMap<>(VisualNodeRole.class);
+            nodes.put(VisualNodeRole.DEFAULT, ParticleNodeDesign.cube(Particle.FLAME, 0.4f));
+            final Map<VisualEdgeRole, ParticleEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
+            edges.put(VisualEdgeRole.DEFAULT_LOCAL, ParticleEdgeDesign.line(Particle.FLAME, 20));
+            return new ParticleDesignSet(nodes, edges);
+        }
+
+        private static BlockDisplayDesignSet createDefaultBlockDisplayDesignSet() {
+            final Map<VisualNodeRole, BlockNodeDesign> nodes = new EnumMap<>(VisualNodeRole.class);
+            nodes.put(VisualNodeRole.DEFAULT, new BlockNodeDesign(Material.COAL_BLOCK, 0.45f));
+            final Map<VisualEdgeRole, BlockEdgeDesign> edges = new EnumMap<>(VisualEdgeRole.class);
+            edges.put(VisualEdgeRole.DEFAULT_LOCAL, new BlockEdgeDesign(Material.ORANGE_WOOL, 0.16f, 0.8D));
+            return new BlockDisplayDesignSet(nodes, edges);
         }
 
         /**

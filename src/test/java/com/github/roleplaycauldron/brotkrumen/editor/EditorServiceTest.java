@@ -1,21 +1,31 @@
 package com.github.roleplaycauldron.brotkrumen.editor;
 
+import com.github.roleplaycauldron.brotkrumen.Brotkrumen;
 import com.github.roleplaycauldron.brotkrumen.graph.Edge;
 import com.github.roleplaycauldron.brotkrumen.graph.EdgeFlag;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
 import com.github.roleplaycauldron.brotkrumen.graph.InterGraphEdge;
 import com.github.roleplaycauldron.brotkrumen.graph.Node;
 import com.github.roleplaycauldron.brotkrumen.graph.NodeFlag;
+import com.github.roleplaycauldron.brotkrumen.graph.NodeRef;
 import com.github.roleplaycauldron.brotkrumen.graph.Warp;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
+import com.github.roleplaycauldron.brotkrumen.visual.TestVisualDesigns;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPreset;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetRegistry;
+import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
 import com.github.roleplaycauldron.spellbook.core.logger.WrappedLogger;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
+import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -36,7 +47,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings({"PMD.TooManyMethods", "PMD.UnitTestContainsTooManyAsserts",
-        "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.ShortVariable"})
+        "PMD.UnitTestAssertionsShouldIncludeMessage", "PMD.ShortVariable", "PMD.CouplingBetweenObjects"})
 class EditorServiceTest {
 
     private static final UUID PLAYER_ID = UUID.randomUUID();
@@ -64,6 +75,15 @@ class EditorServiceTest {
     @Mock
     private WrappedLogger logger;
 
+    @Mock
+    private Brotkrumen plugin;
+
+    @Mock
+    private Server server;
+
+    @Mock
+    private BukkitScheduler scheduler;
+
     private EditorService service;
 
     private EditorWaitingActionBarReminder reminder;
@@ -72,8 +92,28 @@ class EditorServiceTest {
     void setUp() {
         lenient().when(world.getUID()).thenReturn(WORLD_ID);
         lenient().when(loggerFactory.create(any())).thenReturn(logger);
-        service = new EditorService(null, null, loggerFactory, null, graphRepository, graphNetworkRepository, warpRepository);
+        lenient().when(plugin.getConfig()).thenReturn(new YamlConfiguration());
+        lenient().when(plugin.getVisualPresetRegistry()).thenReturn(new VisualPresetRegistry(Map.of(
+                "ember", new VisualPreset("ember", TestVisualDesigns.emberParticle(), TestVisualDesigns.emberBlock()),
+                "prism", new VisualPreset("prism", TestVisualDesigns.prismParticle(), TestVisualDesigns.prismBlock())
+        )));
+        lenient().when(plugin.getServer()).thenReturn(server);
+        lenient().when(server.getScheduler()).thenReturn(scheduler);
+        runScheduledTasksImmediately();
+        service = new EditorService(null, plugin, loggerFactory, null, graphRepository, graphNetworkRepository,
+                warpRepository);
         reminder = new EditorWaitingActionBarReminder(service);
+    }
+
+    private void runScheduledTasksImmediately() {
+        lenient().doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(1).run();
+            return mock(BukkitTask.class);
+        }).when(scheduler).runTask(any(org.bukkit.plugin.Plugin.class), any(Runnable.class));
+        lenient().doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(1).run();
+            return mock(BukkitTask.class);
+        }).when(scheduler).runTaskAsynchronously(any(org.bukkit.plugin.Plugin.class), any(Runnable.class));
     }
 
     @Test
@@ -119,7 +159,7 @@ class EditorServiceTest {
         when(graphRepository.getGraphByName("Existing")).thenReturn(Optional.of(graph));
 
         final EditorService.EditorSettings settings = new EditorService.EditorSettings(4,
-                EditorService.PlacementMode.AUTO, EditorService.PlacementMode.PREVIEW, false, true, "default");
+                EditorService.PlacementMode.AUTO, EditorService.PlacementMode.PREVIEW, false, true, "ember");
 
         assertTrue(service.startGraphEdit(PLAYER_ID, "Existing", settings).success());
         assertFalse(service.isWaitingForAppendAnchor(PLAYER_ID));
@@ -133,7 +173,7 @@ class EditorServiceTest {
     void placementCanSnapNewNodesToGround() {
         when(world.getHighestBlockYAt(any(Location.class))).thenReturn(63);
         startCreation(new EditorService.EditorSettings(4, EditorService.PlacementMode.PREVIEW,
-                EditorService.PlacementMode.PREVIEW, true, true, "default"));
+                EditorService.PlacementMode.PREVIEW, true, true, "ember"));
 
         assertTrue(service.placeNode(PLAYER_ID, location(2.0D, 80.0D, 3.0D)).success());
 
@@ -238,6 +278,93 @@ class EditorServiceTest {
         assertEquals("true", service.settingsSummary(PLAYER_ID).replacements().get("place_nodes_on_ground"));
         assertTrue(service.cancel(PLAYER_ID).success());
         assertNull(service.getSettings(PLAYER_ID));
+    }
+
+    @Test
+    void presetSettingValidatesAgainstActiveRendererRegistry() {
+        final YamlConfiguration config = new YamlConfiguration();
+        config.set("visualizer.defaultRenderer", "blockDisplay");
+        final Brotkrumen plugin = mock(Brotkrumen.class);
+        when(plugin.getConfig()).thenReturn(config);
+        when(plugin.getVisualPresetRegistry()).thenReturn(new VisualPresetRegistry(Map.of(
+                "particle-only", new VisualPreset("particle-only", TestVisualDesigns.emberParticle(), null),
+                "block-only", new VisualPreset("block-only", null, TestVisualDesigns.emberBlock())
+        )));
+        final EditorService registryBackedService = new EditorService(null, plugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+
+        assertTrue(registryBackedService.startGraphCreation(PLAYER_ID, "Route",
+                        new EditorService.EditorSettings(3, EditorService.PlacementMode.PREVIEW, false, "block-only"))
+                .success());
+        assertEquals(Set.of("block-only"), registryBackedService.supportedPresetsForActiveRenderer(),
+                "Suggestions should include only presets compatible with the active renderer");
+        assertFalse(registryBackedService.updatePreset(PLAYER_ID, "particle-only").success(),
+                "Particle-only presets should be rejected while blockDisplay is active");
+        assertTrue(registryBackedService.updatePreset(PLAYER_ID, "block-only").success(),
+                "Block-display-compatible presets should be accepted");
+        assertEquals("block-only", registryBackedService.getSettings(PLAYER_ID).preset());
+    }
+
+    @Test
+    void presetSettingRequiresRuntimeRegistry() {
+        final Brotkrumen noRegistryPlugin = mock(Brotkrumen.class);
+        when(noRegistryPlugin.getVisualPresetRegistry()).thenReturn(null);
+        final EditorService noRegistryService = new EditorService(null, noRegistryPlugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+
+        assertTrue(noRegistryService.supportedPresetsForActiveRenderer().isEmpty());
+        assertFalse(noRegistryService.startGraphCreation(PLAYER_ID, "Route",
+                new EditorService.EditorSettings(3, EditorService.PlacementMode.PREVIEW, false, "ember")).success());
+    }
+
+    @Test
+    void newGraphsReceiveConfiguredRendererSpecificPresetDefaults() {
+        final YamlConfiguration config = new YamlConfiguration();
+        config.set("visualizer.defaultSpellbookEffectPreset", "Prism_Value");
+        config.set("visualizer.defaultBlockDisplayPreset", "Ember_Value");
+        final Brotkrumen plugin = mock(Brotkrumen.class);
+        when(plugin.getConfig()).thenReturn(config);
+        when(plugin.getVisualPresetRegistry()).thenReturn(new VisualPresetRegistry(Map.of(
+                "ember", new VisualPreset("ember", TestVisualDesigns.emberParticle(), TestVisualDesigns.emberBlock())
+        )));
+        final EditorService pluginBackedService = new EditorService(null, plugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+
+        assertTrue(pluginBackedService.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+
+        final Graph graph = pluginBackedService.getWorkingGraph(PLAYER_ID);
+        assertEquals("prism-value", graph.getSpellbookEffectPreset(),
+                "New graph should store normalized configured Spellbook effect default");
+        assertEquals("ember-value", graph.getBlockDisplayPreset(),
+                "New graph should store normalized configured block-display default");
+    }
+
+    @Test
+    void graphPresetUpdatesPersistedRendererSpecificPresetFields() {
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        assertTrue(service.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+
+        assertTrue(service.updateGraphPreset(PLAYER_ID, VisualRenderer.SPELLBOOK_EFFECT, "Prism").success());
+        assertTrue(service.updateGraphPreset(PLAYER_ID, VisualRenderer.BLOCK_DISPLAY, "Ember").success());
+
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertEquals("prism", graph.getSpellbookEffectPreset());
+        assertEquals("ember", graph.getBlockDisplayPreset());
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+        verify(graphRepository).saveGraph(argThat(saved -> "prism".equals(saved.getSpellbookEffectPreset())
+                && "ember".equals(saved.getBlockDisplayPreset())));
+    }
+
+    @Test
+    void graphPresetUpdateRejectsMissingRenderer() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        final EditorService.EditorResult result = service.updateGraphPreset(PLAYER_ID, null, "ember");
+
+        assertFalse(result.success());
+        assertEquals("commands.bkeditor.common.rendererRequired", result.message());
     }
 
     @Test
@@ -514,6 +641,32 @@ class EditorServiceTest {
     }
 
     @Test
+    void deleteSelectedNodeRemovesPersistedInterGraphEdgesTouchingIt() {
+        final Graph active = new Graph(1, "Active");
+        final Graph reference = new Graph(2, "Reference");
+        final Node activeNode = active.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        final Node referenceNode = reference.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
+        final InterGraphEdge edge = new InterGraphEdge(10, UUID.randomUUID(),
+                new NodeRef(1, activeNode.graphId()), new NodeRef(2, referenceNode.graphId()), 1.0D,
+                Set.of(EdgeFlag.INTER_GRAPH, EdgeFlag.DIRECTED), true);
+        when(graphRepository.getGraphByName("Active")).thenReturn(Optional.of(active));
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphNetworkRepository.loadInterGraphEdges(any())).thenReturn(Set.of(edge));
+
+        assertTrue(service.startGraphEdit(PLAYER_ID, "Active", defaultSettings()).success());
+        assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.deleteSelectedNode(PLAYER_ID).success());
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+
+        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
+                .<com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork>argThat(network ->
+                        network.getInterGraphEdges().isEmpty()
+                                && network.hasGraph(1)
+                                && network.hasGraph(2)));
+    }
+
+    @Test
     @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
     void referenceGraphViewEnablesCrossGraphEdgeAuthoringLifecycle() {
         final Graph active = new Graph(1, "Active");
@@ -539,9 +692,12 @@ class EditorServiceTest {
         assertTrue(service.finishRouteCreation(PLAYER_ID).success());
 
         verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
-                .<java.util.Collection<InterGraphEdge>>argThat(edges -> edges.size() == 2
-                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
-                        && edges.stream().allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
+                .<com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork>argThat(network ->
+                        network.getInterGraphEdges().size() == 2
+                                && network.getInterGraphEdges().stream()
+                                .allMatch(edge -> edge.flags().contains(EdgeFlag.INTER_GRAPH))
+                                && network.getInterGraphEdges().stream()
+                                .allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT))));
         assertTrue(active.getNodeById(activeNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT));
         assertFalse(reference.getNodeById(referenceNode.graphId()).flags().contains(NodeFlag.INTERGRAPH_TELEPORT),
                 "Reference graph copy should be mutated, not the persisted source instance");
@@ -563,6 +719,7 @@ class EditorServiceTest {
 
         assertFalse(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
         verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(any(com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork.class));
     }
 
     @Test
@@ -583,6 +740,7 @@ class EditorServiceTest {
         assertTrue(service.cancel(PLAYER_ID).success());
 
         verify(graphNetworkRepository, never()).saveInterGraphEdges(anyCollection());
+        verify(graphNetworkRepository, never()).saveInterGraphEdges(any(com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork.class));
     }
 
     @Test
@@ -623,7 +781,7 @@ class EditorServiceTest {
     }
 
     private EditorService.EditorSettings defaultSettings(final EditorService.PlacementMode placementMode) {
-        return new EditorService.EditorSettings(4, placementMode, true, "default");
+        return new EditorService.EditorSettings(4, placementMode, true, "ember");
     }
 
     private Location location(final double x) {
