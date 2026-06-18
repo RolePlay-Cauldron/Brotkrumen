@@ -61,9 +61,28 @@ class VisualizerRegistryTest {
         verify(visualizer).shutdown();
     }
 
+    @Test
+    void unregisterDisconnectedShutsDownVisualizerWithoutMissingEntryLog() {
+        final Visualizer visualizer = mock(Visualizer.class);
+        final WrappedLogger logger = mock(WrappedLogger.class);
+        final VisualizerRegistry registry = registry(logger);
+        final UUID viewerId = UUID.randomUUID();
+
+        registry.show(viewerId, visualizer);
+        registry.unregisterDisconnected(viewerId);
+        registry.unregisterDisconnected(viewerId);
+
+        verify(visualizer).shutdown();
+        verify(logger, never()).infoF(anyString(), any());
+    }
+
     private VisualizerRegistry registry() {
+        return registry(mock(WrappedLogger.class));
+    }
+
+    private VisualizerRegistry registry(final WrappedLogger logger) {
         final Brotkrumen plugin = mock(Brotkrumen.class);
         when(plugin.getServer()).thenReturn(mock(Server.class));
-        return new VisualizerRegistry(plugin, mock(WrappedLogger.class));
+        return new VisualizerRegistry(plugin, logger);
     }
 }

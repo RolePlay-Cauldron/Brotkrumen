@@ -8,6 +8,7 @@ import com.github.roleplaycauldron.brotkrumen.api.service.GraphService;
 import com.github.roleplaycauldron.brotkrumen.api.service.WarpService;
 import com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommand;
+import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveGuidanceSessionManager;
 import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
@@ -18,6 +19,7 @@ import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistryImpl;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.AStarAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.graph.search.impl.DijkstraAlgorithm;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
+import com.github.roleplaycauldron.brotkrumen.listener.PlayerDisconnectCleanupListener;
 import com.github.roleplaycauldron.brotkrumen.service.AsyncGraphNetworkService;
 import com.github.roleplaycauldron.brotkrumen.service.AsyncGraphService;
 import com.github.roleplaycauldron.brotkrumen.service.AsyncWarpService;
@@ -161,9 +163,10 @@ public class Brotkrumen extends JavaPlugin {
         final EffectExecutor executor = new EffectExecutor(this);
         final EditorService editorService = new EditorService(reg, this, loggerFactory, executor, graphRepository,
                 graphNetworkRepository, warpRepository);
+        final ResolveGuidanceSessionManager resolveSessions = new ResolveGuidanceSessionManager(reg);
 
-        registerCommands(executor, editorService);
-        registerListeners(editorService);
+        registerCommands(executor, editorService, resolveSessions);
+        registerListeners(editorService, resolveSessions);
 
         metrics = new Metrics(this, 31_750);
 
@@ -228,15 +231,18 @@ public class Brotkrumen extends JavaPlugin {
         }
     }
 
-    private void registerCommands(final EffectExecutor executor, final EditorService editorService) {
+    private void registerCommands(final EffectExecutor executor, final EditorService editorService,
+                                  final ResolveGuidanceSessionManager resolveSessions) {
         new EditorWaitingActionBarReminder(editorService).start(this);
         new EditorCommand(this, loggerFactory, editorService, graphRepository, localization);
         new BkCommand(this, graphRepository, graphNetworkRepository, editorService.warpRepository(), storage, reg,
-                loggerFactory, executor, localization);
+                loggerFactory, executor, localization, resolveSessions);
     }
 
-    private void registerListeners(final EditorService editorService) {
+    private void registerListeners(final EditorService editorService,
+                                   final ResolveGuidanceSessionManager resolveSessions) {
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
+        getServer().getPluginManager().registerEvents(new PlayerDisconnectCleanupListener(resolveSessions, editorService, reg), this);
     }
 
     private void saveConfiguredDefaultLocaleResource(final String defaultLocaleTag) {

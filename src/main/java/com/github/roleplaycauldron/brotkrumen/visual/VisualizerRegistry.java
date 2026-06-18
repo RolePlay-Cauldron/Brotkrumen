@@ -14,6 +14,7 @@ import java.util.UUID;
  * Responsible for registering, unregistering, and periodically updating the visibility of visualizers
  * associated with player UUIDs.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public class VisualizerRegistry implements VisualizerService {
 
     private static final long VISIBILITY_CHECK_PERIOD_TICKS = 10L;
@@ -97,6 +98,18 @@ public class VisualizerRegistry implements VisualizerService {
     }
 
     /**
+     * Unregisters a viewer visualizer during player disconnect cleanup.
+     *
+     * @param uuid viewer uuid
+     */
+    public void unregisterDisconnected(final UUID uuid) {
+        final Visualizer visualizer = visualisers.remove(uuid);
+        if (visualizer != null) {
+            visualizer.shutdown();
+        }
+    }
+
+    /**
      * Refreshes one active visualizer from its visual graph source.
      *
      * @param uuid viewer uuid
@@ -165,8 +178,7 @@ public class VisualizerRegistry implements VisualizerService {
         final Map<UUID, Visualizer> copiedVisualiser = new HashMap<>(visualisers);
         copiedVisualiser.forEach((key, vis) -> {
             if (plugin.getServer().getPlayer(key) == null) {
-                vis.shutdown();
-                visualisers.remove(key);
+                unregisterDisconnected(key);
                 return;
             }
             vis.visibilityUpdate();
