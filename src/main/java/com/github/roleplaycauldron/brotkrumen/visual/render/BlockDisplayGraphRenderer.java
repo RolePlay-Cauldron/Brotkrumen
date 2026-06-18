@@ -23,6 +23,7 @@ import java.util.UUID;
 /**
  * Block display renderer for visual graph snapshots.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDisplay, BlockDisplay> {
 
     /**
@@ -33,6 +34,36 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
      */
     public BlockDisplayGraphRenderer(final Brotkrumen plugin, final UUID viewerId) {
         super(plugin, viewerId);
+    }
+
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
+    /* default */
+    static EdgePlacement edgePlacement(final Node source, final Node target, final BlockEdgeDesign design) {
+        final Vector3f sourceCenter = visualCenter(source);
+        final Vector3f targetCenter = visualCenter(target);
+        final Vector3f direction = new Vector3f(targetCenter).sub(sourceCenter);
+        final float distance = direction.length();
+        if (distance <= 0.0f) {
+            return null;
+        }
+        final float displayLength = Math.max(0.0f, distance - (2.0f * (float) design.nodeClearance()));
+        final float startOffset = (distance - displayLength) / 2.0f;
+        direction.normalize();
+
+        final Vector3f displayStart = new Vector3f(sourceCenter).add(new Vector3f(direction).mul(startOffset));
+        final Quaternionf rotation = new Quaternionf()
+                .rotateTo(0.0f, 0.0f, 1.0f, direction.x, direction.y, direction.z);
+        final float halfThickness = design.thickness() / 2.0f;
+        final Vector3f rotatedCenteringOffset = rotation.transform(new Vector3f(halfThickness, halfThickness, 0.0f));
+        return new EdgePlacement(displayStart.sub(rotatedCenteringOffset), rotation, displayLength, displayStart);
+    }
+
+    private static Vector3f visualCenter(final Node node) {
+        return new Vector3f(centerCoordinate(node.x()), centerCoordinate(node.y()), centerCoordinate(node.z()));
+    }
+
+    private static float centerCoordinate(final double value) {
+        return (float) Math.floor(value) + 0.5f;
     }
 
     @Override
@@ -123,35 +154,27 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         });
     }
 
-    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     private void updateEdgeTransformation(final BlockDisplay display, final Node source, final Node target,
                                           final BlockEdgeDesign design) {
         if (!source.worldId().equals(target.worldId())) {
             return;
         }
 
-        final Vector3f sourceCenter = new Vector3f((float) source.x() + 0.5f, (float) source.y() + 0.5f, (float) source.z() + 0.5f);
-        final Vector3f targetCenter = new Vector3f((float) target.x() + 0.5f, (float) target.y() + 0.5f, (float) target.z() + 0.5f);
-        final Vector3f direction = new Vector3f(targetCenter).sub(sourceCenter);
-        final float distance = direction.length();
-        if (distance <= 0.0f) {
+        final EdgePlacement placement = edgePlacement(source, target, design);
+        if (placement == null) {
             return;
         }
 
-        final float displayLength = Math.max(0.0f, distance - (2.0f * (float) design.nodeClearance()));
-        final float startOffset = (distance - displayLength) / 2.0f;
-        direction.normalize();
-
-        final Vector3f displayStart = new Vector3f(sourceCenter).add(new Vector3f(direction).mul(startOffset));
-        display.teleport(new Location(display.getWorld(), displayStart.x, displayStart.y, displayStart.z));
-        final Quaternionf rotation = new Quaternionf().rotateTo(0.0f, 0.0f, 1.0f, direction.x, direction.y, direction.z);
-        display.setTransformation(edgeTransformation(design, rotation, displayLength));
+        final Vector3f displayOrigin = placement.displayOrigin();
+        display.teleport(new Location(display.getWorld(), displayOrigin.x, displayOrigin.y, displayOrigin.z));
+        display.setTransformation(edgeTransformation(design, placement.rotation(), placement.length()));
     }
 
-    private Transformation edgeTransformation(final BlockEdgeDesign design, final Quaternionf rotation, final float length) {
+    private Transformation edgeTransformation(final BlockEdgeDesign design, final Quaternionf rotation,
+                                              final float length) {
         final float thickness = design.thickness();
         return new Transformation(
-                new Vector3f(-thickness / 2.0f, -thickness / 2.0f, 0.0f),
+                new Vector3f(),
                 rotation,
                 new Vector3f(thickness, thickness, length),
                 new Quaternionf()
@@ -162,5 +185,24 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         if (display != null && display.isValid()) {
             display.remove();
         }
+    }
+
+    /**
+     * Represents the geometric placement of an edge within a graph rendering context.
+     * The placement includes positional and rotational information, as well as the
+     * calculated edge length and adjustments for alignment along a defined path.
+     * <p>
+     * This record encapsulates the key properties required to visualize an edge as
+     * part of the rendered graph, enabling transformations and alignment to be
+     * performed accurately within a 3D environment.
+     *
+     * @param displayOrigin   The origin point in 3D space from which the edge rendering begins,
+     *                        typically relative to some global or local coordinate system.
+     * @param rotation        The orientation of the edge in 3D space, represented as a quaternion.
+     * @param length          The length of the edge, determining the scalar extension along its direction.
+     * @param centerlineStart The starting point of the edge's centerline, used to define its alignment.
+     */
+    /* default */
+    record EdgePlacement(Vector3f displayOrigin, Quaternionf rotation, float length, Vector3f centerlineStart) {
     }
 }
