@@ -31,24 +31,32 @@ public class BkCommand {
      * Constructs a BkCommand instance, initializing the runtime command framework for the Brotkrumen plugin.
      * This class handles the registration and management of Brigadier commands related to public Brotkrumen operations.
      *
-     * @param plugin              the Brotkrumen plugin instance responsible for managing the lifecycle and configuration
-     * @param graphRepository        the service used for managing graph-related operations, such as CRUD operations on graphs
+     * @param plugin                 the Brotkrumen plugin instance responsible for managing the lifecycle and
+     *                               configuration
+     * @param graphRepository        the service used for managing graph-related operations, such as CRUD operations on
+     *                               graphs
      * @param graphNetworkRepository the service used for handling inter-graph connectivity and network operations
-     * @param storage             the storage backend used for persisting data and retrieving stored information
-     * @param visualizerRegistry  the registry managing visualizers for rendering or displaying graphical representations
-     * @param loggerFactory       the logger factory responsible for creating and managing loggers for various components
-     * @param effectExecutor      the executor for managing and executing visual or gameplay effects
+     * @param storage                the storage backend used for persisting data and retrieving stored information
+     * @param visualizerRegistry     the registry managing visualizers for rendering or displaying graphical
+     *                               representations
+     * @param loggerFactory          the logger factory responsible for creating and managing loggers for various
+     *                               components
+     * @param effectExecutor         the executor for managing and executing visual or gameplay effects
      * @param warpRepository         the service used for managing warps and teleports
-     * @param localization        localization service for sender feedback rendering
+     * @param localization           localization service for sender feedback rendering
+     * @param resolveSessions        resolve guidance session manager
      */
+    @SuppressWarnings("PMD.ExcessiveParameterList")
     public BkCommand(final Brotkrumen plugin, final GraphRepository graphRepository,
                      final GraphNetworkRepository graphNetworkRepository, final WarpRepository warpRepository,
                      final Storage storage,
                      final VisualizerRegistry visualizerRegistry, final LoggerFactory loggerFactory,
-                     final EffectExecutor effectExecutor, final Localization localization) {
-        this.commandContext = new BkCommandContext(plugin, graphRepository, graphNetworkRepository, warpRepository, storage,
-                visualizerRegistry, loggerFactory, effectExecutor, new ResolveService(graphRepository, graphNetworkRepository),
-                new ResolveTargetParser(), new ResolveGuidanceSessionManager(visualizerRegistry));
+                     final EffectExecutor effectExecutor, final Localization localization,
+                     final ResolveGuidanceSessionManager resolveSessions) {
+        this.commandContext = new BkCommandContext(plugin, graphRepository, graphNetworkRepository, warpRepository,
+                storage, visualizerRegistry, loggerFactory, effectExecutor,
+                new ResolveService(graphRepository, graphNetworkRepository),
+                new ResolveTargetParser(), resolveSessions);
         this.localization = localization;
 
         plugin.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> commands.registrar()
