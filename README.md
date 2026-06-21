@@ -51,7 +51,7 @@ configurable notification plays (title, message, sound).
 
 If a player strays too far from the path, they receive a warning. After a grace period the guidance cancels.
 
-Visual presets are defined in `presets.yml` and can be changed per session with `/bkeditor preset <name>`.
+Visual presets are defined in `presets.yml` and can be changed per graph with `/bkeditor preset <name>`.
 
 ---
 
@@ -73,7 +73,9 @@ prefixed to avoid conflicts.
 
 ## Language support
 
-The plugin ships with `en-US` and `de-DE` message translations. The default locale is set in `config.yml`.
+The plugin ships with multiple message translations. See
+[here](https://github.com/Roleplay-Cauldron/Brotkrumen/tree/master/src/main/resources/language)
+for a list of available languages. The default locale is set in `config.yml`.
 
 ---
 
