@@ -81,4 +81,4 @@ for a list of available languages. The default locale is set in `config.yml`.
 
 ## License
 
-[MIT](LICENSE)
+[GNU GPLv3](LICENSE)
