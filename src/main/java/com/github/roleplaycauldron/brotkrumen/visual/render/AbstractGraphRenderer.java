@@ -63,7 +63,13 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
     /**
      * Represents the squared radius around a viewer in which nodes and edges
-     * of a visual graph are considered for rendering.
+     * of a visual graph are visibly rendered.
+     */
+    private final double configuredVisibleRadiusSquared;
+
+    /**
+     * Represents the squared radius around a viewer in which nodes and edges
+     * of a visual graph are kept spawned or active.
      */
     private final double configuredSpawnRadiusSquared;
 
@@ -96,6 +102,7 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
     protected AbstractGraphRenderer(final Brotkrumen plugin, final UUID viewerId) {
         this.plugin = plugin;
         this.viewerId = viewerId;
+        this.configuredVisibleRadiusSquared = computeVisibleRadiusSquared(plugin);
         this.configuredSpawnRadiusSquared = computeSpawnRadiusSquared(plugin);
     }
 
@@ -128,18 +135,21 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
 
         this.lastSnapshot = snapshot;
         this.lastDesigns = designs;
-        final Set<VisualNodeId> visibleNodeIds = visibleNodeIds(snapshot, player.getLocation());
-        final Set<VisualEdgeId> visibleEdgeIds = visibleEdgeIds(snapshot, visibleNodeIds, designs);
+        final Location location = player.getLocation();
+        final Set<VisualNodeId> retainedNodeIds = nodeIdsWithin(snapshot, location, activeRadiusSquared());
+        final Set<VisualNodeId> visibleNodeIds = nodeIdsWithin(snapshot, location, visibleRadiusSquared());
+        final Set<VisualEdgeId> retainedEdgeIds = edgeIdsFor(snapshot, retainedNodeIds, designs);
+        final Set<VisualEdgeId> visibleEdgeIds = edgeIdsFor(snapshot, visibleNodeIds, designs);
 
         activeNodes.entrySet().removeIf(entry -> {
-            if (!visibleNodeIds.contains(entry.getKey())) {
+            if (!retainedNodeIds.contains(entry.getKey())) {
                 removeNode(entry.getValue());
                 return true;
             }
             return false;
         });
         activeEdges.entrySet().removeIf(entry -> {
-            if (!visibleEdgeIds.contains(entry.getKey())) {
+            if (!retainedEdgeIds.contains(entry.getKey())) {
                 removeEdge(entry.getValue());
                 return true;
             }
@@ -147,17 +157,19 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         });
 
         for (final VisualNode node : snapshot.nodes()) {
-            if (visibleNodeIds.contains(node.visualNodeId())) {
-                activeNodes.compute(node.visualNodeId(), (id, handle) -> handle == null || updateExisting
-                        ? updateNode(handle, node, designs, player)
-                        : handle);
+            if (retainedNodeIds.contains(node.visualNodeId())) {
+                final N handle = activeNodes.compute(node.visualNodeId(), (id, existing) -> existing == null || updateExisting
+                        ? updateNode(existing, node, designs, player)
+                        : existing);
+                updateNodeVisibility(handle, player, visibleNodeIds.contains(node.visualNodeId()));
             }
         }
         for (final VisualEdge edge : snapshot.edges()) {
-            if (visibleEdgeIds.contains(edge.id())) {
-                activeEdges.compute(edge.id(), (id, handle) -> handle == null || updateExisting
-                        ? updateEdge(handle, edge, snapshot, designs, player)
-                        : handle);
+            if (retainedEdgeIds.contains(edge.id())) {
+                final E handle = activeEdges.compute(edge.id(), (id, existing) -> existing == null || updateExisting
+                        ? updateEdge(existing, edge, snapshot, designs, player)
+                        : existing);
+                updateEdgeVisibility(handle, player, visibleEdgeIds.contains(edge.id()));
             }
         }
     }
@@ -187,6 +199,30 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
                                     GraphDesignResolver designs, Player player);
 
     /**
+     * Applies viewer-specific visibility to a retained node handle.
+     *
+     * @param handle  renderer-specific node handle
+     * @param player  viewer whose visibility is being updated
+     * @param visible whether the handle should be visible to the viewer
+     */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract")
+    protected void updateNodeVisibility(final N handle, final Player player, final boolean visible) {
+        // Most renderer handles are only retained while visible.
+    }
+
+    /**
+     * Applies viewer-specific visibility to a retained edge handle.
+     *
+     * @param handle  renderer-specific edge handle
+     * @param player  viewer whose visibility is being updated
+     * @param visible whether the handle should be visible to the viewer
+     */
+    @SuppressWarnings("PMD.EmptyMethodInAbstractClassShouldBeAbstract")
+    protected void updateEdgeVisibility(final E handle, final Player player, final boolean visible) {
+        // Most renderer handles are only retained while visible.
+    }
+
+    /**
      * Removes a previously active node handle from the renderer.
      *
      * @param handle renderer-specific node handle
@@ -200,26 +236,35 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
      */
     protected abstract void removeEdge(E handle);
 
-    private Set<VisualNodeId> visibleNodeIds(final VisualGraphSnapshot snapshot, final Location location) {
+    /**
+     * Whether this renderer keeps handles active outside the visible radius.
+     *
+     * @return true when invisible handles should be retained within the configured spawn radius
+     */
+    protected boolean retainsInvisibleHandles() {
+        return false;
+    }
+
+    private Set<VisualNodeId> nodeIdsWithin(final VisualGraphSnapshot snapshot, final Location location,
+                                            final double radiusSquared) {
         final Set<VisualNodeId> result = new HashSet<>();
-        final double radiusSq = spawnRadiusSquared();
         final UUID worldId = location.getWorld().getUID();
         for (final VisualNode node : snapshot.nodes()) {
             if (!worldId.equals(node.node().worldId())) {
                 continue;
             }
-            if (nodeDistanceSquared(location, node) <= radiusSq) {
+            if (nodeDistanceSquared(location, node) <= radiusSquared) {
                 result.add(node.visualNodeId());
             }
         }
         return result;
     }
 
-    private Set<VisualEdgeId> visibleEdgeIds(final VisualGraphSnapshot snapshot, final Set<VisualNodeId> visibleNodeIds,
-                                             final GraphDesignResolver designs) {
+    private Set<VisualEdgeId> edgeIdsFor(final VisualGraphSnapshot snapshot, final Set<VisualNodeId> nodeIds,
+                                         final GraphDesignResolver designs) {
         final Set<NodeRef> visibleRefs = new HashSet<>();
         for (final VisualNode node : snapshot.nodes()) {
-            if (visibleNodeIds.contains(node.visualNodeId())) {
+            if (nodeIds.contains(node.visualNodeId())) {
                 visibleRefs.add(node.ref());
             }
         }
@@ -243,8 +288,24 @@ public abstract class AbstractGraphRenderer<N, E> implements GraphRenderer {
         return dx * dx + dy * dy + dz * dz;
     }
 
+    private double visibleRadiusSquared() {
+        return configuredVisibleRadiusSquared;
+    }
+
+    private double activeRadiusSquared() {
+        if (retainsInvisibleHandles()) {
+            return spawnRadiusSquared();
+        }
+        return visibleRadiusSquared();
+    }
+
     private double spawnRadiusSquared() {
         return configuredSpawnRadiusSquared;
+    }
+
+    private double computeVisibleRadiusSquared(final Brotkrumen plugin) {
+        final double radius = configDistance(plugin, VIEW_DISTANCE_CONFIG, DEFAULT_VIEW_DISTANCE);
+        return radius * radius;
     }
 
     private double computeSpawnRadiusSquared(final Brotkrumen plugin) {

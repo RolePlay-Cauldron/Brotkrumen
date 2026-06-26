@@ -254,6 +254,29 @@ class ParticleGraphRendererTest {
         verify(edgeTask, never()).cancel();
     }
 
+    @Test
+    void spawnDistanceBufferDoesNotExtendParticleVisibility() {
+        final UUID worldId = UUID.randomUUID();
+        final UUID viewerId = UUID.randomUUID();
+        final World world = mock(World.class);
+        when(world.getUID()).thenReturn(worldId);
+        final Brotkrumen plugin = plugin(worldId, viewerId);
+        final YamlConfiguration config = new YamlConfiguration();
+        config.set("visualizer.viewDistance", 4.0D);
+        config.set("visualizer.spawnDistanceBuffer", 20.0D);
+        when(plugin.getConfig()).thenReturn(config);
+        final EffectExecutor executor = mock(EffectExecutor.class);
+        when(executor.start(any(), any())).thenReturn(new RunningEffect(mock(BukkitTask.class)));
+        final ParticleGraphRenderer renderer = new ParticleGraphRenderer(plugin, viewerId, executor);
+
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+            bukkit.when(() -> Bukkit.getWorld(worldId)).thenReturn(world);
+            renderer.apply(distanceSnapshot(worldId, 4, 6), ProfileGraphDesignResolver.defaults());
+        }
+
+        verify(executor, times(1)).start(any(), any());
+    }
+
     private EffectInstance effect(final Particle particle, final Shape shape) {
         return EffectBuilder.create()
                 .shape(shape)
@@ -304,6 +327,20 @@ class ParticleGraphRendererTest {
                 new Node(sourceId, 0, 0, 0, worldId));
         final VisualNode target = new VisualNode(new VisualNodeId(targetRef), targetRef,
                 new Node(targetId, 1, 0, 0, worldId));
+        final VisualEdge edge = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), sourceRef, targetRef,
+                VisualEdgeKind.LOCAL, 1.0D, Set.of(), VisualEdgeRole.DEFAULT_LOCAL);
+        return new VisualGraphSnapshot(List.of(source, target), List.of(edge), 1L);
+    }
+
+    private VisualGraphSnapshot distanceSnapshot(final UUID worldId, final int visibleX, final int bufferedX) {
+        final UUID sourceId = UUID.randomUUID();
+        final UUID targetId = UUID.randomUUID();
+        final NodeRef sourceRef = new NodeRef(1, sourceId);
+        final NodeRef targetRef = new NodeRef(1, targetId);
+        final VisualNode source = new VisualNode(new VisualNodeId(sourceRef), sourceRef,
+                new Node(sourceId, visibleX, 0, 0, worldId));
+        final VisualNode target = new VisualNode(new VisualNodeId(targetRef), targetRef,
+                new Node(targetId, bufferedX, 0, 0, worldId));
         final VisualEdge edge = new VisualEdge(new LocalVisualEdgeId(1, UUID.randomUUID()), sourceRef, targetRef,
                 VisualEdgeKind.LOCAL, 1.0D, Set.of(), VisualEdgeRole.DEFAULT_LOCAL);
         return new VisualGraphSnapshot(List.of(source, target), List.of(edge), 1L);
