@@ -26,6 +26,12 @@ import java.util.UUID;
 @SuppressWarnings("PMD.TooManyMethods")
 public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDisplay, BlockDisplay> {
 
+    private static final String SCOREBOARD_TAG_OWNER = "brotkrumen";
+
+    private static final String SCOREBOARD_TAG_NODE = "brotkrumen:block-display:node";
+
+    private static final String SCOREBOARD_TAG_EDGE = "brotkrumen:block-display:edge";
+
     /**
      * Creates a renderer.
      *
@@ -141,6 +147,7 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
             entity.setPersistent(false);
             entity.setVisibleByDefault(false);
             entity.setTransformation(nodeTransformation(design.scale()));
+            applyScoreboardTags(entity, SCOREBOARD_TAG_NODE);
         });
     }
 
@@ -164,7 +171,13 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
             entity.setPersistent(false);
             entity.setVisibleByDefault(false);
             entity.setTransformation(edgeTransformation(design, new Quaternionf(), 1.0f));
+            applyScoreboardTags(entity, SCOREBOARD_TAG_EDGE);
         });
+    }
+
+    private void applyScoreboardTags(final BlockDisplay display, final String roleTag) {
+        display.addScoreboardTag(SCOREBOARD_TAG_OWNER);
+        display.addScoreboardTag(roleTag);
     }
 
     private void updateEdgeTransformation(final BlockDisplay display, final Node source, final Node target,
