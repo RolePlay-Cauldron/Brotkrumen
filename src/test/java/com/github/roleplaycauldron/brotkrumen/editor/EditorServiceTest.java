@@ -13,6 +13,8 @@ import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRep
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
 import com.github.roleplaycauldron.brotkrumen.visual.TestVisualDesigns;
+import com.github.roleplaycauldron.brotkrumen.visual.Visualizer;
+import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPreset;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetRegistry;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
@@ -83,6 +85,9 @@ class EditorServiceTest {
 
     @Mock
     private BukkitScheduler scheduler;
+
+    @Mock
+    private VisualizerRegistry visualizerRegistry;
 
     private EditorService service;
 
@@ -304,6 +309,41 @@ class EditorServiceTest {
         assertTrue(registryBackedService.updatePreset(PLAYER_ID, "block-only").success(),
                 "Block-display-compatible presets should be accepted");
         assertEquals("block-only", registryBackedService.getSettings(PLAYER_ID).preset());
+    }
+
+    @Test
+    void editorVisualizerRegistrationUsesParticleRendererByDefault() {
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        final EditorService registryBackedService = new EditorService(visualizerRegistry, plugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+
+        assertTrue(registryBackedService.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+
+        verify(visualizerRegistry).register(eq(PLAYER_ID), any(Visualizer.class));
+    }
+
+    @Test
+    void editorVisualizerRegistrationUsesBlockDisplayRendererWhenConfigured() {
+        plugin.getConfig().set("visualizer.defaultRenderer", "blockDisplay");
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        final EditorService registryBackedService = new EditorService(visualizerRegistry, plugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+
+        assertTrue(registryBackedService.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+
+        verify(visualizerRegistry).register(eq(PLAYER_ID), any(Visualizer.class));
+    }
+
+    @Test
+    void editorVisualizerRefreshIsDelegatedWhenPresetChanges() {
+        when(graphRepository.getGraphByName("Route")).thenReturn(Optional.empty());
+        final EditorService registryBackedService = new EditorService(visualizerRegistry, plugin, loggerFactory, null,
+                graphRepository, graphNetworkRepository, warpRepository);
+
+        assertTrue(registryBackedService.startGraphCreation(PLAYER_ID, "Route", defaultSettings()).success());
+        assertTrue(registryBackedService.updatePreset(PLAYER_ID, "prism").success());
+
+        verify(visualizerRegistry).refresh(PLAYER_ID);
     }
 
     @Test
