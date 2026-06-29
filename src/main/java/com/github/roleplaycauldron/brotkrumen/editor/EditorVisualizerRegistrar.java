@@ -29,6 +29,7 @@ final class EditorVisualizerRegistrar {
 
     private final EffectExecutor effectExecutor;
 
+    /* default */
     EditorVisualizerRegistrar(final VisualizerRegistry visualizerRegistry, final Brotkrumen plugin,
                               final LoggerFactory loggerFactory, final EffectExecutor effectExecutor) {
         this.visualizerRegistry = visualizerRegistry;
@@ -37,6 +38,7 @@ final class EditorVisualizerRegistrar {
         this.effectExecutor = effectExecutor;
     }
 
+    /* default */
     void register(final UUID playerId, final Supplier<Graph> activeGraph,
                   final Supplier<Collection<Graph>> referenceGraphs,
                   final Supplier<Collection<InterGraphEdge>> interGraphEdges,
@@ -63,12 +65,14 @@ final class EditorVisualizerRegistrar {
                         interGraphEdges, workspaceVersion, playerId, effectExecutor, resolver));
     }
 
+    /* default */
     void unregister(final UUID playerId) {
         if (visualizerRegistry != null) {
             visualizerRegistry.unregister(playerId);
         }
     }
 
+    /* default */
     void refresh(final UUID playerId) {
         if (visualizerRegistry != null) {
             visualizerRegistry.refresh(playerId);

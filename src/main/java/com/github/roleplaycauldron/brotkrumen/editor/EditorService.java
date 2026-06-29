@@ -48,8 +48,8 @@ import java.util.stream.Stream;
 /**
  * State manager for editor mode.
  */
-@SuppressWarnings({"PMD.TooManyMethods", "PMD.CommentRequired", "PMD.AvoidDuplicateLiterals",
-        "PMD.CyclomaticComplexity", "PMD.CouplingBetweenObjects", "PMD.GodClass", "PMD.ExcessivePublicCount"})
+@SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.GodClass", "PMD.CyclomaticComplexity",
+        "PMD.ExcessivePublicCount", "PMD.TooManyMethods"})
 public class EditorService {
 
     private static final double EDIT_NODE_SELECTION_RADIUS = 1.5D;
@@ -63,6 +63,22 @@ public class EditorService {
 
     private static final String SELECTION_SELECTED_NODE_WITH_ENDPOINTS =
             "commands.bkeditor.selection.selectedNodeWithEndpoints";
+
+    private static final String GRAPH_ALREADY_EXISTS = "commands.bkeditor.common.graphAlreadyExists";
+
+    private static final String GRAPH_KEY = "graph";
+
+    private static final String NOT_EDITING = "commands.bkeditor.common.notEditing";
+
+    private static final String GRAPH_NOT_FOUND = "commands.bkeditor.common.graphNotFound";
+
+    private static final String EDGE_ID_KEY = "edge_id";
+
+    private static final String NODE_ID_KEY = "node_id";
+
+    private static final String WARP_NOT_FOUND = "commands.bkeditor.common.warpNotFound";
+
+    private static final String WARP_KEY = "key";
 
     private final Map<UUID, EditorSession> playerEditors = new ConcurrentHashMap<>();
 
@@ -119,6 +135,11 @@ public class EditorService {
                 effectExecutor);
     }
 
+    /* default */
+    static String waitingAnchorActionBarMessage() {
+        return WAITING_FOR_ANCHOR_ACTION_BAR;
+    }
+
     /**
      * Checks if the given preset is supported by the active renderer.
      *
@@ -159,11 +180,6 @@ public class EditorService {
         return plugin.getVisualPresetRegistry().presetNames(renderer);
     }
 
-    /* default */
-    static String waitingAnchorActionBarMessage() {
-        return WAITING_FOR_ANCHOR_ACTION_BAR;
-    }
-
     /**
      * Returns the warp repository instance.
      *
@@ -187,13 +203,13 @@ public class EditorService {
             return validation;
         }
         if (graphRepository.getGraphByName(graphName).isPresent()) {
-            return EditorResult.failure("commands.bkeditor.common.graphAlreadyExists");
+            return EditorResult.failure(GRAPH_ALREADY_EXISTS);
         }
 
         final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
-        return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
+        return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of(GRAPH_KEY, graphName));
     }
 
     /**
@@ -224,7 +240,7 @@ public class EditorService {
             }
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (exists) {
-                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphAlreadyExists"));
+                    callback.accept(EditorResult.failure(GRAPH_ALREADY_EXISTS));
                     return;
                 }
                 callback.accept(startGraphCreationWithoutNameCheck(playerId, graphName, settings));
@@ -237,7 +253,7 @@ public class EditorService {
         final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
-        return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of("graph", graphName));
+        return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of(GRAPH_KEY, graphName));
     }
 
     private Graph newGraph(final String graphName) {
@@ -258,7 +274,7 @@ public class EditorService {
     public EditorResult renameActiveGraph(final UUID playerId, final String newName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (newName == null || newName.isBlank()) {
             return EditorResult.failure("commands.bkeditor.common.graphNameRequired");
@@ -266,11 +282,11 @@ public class EditorService {
 
         final Optional<Graph> existing = graphRepository.getGraphByName(newName);
         if (existing.isPresent() && existing.get().getGraphId() != session.graph.getGraphId()) {
-            return EditorResult.failure("commands.bkeditor.common.graphAlreadyExists");
+            return EditorResult.failure(GRAPH_ALREADY_EXISTS);
         }
 
         session.graph.setName(newName);
-        return EditorResult.success("commands.bkeditor.status.graphRenamed", Map.of("graph", newName));
+        return EditorResult.success("commands.bkeditor.status.graphRenamed", Map.of(GRAPH_KEY, newName));
     }
 
     /**
@@ -300,12 +316,12 @@ public class EditorService {
             }
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (existing.isPresent() && existing.get().getGraphId() != session.graph.getGraphId()) {
-                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphAlreadyExists"));
+                    callback.accept(EditorResult.failure(GRAPH_ALREADY_EXISTS));
                     return;
                 }
                 session.graph.setName(newName);
                 callback.accept(EditorResult.success("commands.bkeditor.status.graphRenamed",
-                        Map.of("graph", newName)));
+                        Map.of(GRAPH_KEY, newName)));
             });
         });
     }
@@ -326,14 +342,14 @@ public class EditorService {
 
         final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
-            return EditorResult.failure("commands.bkeditor.common.graphNotFound");
+            return EditorResult.failure(GRAPH_NOT_FOUND);
         }
 
         final EditorSession session = EditorSession.edit(graph.get(), settings.normalized());
         loadSessionInterGraphEdges(session);
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
-        return EditorResult.success("commands.bkeditor.status.sessionStartedEdit", Map.of("graph", graphName));
+        return EditorResult.success("commands.bkeditor.status.sessionStartedEdit", Map.of(GRAPH_KEY, graphName));
     }
 
     /**
@@ -368,7 +384,7 @@ public class EditorService {
             }
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (graph.isEmpty()) {
-                    callback.accept(EditorResult.failure("commands.bkeditor.common.graphNotFound"));
+                    callback.accept(EditorResult.failure(GRAPH_NOT_FOUND));
                     return;
                 }
                 final EditorSession session = EditorSession.edit(graph.get(), settings.normalized());
@@ -376,7 +392,7 @@ public class EditorService {
                 playerEditors.put(playerId, session);
                 registerVisualizer(playerId, session);
                 callback.accept(EditorResult.success("commands.bkeditor.status.sessionStartedEdit",
-                        Map.of("graph", graphName)));
+                        Map.of(GRAPH_KEY, graphName)));
             });
         });
     }
@@ -420,7 +436,7 @@ public class EditorService {
     public EditorResult selectNearbyNode(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         return selectExistingNode(session, loc)
                 .map(selection -> {
@@ -444,7 +460,7 @@ public class EditorService {
     public EditorResult selectNearbyEdge(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         final Optional<SelectedEdge> local = visibleGraphs(session).stream()
                 .flatMap(graph -> graph.getEdges().stream().map(edge -> new SelectedEdge(graph, edge)))
@@ -468,14 +484,14 @@ public class EditorService {
             session.selectedEdgeGraphId = selected.graph().getGraphId();
             session.selectedInterGraphEdge = null;
             return EditorResult.success("commands.bkeditor.selection.selectedEdge", Map.of(
-                    "edge_id", selected.edge().edgeId().toString(),
-                    "graph", graphLabel(selected.graph())));
+                    EDGE_ID_KEY, selected.edge().edgeId().toString(),
+                    GRAPH_KEY, graphLabel(selected.graph())));
         }
         session.selectedEdge = null;
         session.selectedEdgeGraphId = -1;
         session.selectedInterGraphEdge = interGraph.get();
         return EditorResult.success("commands.bkeditor.selection.selectedInterGraphEdge",
-                Map.of("edge_id", interGraph.get().edgeId().toString()));
+                Map.of(EDGE_ID_KEY, interGraph.get().edgeId().toString()));
     }
 
     /**
@@ -487,23 +503,23 @@ public class EditorService {
     public EditorResult showSelection(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.selectedNode != null) {
             return EditorResult.success(SELECTION_SELECTED_NODE, Map.of(
-                    "node_id", session.selectedNode.graphId().toString(),
-                    "graph", graphLabel(session, session.selectedNodeRef)));
+                    NODE_ID_KEY, session.selectedNode.graphId().toString(),
+                    GRAPH_KEY, graphLabel(session, session.selectedNodeRef)));
         }
         if (session.selectedEdge != null) {
             return EditorResult.success("commands.bkeditor.selection.selectedEdgeDetailed", Map.of(
-                    "edge_id", session.selectedEdge.edgeId().toString(),
+                    EDGE_ID_KEY, session.selectedEdge.edgeId().toString(),
                     "source", session.selectedEdge.source().toString(),
                     "target", session.selectedEdge.target().toString(),
-                    "graph", graphLabel(session, session.selectedEdgeGraphId)));
+                    GRAPH_KEY, graphLabel(session, session.selectedEdgeGraphId)));
         }
         if (session.selectedInterGraphEdge != null) {
             return EditorResult.success("commands.bkeditor.selection.selectedInterGraphEdgeDetailed", Map.of(
-                    "edge_id", session.selectedInterGraphEdge.edgeId().toString(),
+                    EDGE_ID_KEY, session.selectedInterGraphEdge.edgeId().toString(),
                     "source", session.selectedInterGraphEdge.source().toString(),
                     "target", session.selectedInterGraphEdge.target().toString()));
         }
@@ -519,7 +535,7 @@ public class EditorService {
     public EditorResult clearSelection(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         session.selectedNode = null;
         session.selectedNodeRef = null;
@@ -539,7 +555,7 @@ public class EditorService {
     public SelectionTeleportResult teleportToSelection(final UUID playerId, final Location playerLocation) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return SelectionTeleportResult.failure("commands.bkeditor.common.notEditing");
+            return SelectionTeleportResult.failure(NOT_EDITING);
         }
         if (session.selectedNode != null) {
             return SelectionTeleportResult.success("commands.bkeditor.selection.teleportedNode",
@@ -574,7 +590,7 @@ public class EditorService {
     public EditorResult handleMovement(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
 
         if (session.placementMode == PlacementMode.PREVIEW) {
@@ -645,7 +661,7 @@ public class EditorService {
     public EditorResult preview(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         session.placementMode = PlacementMode.PREVIEW;
         return EditorResult.success("commands.bkeditor.status.previewEnabled");
@@ -661,7 +677,7 @@ public class EditorService {
     public EditorResult placeNode(final UUID playerId, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.mode == EditorMode.EDIT && session.lastPlacedNode == null) {
             return EditorResult.failure("commands.bkeditor.common.editAnchorRequired");
@@ -679,10 +695,11 @@ public class EditorService {
      * @param edgeType requested edge type
      * @return mutation result
      */
+    @SuppressWarnings("PMD.CyclomaticComplexity")
     public EditorResult createSelectedNodeEdge(final UUID playerId, final EdgeType edgeType) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (edgeType == null) {
             return EditorResult.failure("commands.bkeditor.common.edgeTypeRequired");
@@ -730,7 +747,7 @@ public class EditorService {
     public EditorResult updateSelectedEdgeType(final UUID playerId, final EdgeType edgeType) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (edgeType == null) {
             return EditorResult.failure("commands.bkeditor.common.edgeTypeRequired");
@@ -765,7 +782,7 @@ public class EditorService {
     public EditorResult updateSelectedEdgeState(final UUID playerId, final EdgeState edgeState) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (edgeState == null) {
             return EditorResult.failure("commands.bkeditor.common.edgeStateRequired");
@@ -806,7 +823,7 @@ public class EditorService {
     public EditorResult removeSelectedEdge(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.selectedEdge == null && session.selectedInterGraphEdge == null) {
             return EditorResult.failure("commands.bkeditor.common.edgeSelectionRequiredRemove");
@@ -866,14 +883,14 @@ public class EditorService {
     private EditorResult selectedNodeResult(final EditorSession session, final SelectedNode node) {
         if (session.edgeEndpointOne != null && session.edgeEndpointTwo != null) {
             return EditorResult.success(SELECTION_SELECTED_NODE_WITH_ENDPOINTS, Map.of(
-                    "node_id", node.node().graphId().toString(),
-                    "graph", graphLabel(node.graphName(), node.ref().graphDbId()),
+                    NODE_ID_KEY, node.node().graphId().toString(),
+                    GRAPH_KEY, graphLabel(node.graphName(), node.ref().graphDbId()),
                     "source", endpointLabel(session.edgeEndpointOne),
                     "target", endpointLabel(session.edgeEndpointTwo)));
         }
         return EditorResult.success(SELECTION_SELECTED_NODE, Map.of(
-                "node_id", node.node().graphId().toString(),
-                "graph", graphLabel(node.graphName(), node.ref().graphDbId())));
+                NODE_ID_KEY, node.node().graphId().toString(),
+                GRAPH_KEY, graphLabel(node.graphName(), node.ref().graphDbId())));
     }
 
     private String endpointLabel(final SelectedNode node) {
@@ -907,7 +924,7 @@ public class EditorService {
     public EditorResult finishRouteCreation(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
 
         if (plugin == null) {
@@ -981,7 +998,7 @@ public class EditorService {
      */
     public EditorResult cancel(final UUID playerId) {
         if (playerEditors.remove(playerId) == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
 
         unregisterVisualizer(playerId);
@@ -998,11 +1015,11 @@ public class EditorService {
     public EditorResult addReferenceGraph(final UUID playerId, final String graphName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
-            return EditorResult.failure("commands.bkeditor.common.graphNotFound");
+            return EditorResult.failure(GRAPH_NOT_FOUND);
         }
         if (graph.get().getGraphId() == session.graph.getGraphId()) {
             return EditorResult.failure("commands.bkeditor.common.activeGraphAlreadyVisible");
@@ -1011,7 +1028,7 @@ public class EditorService {
         loadSessionInterGraphEdges(session);
         session.workspaceVersion++;
         refreshVisualizer(playerId);
-        return EditorResult.success("commands.bkeditor.reference.added", Map.of("graph", graph.get().getName()));
+        return EditorResult.success("commands.bkeditor.reference.added", Map.of(GRAPH_KEY, graph.get().getName()));
     }
 
     /**
@@ -1036,11 +1053,11 @@ public class EditorService {
     public EditorResult removeReferenceGraph(final UUID playerId, final String graphName) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
-            return EditorResult.failure("commands.bkeditor.common.graphNotFound");
+            return EditorResult.failure(GRAPH_NOT_FOUND);
         }
         if (session.referenceGraphs.remove(graph.get().getGraphId()) == null) {
             return EditorResult.failure("commands.bkeditor.common.graphNotVisible");
@@ -1049,7 +1066,7 @@ public class EditorService {
         clearSelection(playerId);
         session.workspaceVersion++;
         refreshVisualizer(playerId);
-        return EditorResult.success("commands.bkeditor.reference.removed", Map.of("graph", graph.get().getName()));
+        return EditorResult.success("commands.bkeditor.reference.removed", Map.of(GRAPH_KEY, graph.get().getName()));
     }
 
     /**
@@ -1085,7 +1102,7 @@ public class EditorService {
             }
             if (graph.isEmpty()) {
                 plugin.getServer().getScheduler().runTask(plugin, () ->
-                        callback.accept(EditorResult.failure("commands.bkeditor.common.graphNotFound")));
+                        callback.accept(EditorResult.failure(GRAPH_NOT_FOUND)));
                 return;
             }
             final Set<Integer> graphIds = referenceGraphIds(session, graph.get(), add);
@@ -1132,7 +1149,7 @@ public class EditorService {
             loadSessionInterGraphEdges(session, edges);
             session.workspaceVersion++;
             refreshVisualizer(playerId);
-            return EditorResult.success("commands.bkeditor.reference.added", Map.of("graph", graph.getName()));
+            return EditorResult.success("commands.bkeditor.reference.added", Map.of(GRAPH_KEY, graph.getName()));
         }
         if (session.referenceGraphs.remove(graph.getGraphId()) == null) {
             return EditorResult.failure("commands.bkeditor.common.graphNotVisible");
@@ -1141,7 +1158,7 @@ public class EditorService {
         clearSelection(playerId);
         session.workspaceVersion++;
         refreshVisualizer(playerId);
-        return EditorResult.success("commands.bkeditor.reference.removed", Map.of("graph", graph.getName()));
+        return EditorResult.success("commands.bkeditor.reference.removed", Map.of(GRAPH_KEY, graph.getName()));
     }
 
     /**
@@ -1153,7 +1170,7 @@ public class EditorService {
     public EditorResult clearReferenceGraphs(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         session.referenceGraphs.clear();
         loadSessionInterGraphEdges(session);
@@ -1210,7 +1227,7 @@ public class EditorService {
     public EditorResult updateSelectedEdgeTraversal(final UUID playerId, final EdgeTraversal traversal) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (traversal == null) {
             return EditorResult.failure("commands.bkeditor.common.edgeTraversalRequired");
@@ -1250,11 +1267,12 @@ public class EditorService {
      * @param playerId editor player id
      * @return operation result containing connection details
      */
-    @SuppressWarnings({"PMD.CognitiveComplexity", "PMD.NPathComplexity", "PMD.AvoidDeeplyNestedIfStmts"})
+    @SuppressWarnings({"PMD.CognitiveComplexity", "PMD.CyclomaticComplexity", "PMD.NPathComplexity",
+            "PMD.AvoidDeeplyNestedIfStmts"})
     public EditorResult selectedNodeConnections(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.selectedNodeRef == null) {
             return EditorResult.failure("commands.bkeditor.common.nodeSelectionRequiredConnections");
@@ -1299,7 +1317,7 @@ public class EditorService {
     public EditorResult deletePersistedGraph(final String graphName) {
         final Optional<Graph> graph = graphRepository.getGraphByName(graphName);
         if (graph.isEmpty()) {
-            return EditorResult.failure("commands.bkeditor.common.graphNotFound");
+            return EditorResult.failure(GRAPH_NOT_FOUND);
         }
         final int graphId = graph.get().getGraphId();
         final boolean active = playerEditors.values().stream()
@@ -1315,7 +1333,7 @@ public class EditorService {
         graphRepository.deleteGraph(graphId);
         graphRepository.reloadGraphs();
         return EditorResult.success("commands.bkeditor.graph.deleted", Map.of(
-                "graph", graph.get().getName(),
+                GRAPH_KEY, graph.get().getName(),
                 "warps", String.valueOf(removedWarps),
                 "edges", String.valueOf(removedEdges)));
     }
@@ -1371,7 +1389,7 @@ public class EditorService {
 
     private EditorResult validateDeleteSelectedNode(final EditorSession session) {
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.selectedNodeRef == null || session.selectedNode == null) {
             return EditorResult.failure("commands.bkeditor.common.nodeSelectionRequiredDelete");
@@ -1400,7 +1418,7 @@ public class EditorService {
         session.selectedInterGraphEdge = null;
         clearEdgeEndpoints(session);
         refreshVisualizer(playerId);
-        return EditorResult.success("commands.bkeditor.node.deleted", Map.of("node_id", nodeId.toString()));
+        return EditorResult.success("commands.bkeditor.node.deleted", Map.of(NODE_ID_KEY, nodeId.toString()));
     }
 
     /**
@@ -1437,7 +1455,7 @@ public class EditorService {
     public EditorResult continuePlacement(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
 
         if (session.continueRequiresNode) {
@@ -1459,7 +1477,7 @@ public class EditorService {
     public EditorResult undo(final UUID playerId, final int amount) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (amount <= 0) {
             return EditorResult.failure("commands.bkeditor.common.undoAmountPositive");
@@ -1496,7 +1514,7 @@ public class EditorService {
     public EditorResult settingsSummary(final UUID playerId) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
 
         return EditorResult.success("commands.bkeditor.status.settingsSummary", Map.of(
@@ -1517,7 +1535,7 @@ public class EditorService {
     public EditorResult updateNodeDistance(final UUID playerId, final int nodeDistance) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (nodeDistance <= 0) {
             return EditorResult.failure("commands.bkeditor.common.nodeDistancePositive");
@@ -1537,7 +1555,7 @@ public class EditorService {
     public EditorResult updatePlacementMode(final UUID playerId, final PlacementMode placementMode) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (placementMode == null) {
             return EditorResult.failure("commands.bkeditor.common.placementModeRequired");
@@ -1558,7 +1576,7 @@ public class EditorService {
     public EditorResult createSelectedWarp(final UUID playerId, final String key) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (session.selectedNode == null) {
             return EditorResult.failure("commands.bkeditor.common.nodeSelectionRequiredWarp");
@@ -1580,7 +1598,7 @@ public class EditorService {
     public EditorResult createWarpHere(final UUID playerId, final String key, final Location loc) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         final Node node = session.graph.addNode(new Node(null, placementLocation(session, loc)));
         session.selectedNode = node;
@@ -1602,8 +1620,8 @@ public class EditorService {
         session.selectedNode = ensureWarpFlag(session, target);
         refreshVisualizer(playerId);
         return EditorResult.success("commands.bkeditor.warp.created", Map.of(
-                "key", key,
-                "node_id", target.graphId().toString()));
+                WARP_KEY, key,
+                NODE_ID_KEY, target.graphId().toString()));
     }
 
     /**
@@ -1707,10 +1725,10 @@ public class EditorService {
         }
 
         if (warp == null) {
-            return EditorResult.failure("commands.bkeditor.common.warpNotFound");
+            return EditorResult.failure(WARP_NOT_FOUND);
         }
         session.pendingWarps.put(key, change.apply(warp));
-        return EditorResult.success("commands.bkeditor.warp.updated", Map.of("key", key, "property", property));
+        return EditorResult.success("commands.bkeditor.warp.updated", Map.of(WARP_KEY, key, "property", property));
     }
 
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
@@ -1736,12 +1754,12 @@ public class EditorService {
             }
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (warp.isEmpty()) {
-                    callback.accept(EditorResult.failure("commands.bkeditor.common.warpNotFound"));
+                    callback.accept(EditorResult.failure(WARP_NOT_FOUND));
                     return;
                 }
                 session.pendingWarps.put(key, change.apply(warp.get()));
                 callback.accept(EditorResult.success("commands.bkeditor.warp.updated",
-                        Map.of("key", key, "property", property)));
+                        Map.of(WARP_KEY, key, "property", property)));
             });
         });
     }
@@ -1765,7 +1783,7 @@ public class EditorService {
         }
 
         if (warp == null) {
-            return EditorResult.failure("commands.bkeditor.common.warpNotFound");
+            return EditorResult.failure(WARP_NOT_FOUND);
         }
 
         session.pendingDeletions.add(key);
@@ -1773,7 +1791,7 @@ public class EditorService {
             clearWarpFlag(session, warp.targetNodeId());
             refreshVisualizer(playerId);
         }
-        return EditorResult.success("commands.bkeditor.warp.removed", Map.of("key", key));
+        return EditorResult.success("commands.bkeditor.warp.removed", Map.of(WARP_KEY, key));
     }
 
     /**
@@ -1823,7 +1841,7 @@ public class EditorService {
         }
 
         if (warp == null) {
-            return EditorResult.failure("commands.bkeditor.common.warpNotFound");
+            return EditorResult.failure(WARP_NOT_FOUND);
         }
 
         session.pendingDeletions.add(key);
@@ -1831,7 +1849,7 @@ public class EditorService {
             clearWarpFlag(session, warp.targetNodeId());
             refreshVisualizer(playerId);
         }
-        return EditorResult.success("commands.bkeditor.warp.removed", Map.of("key", key));
+        return EditorResult.success("commands.bkeditor.warp.removed", Map.of(WARP_KEY, key));
     }
 
     private Collection<Warp> warpsTargeting(final EditorSession session, final UUID targetNodeId) {
@@ -1855,10 +1873,11 @@ public class EditorService {
      * @param all      whether to include all persisted warps
      * @return listing result
      */
+    @SuppressWarnings("PMD.CyclomaticComplexity")
     public EditorResult listWarps(final UUID playerId, final boolean all) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (warpRepositoryInstance == null) {
             return EditorResult.failure("commands.bkeditor.common.warpStorageUnavailable");
@@ -1887,7 +1906,7 @@ public class EditorService {
 
     private EditorResult validateWarpOperation(final UUID playerId, final String key) {
         if (!playerEditors.containsKey(playerId)) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         return validateWarp(key);
     }
@@ -2027,8 +2046,8 @@ public class EditorService {
         final String state = flags.contains(EdgeFlag.BLOCKED) ? "blocked" : "open";
         final String edgeDirection = flags.contains(EdgeFlag.UNDIRECTED) ? "undirected" : direction;
         return new LocalizedMessage("commands.bkeditor.connections.line", Map.of(
-                "node_id", "<click:copy_to_clipboard:'" + nodeId + "'>" + nodeId + "</click>",
-                "graph", graphLabel(session, graphId),
+                NODE_ID_KEY, "<click:copy_to_clipboard:'" + nodeId + "'>" + nodeId + "</click>",
+                GRAPH_KEY, graphLabel(session, graphId),
                 "location", location), Map.of(
                 "scope", "commands.bkeditor.connections.scope." + scope,
                 "direction", "commands.bkeditor.connections.direction." + edgeDirection,
@@ -2072,7 +2091,7 @@ public class EditorService {
     public EditorResult updateContinueRequiresNode(final UUID playerId, final boolean continueRequiresNode) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         session.continueRequiresNode = continueRequiresNode;
         return EditorResult.success("commands.bkeditor.status.continueRequiresNodeSet",
@@ -2089,7 +2108,7 @@ public class EditorService {
     public EditorResult updatePlaceNodesOnGround(final UUID playerId, final boolean placeNodesOnGround) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         session.placeNodesOnGround = placeNodesOnGround;
         return EditorResult.success("commands.bkeditor.status.placeNodesOnGroundSet",
@@ -2117,7 +2136,7 @@ public class EditorService {
     public EditorResult updatePreset(final UUID playerId, final String preset) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (!isSupportedPresetForActiveRenderer(preset)) {
             return EditorResult.failure("commands.bkeditor.common.unknownPreset");
@@ -2138,7 +2157,7 @@ public class EditorService {
     public EditorResult updateGraphPreset(final UUID playerId, final VisualRenderer renderer, final String preset) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
-            return EditorResult.failure("commands.bkeditor.common.notEditing");
+            return EditorResult.failure(NOT_EDITING);
         }
         if (renderer == null) {
             return EditorResult.failure("commands.bkeditor.common.rendererRequired");
@@ -2380,6 +2399,9 @@ public class EditorService {
         }
     }
 
+    /**
+     * Editing lifecycle mode for a player session.
+     */
     private enum EditorMode {
         CREATE,
         EDIT

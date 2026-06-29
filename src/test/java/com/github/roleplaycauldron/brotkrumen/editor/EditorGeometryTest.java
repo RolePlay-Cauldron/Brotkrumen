@@ -22,7 +22,8 @@ class EditorGeometryTest {
     void distanceRejectsDifferentWorld() {
         final Node node = new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, UUID.randomUUID());
 
-        assertEquals(Double.MAX_VALUE, EditorGeometry.distance(node, location(UUID.randomUUID(), 0.0D, 0.0D, 0.0D)));
+        assertEquals(Double.MAX_VALUE, EditorGeometry.distance(node, location(UUID.randomUUID(), 0.0D, 0.0D, 0.0D)),
+                "Nodes in a different world should not be selectable by distance");
     }
 
     @Test
@@ -32,7 +33,7 @@ class EditorGeometryTest {
         final Node target = new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, worldId);
 
         assertEquals(1.0D, EditorGeometry.segmentDistance(source, target, location(worldId, 5.0D, 0.0D, 0.0D)),
-                EPSILON);
+                EPSILON, "Segment distance should clamp to the nearest endpoint");
     }
 
     @Test
@@ -50,20 +51,21 @@ class EditorGeometryTest {
 
         final Optional<Location> midpoint = EditorGeometry.edgeMidpoint(graph, edge, origin);
 
-        assertTrue(midpoint.isPresent());
+        assertTrue(midpoint.isPresent(), "Midpoint should exist for same-world endpoints");
         assertAll(
-                () -> assertSame(origin.getWorld(), midpoint.get().getWorld()),
-                () -> assertEquals(2.0D, midpoint.get().getX(), EPSILON),
-                () -> assertEquals(1.0D, midpoint.get().getY(), EPSILON),
-                () -> assertEquals(3.0D, midpoint.get().getZ(), EPSILON),
-                () -> assertEquals(90.0f, midpoint.get().getYaw(), EPSILON),
-                () -> assertEquals(30.0f, midpoint.get().getPitch(), EPSILON)
+                () -> assertSame(origin.getWorld(), midpoint.get().getWorld(), "Midpoint should reuse source world"),
+                () -> assertEquals(2.0D, midpoint.get().getX(), EPSILON, "Midpoint x should average endpoints"),
+                () -> assertEquals(1.0D, midpoint.get().getY(), EPSILON, "Midpoint y should average endpoints"),
+                () -> assertEquals(3.0D, midpoint.get().getZ(), EPSILON, "Midpoint z should average endpoints"),
+                () -> assertEquals(90.0f, midpoint.get().getYaw(), EPSILON, "Midpoint should preserve yaw"),
+                () -> assertEquals(30.0f, midpoint.get().getPitch(), EPSILON, "Midpoint should preserve pitch")
         );
     }
 
-    private Location location(final UUID worldId, final double x, final double y, final double z) {
+    private Location location(final UUID worldId, final double xCoordinate, final double yCoordinate,
+                              final double zCoordinate) {
         final World world = mock(World.class);
         when(world.getUID()).thenReturn(worldId);
-        return new Location(world, x, y, z);
+        return new Location(world, xCoordinate, yCoordinate, zCoordinate);
     }
 }
