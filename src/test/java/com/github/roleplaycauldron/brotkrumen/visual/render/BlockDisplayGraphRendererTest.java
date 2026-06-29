@@ -38,6 +38,12 @@ class BlockDisplayGraphRendererTest {
 
     private static final float EPSILON = 0.0001f;
 
+    private static final String SCOREBOARD_TAG_OWNER = "brotkrumen";
+
+    private static final String SCOREBOARD_TAG_NODE = "brotkrumen:block-display:node";
+
+    private static final String SCOREBOARD_TAG_EDGE = "brotkrumen:block-display:edge";
+
     private static Vector3f centerlineStart(final BlockDisplayGraphRenderer.EdgePlacement placement,
                                             final BlockEdgeDesign design) {
         final float halfThickness = design.thickness() / 2.0f;
@@ -125,7 +131,29 @@ class BlockDisplayGraphRendererTest {
         verify(player(plugin, viewerId)).showEntity(plugin, spawned.get(0));
         verify(player(plugin, viewerId)).hideEntity(plugin, spawned.get(1));
         verify(player(plugin, viewerId)).hideEntity(plugin, spawned.get(2));
+        verifyNodeDisplay(spawned.get(0));
+        verifyNodeDisplay(spawned.get(1));
+        verifyEdgeDisplay(spawned.get(2));
         spawned.forEach(display -> verify(display, never()).remove());
+    }
+
+    private void verifyNodeDisplay(final BlockDisplay display) {
+        verify(display).addScoreboardTag(SCOREBOARD_TAG_OWNER);
+        verify(display).addScoreboardTag(SCOREBOARD_TAG_NODE);
+        verify(display, never()).addScoreboardTag(SCOREBOARD_TAG_EDGE);
+        verifyTransientViewerControlledDisplay(display);
+    }
+
+    private void verifyEdgeDisplay(final BlockDisplay display) {
+        verify(display).addScoreboardTag(SCOREBOARD_TAG_OWNER);
+        verify(display).addScoreboardTag(SCOREBOARD_TAG_EDGE);
+        verify(display, never()).addScoreboardTag(SCOREBOARD_TAG_NODE);
+        verifyTransientViewerControlledDisplay(display);
+    }
+
+    private void verifyTransientViewerControlledDisplay(final BlockDisplay display) {
+        verify(display).setPersistent(false);
+        verify(display).setVisibleByDefault(false);
     }
 
     private Brotkrumen plugin(final UUID worldId, final UUID viewerId, final World world,
