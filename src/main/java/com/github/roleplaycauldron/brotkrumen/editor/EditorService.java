@@ -14,9 +14,7 @@ import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphNetworkRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.WarpRepository;
-import com.github.roleplaycauldron.brotkrumen.visual.GraphVisualizerFactory;
 import com.github.roleplaycauldron.brotkrumen.visual.VisualizerRegistry;
-import com.github.roleplaycauldron.brotkrumen.visual.design.DynamicPresetGraphDesignResolver;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualPresetRegistry;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualRenderer;
 import com.github.roleplaycauldron.brotkrumen.visual.design.VisualizerRenderSettings;
@@ -68,13 +66,7 @@ public class EditorService {
 
     private final Map<UUID, EditorSession> playerEditors = new ConcurrentHashMap<>();
 
-    private final VisualizerRegistry visualizerRegistry;
-
     private final Brotkrumen plugin;
-
-    private final LoggerFactory loggerFactory;
-
-    private final EffectExecutor effectExecutor;
 
     private final GraphRepository graphRepository;
 
@@ -83,6 +75,8 @@ public class EditorService {
     private final WarpRepository warpRepositoryInstance;
 
     private final WrappedLogger log;
+
+    private final EditorVisualizerRegistrar visualizerRegistrar;
 
     /**
      * Creates a new editor service.
@@ -115,15 +109,14 @@ public class EditorService {
                          final LoggerFactory loggerFactory, final EffectExecutor effectExecutor,
                          final GraphRepository graphRepository, final GraphNetworkRepository graphNetworkRepository,
                          final WarpRepository warpRepository) {
-        this.visualizerRegistry = visualizerRegistry;
         this.plugin = plugin;
-        this.loggerFactory = loggerFactory;
-        this.effectExecutor = effectExecutor;
         this.graphRepository = graphRepository;
         this.graphNetworkRepository = graphNetworkRepository;
         this.warpRepositoryInstance = warpRepository;
 
         this.log = loggerFactory.create(EditorService.class);
+        this.visualizerRegistrar = new EditorVisualizerRegistrar(visualizerRegistry, plugin, loggerFactory,
+                effectExecutor);
     }
 
     /**
@@ -412,9 +405,9 @@ public class EditorService {
                 .flatMap(graph -> graph.getNodes().stream()
                         .map(node -> new SelectedNode(new NodeRef(graph.getGraphId(), node.graphId()), node,
                                 graph.getName())))
-                .filter(selection -> sameWorld(selection.node(), loc))
-                .filter(selection -> distance(selection.node(), loc) <= EDIT_NODE_SELECTION_RADIUS)
-                .min(Comparator.comparingDouble(selection -> distance(selection.node(), loc)));
+                .filter(selection -> EditorGeometry.sameWorld(selection.node(), loc))
+                .filter(selection -> EditorGeometry.distance(selection.node(), loc) <= EDIT_NODE_SELECTION_RADIUS)
+                .min(Comparator.comparingDouble(selection -> EditorGeometry.distance(selection.node(), loc)));
     }
 
     /**
@@ -455,15 +448,16 @@ public class EditorService {
         }
         final Optional<SelectedEdge> local = visibleGraphs(session).stream()
                 .flatMap(graph -> graph.getEdges().stream().map(edge -> new SelectedEdge(graph, edge)))
-                .filter(edge -> edgeDistance(edge.graph(), edge.edge(), loc) <= EDIT_NODE_SELECTION_RADIUS)
-                .min(Comparator.comparingDouble(edge -> edgeDistance(edge.graph(), edge.edge(), loc)));
+                .filter(edge -> EditorGeometry.edgeDistance(edge.graph(), edge.edge(), loc) <= EDIT_NODE_SELECTION_RADIUS)
+                .min(Comparator.comparingDouble(edge -> EditorGeometry.edgeDistance(edge.graph(), edge.edge(), loc)));
         final Optional<InterGraphEdge> interGraph = session.visibleInterGraphEdges().stream()
                 .filter(edge -> interGraphEdgeDistance(session, edge, loc) <= EDIT_NODE_SELECTION_RADIUS)
                 .min(Comparator.comparingDouble(edge -> interGraphEdgeDistance(session, edge, loc)));
         if (local.isEmpty() && interGraph.isEmpty()) {
             return EditorResult.failure("commands.bkeditor.common.noNearbyEdge");
         }
-        final double localDistance = local.map(edge -> edgeDistance(edge.graph(), edge.edge(), loc)).orElse(Double.MAX_VALUE);
+        final double localDistance = local.map(edge -> EditorGeometry.edgeDistance(edge.graph(), edge.edge(), loc))
+                .orElse(Double.MAX_VALUE);
         final double interDistance = interGraph.map(edge -> interGraphEdgeDistance(session, edge, loc)).orElse(Double.MAX_VALUE);
         session.selectedNode = null;
         session.selectedNodeRef = null;
@@ -549,18 +543,20 @@ public class EditorService {
         }
         if (session.selectedNode != null) {
             return SelectionTeleportResult.success("commands.bkeditor.selection.teleportedNode",
-                    location(playerLocation, session.selectedNode.x(), session.selectedNode.y(), session.selectedNode.z()));
+                    EditorGeometry.location(playerLocation, session.selectedNode.x(), session.selectedNode.y(),
+                            session.selectedNode.z()));
         }
         if (session.selectedEdge != null) {
-            final Optional<Location> midpoint = edgeMidpoint(session, session.selectedEdgeGraphId, session.selectedEdge,
-                    playerLocation);
+            final Optional<Location> midpoint = EditorGeometry.edgeMidpoint(
+                    graphById(session, session.selectedEdgeGraphId), session.selectedEdge, playerLocation);
             return midpoint.map(location -> SelectionTeleportResult.success(
                             "commands.bkeditor.selection.teleportedEdge", location))
                     .orElseGet(() -> SelectionTeleportResult.failure("commands.bkeditor.selection.edgeIncomplete"));
         }
         if (session.selectedInterGraphEdge != null) {
-            final Optional<Location> midpoint = interGraphEdgeMidpoint(session, session.selectedInterGraphEdge,
-                    playerLocation);
+            final Optional<Location> midpoint = EditorGeometry.midpoint(
+                    node(session, session.selectedInterGraphEdge.source()),
+                    node(session, session.selectedInterGraphEdge.target()), playerLocation);
             return midpoint.map(location -> SelectionTeleportResult.success(
                             "commands.bkeditor.selection.teleportedEdge", location))
                     .orElseGet(() -> SelectionTeleportResult.failure("commands.bkeditor.selection.edgeIncomplete"));
@@ -590,7 +586,8 @@ public class EditorService {
             return selectAppendAnchor(session, loc);
         }
 
-        if (session.lastPlacedNode != null && distance(session.lastPlacedNode, loc) <= session.nodeDistance) {
+        if (session.lastPlacedNode != null
+                && EditorGeometry.distance(session.lastPlacedNode, loc) <= session.nodeDistance) {
             return EditorResult.success("");
         }
 
@@ -601,9 +598,9 @@ public class EditorService {
 
     private EditorResult selectAppendAnchor(final EditorSession session, final Location loc) {
         return session.graph.getNodes().stream()
-                .filter(node -> sameWorld(node, loc))
-                .filter(node -> distance(node, loc) <= EDIT_NODE_SELECTION_RADIUS)
-                .min(Comparator.comparingDouble(node -> distance(node, loc)))
+                .filter(node -> EditorGeometry.sameWorld(node, loc))
+                .filter(node -> EditorGeometry.distance(node, loc) <= EDIT_NODE_SELECTION_RADIUS)
+                .min(Comparator.comparingDouble(node -> EditorGeometry.distance(node, loc)))
                 .map(node -> {
                     session.selectedAppendNode = node;
                     session.lastPlacedNode = node;
@@ -619,7 +616,7 @@ public class EditorService {
 
         if (session.lastPlacedNode != null) {
             session.graph.addEdge(session.lastPlacedNode.graphId(), created.graphId(),
-                    distance(session.lastPlacedNode, placement), Set.of(EdgeFlag.UNDIRECTED));
+                    EditorGeometry.distance(session.lastPlacedNode, placement), Set.of(EdgeFlag.UNDIRECTED));
         }
 
         session.lastPlacedNode = created;
@@ -700,7 +697,7 @@ public class EditorService {
                 return EditorResult.failure("commands.bkeditor.common.localEdgeActiveGraphOnly");
             }
             final List<Edge> created = replaceRelationship(graph, session.edgeEndpointOne.ref().nodeId(),
-                    session.edgeEndpointTwo.ref().nodeId(), distance(session.edgeEndpointOne.node(),
+                    session.edgeEndpointTwo.ref().nodeId(), EditorGeometry.distance(session.edgeEndpointOne.node(),
                             session.edgeEndpointTwo.node()), edgeType, Set.of());
             session.selectedEdge = created.getFirst();
             session.selectedEdgeGraphId = graph.getGraphId();
@@ -711,8 +708,8 @@ public class EditorService {
                 return EditorResult.failure("commands.bkeditor.common.interGraphPersistedEndpointsRequired");
             }
             final List<InterGraphEdge> created = replaceInterGraphRelationship(session, session.edgeEndpointOne.ref(),
-                    session.edgeEndpointTwo.ref(), distance(session.edgeEndpointOne.node(), session.edgeEndpointTwo.node()),
-                    edgeType, Set.of());
+                    session.edgeEndpointTwo.ref(), EditorGeometry.distance(session.edgeEndpointOne.node(),
+                            session.edgeEndpointTwo.node()), edgeType, Set.of());
             session.selectedInterGraphEdge = created.getFirst();
             session.selectedEdge = null;
             session.selectedEdgeGraphId = -1;
@@ -835,10 +832,6 @@ public class EditorService {
         return EditorResult.success("commands.bkeditor.edge.removed", Map.of("count", String.valueOf(removed)));
     }
 
-    private boolean sameWorld(final Node node, final Location loc) {
-        return loc.getWorld() != null && Objects.equals(node.worldId(), loc.getWorld().getUID());
-    }
-
     private void rememberEdgeEndpoint(final EditorSession session, final SelectedNode node) {
         if (session.edgeEndpointOne == null) {
             session.edgeEndpointOne = node;
@@ -887,23 +880,6 @@ public class EditorService {
         return node.graphName() + "/" + node.node().graphId();
     }
 
-    private double distance(final Node node, final Location loc) {
-        if (!sameWorld(node, loc)) {
-            return Double.MAX_VALUE;
-        }
-        final double deltaX = loc.getX() - node.x();
-        final double deltaY = loc.getY() - node.y();
-        final double deltaZ = loc.getZ() - node.z();
-        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-    }
-
-    private double distance(final Node first, final Node second) {
-        final double deltaX = first.x() - second.x();
-        final double deltaY = first.y() - second.y();
-        final double deltaZ = first.z() - second.z();
-        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-    }
-
     private List<Edge> replaceRelationship(final Graph graph, final UUID source, final UUID target,
                                            final double cost, final EdgeType edgeType, final Set<EdgeFlag> flags) {
         return edgeType == EdgeType.DIRECTED
@@ -911,84 +887,14 @@ public class EditorService {
                 : graph.replaceUndirectedRelationship(source, target, cost, flags);
     }
 
-    private double edgeDistance(final Graph graph, final Edge edge, final Location loc) {
-        final Node source = graph.getNodeById(edge.source());
-        final Node target = graph.getNodeById(edge.target());
-        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
-            return Double.MAX_VALUE;
-        }
-        final double directionX = target.x() - source.x();
-        final double directionY = target.y() - source.y();
-        final double directionZ = target.z() - source.z();
-        final double lengthSquared = directionX * directionX + directionY * directionY + directionZ * directionZ;
-        final double offset = lengthSquared == 0.0D ? 0.0D
-                : ((loc.getX() - source.x()) * directionX + (loc.getY() - source.y()) * directionY
-                   + (loc.getZ() - source.z()) * directionZ) / lengthSquared;
-        final double pathOffset = Math.max(0.0D, Math.min(1.0D, offset));
-        final double nearestX = source.x() + directionX * pathOffset;
-        final double nearestY = source.y() + directionY * pathOffset;
-        final double nearestZ = source.z() + directionZ * pathOffset;
-        final double deltaX = loc.getX() - nearestX;
-        final double deltaY = loc.getY() - nearestY;
-        final double deltaZ = loc.getZ() - nearestZ;
-        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-    }
-
     private double interGraphEdgeDistance(final EditorSession session, final InterGraphEdge edge, final Location loc) {
         final Node source = node(session, edge.source());
         final Node target = node(session, edge.target());
-        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
+        if (source == null || target == null || !EditorGeometry.sameWorld(source, loc)
+                || !EditorGeometry.sameWorld(target, loc)) {
             return Double.MAX_VALUE;
         }
-        return segmentDistance(source, target, loc);
-    }
-
-    private double segmentDistance(final Node source, final Node target, final Location loc) {
-        final double directionX = target.x() - source.x();
-        final double directionY = target.y() - source.y();
-        final double directionZ = target.z() - source.z();
-        final double lengthSquared = directionX * directionX + directionY * directionY + directionZ * directionZ;
-        final double offset = lengthSquared == 0.0D ? 0.0D
-                : ((loc.getX() - source.x()) * directionX + (loc.getY() - source.y()) * directionY
-                   + (loc.getZ() - source.z()) * directionZ) / lengthSquared;
-        final double pathOffset = Math.max(0.0D, Math.min(1.0D, offset));
-        final double nearestX = source.x() + directionX * pathOffset;
-        final double nearestY = source.y() + directionY * pathOffset;
-        final double nearestZ = source.z() + directionZ * pathOffset;
-        final double deltaX = loc.getX() - nearestX;
-        final double deltaY = loc.getY() - nearestY;
-        final double deltaZ = loc.getZ() - nearestZ;
-        return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-    }
-
-    private Optional<Location> edgeMidpoint(final EditorSession session, final int graphId, final Edge edge,
-                                            final Location loc) {
-        final Graph graph = graphById(session, graphId);
-        if (graph == null) {
-            return Optional.empty();
-        }
-        final Node source = graph.getNodeById(edge.source());
-        final Node target = graph.getNodeById(edge.target());
-        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
-            return Optional.empty();
-        }
-        return Optional.of(location(loc, (source.x() + target.x()) / 2.0D, (source.y() + target.y()) / 2.0D,
-                (source.z() + target.z()) / 2.0D));
-    }
-
-    private Optional<Location> interGraphEdgeMidpoint(final EditorSession session, final InterGraphEdge edge,
-                                                      final Location loc) {
-        final Node source = node(session, edge.source());
-        final Node target = node(session, edge.target());
-        if (source == null || target == null || !sameWorld(source, loc) || !sameWorld(target, loc)) {
-            return Optional.empty();
-        }
-        return Optional.of(location(loc, (source.x() + target.x()) / 2.0D, (source.y() + target.y()) / 2.0D,
-                (source.z() + target.z()) / 2.0D));
-    }
-
-    private Location location(final Location source, final double targetX, final double targetY, final double targetZ) {
-        return new Location(source.getWorld(), targetX, targetY, targetZ, source.getYaw(), source.getPitch());
+        return EditorGeometry.segmentDistance(source, target, loc);
     }
 
     /**
@@ -2148,42 +2054,12 @@ public class EditorService {
     }
 
     private void registerVisualizer(final UUID playerId, final EditorSession session) {
-        if (visualizerRegistry == null || plugin == null) {
-            return;
-        }
-        final VisualizerRenderSettings renderSettings = VisualizerRenderSettings.fromConfig(plugin.getConfig());
-        final DynamicPresetGraphDesignResolver resolver = new DynamicPresetGraphDesignResolver(
-                () -> session.graph,
-                session.referenceGraphs::values,
-                plugin::getVisualPresetRegistry,
-                () -> VisualizerRenderSettings.fromConfig(plugin.getConfig()),
-                () -> temporaryPresetOverride(session, VisualRenderer.SPELLBOOK_EFFECT),
-                () -> temporaryPresetOverride(session, VisualRenderer.BLOCK_DISPLAY));
-        if (renderSettings.defaultRenderer() == VisualRenderer.BLOCK_DISPLAY) {
-            visualizerRegistry.register(playerId,
-                    GraphVisualizerFactory.blockDisplayEditorWorkspace(plugin, loggerFactory, () -> session.graph,
-                            session.referenceGraphs::values, session::visibleInterGraphEdges,
-                            () -> session.workspaceVersion, playerId, resolver));
-            return;
-        }
-        visualizerRegistry.register(playerId,
-                GraphVisualizerFactory.particleEditorWorkspace(plugin, loggerFactory, () -> session.graph,
-                        session.referenceGraphs::values, session::visibleInterGraphEdges,
-                        () -> session.workspaceVersion, playerId, effectExecutor, resolver));
-    }
-
-    private Map<Integer, String> temporaryPresetOverride(final EditorSession session, final VisualRenderer renderer) {
-        if (session.preset == null || session.preset.isBlank() || plugin == null) {
-            return Map.of();
-        }
-        final VisualRenderer activeRenderer = VisualizerRenderSettings.fromConfig(plugin.getConfig()).defaultRenderer();
-        return activeRenderer == renderer ? Map.of(session.graph.getGraphId(), session.preset) : Map.of();
+        visualizerRegistrar.register(playerId, () -> session.graph, session.referenceGraphs::values,
+                session::visibleInterGraphEdges, () -> session.workspaceVersion, () -> session.preset);
     }
 
     private void unregisterVisualizer(final UUID playerId) {
-        if (visualizerRegistry != null) {
-            visualizerRegistry.unregister(playerId);
-        }
+        visualizerRegistrar.unregister(playerId);
     }
 
     /**
@@ -2289,9 +2165,7 @@ public class EditorService {
     }
 
     private void refreshVisualizer(final UUID playerId) {
-        if (visualizerRegistry != null) {
-            visualizerRegistry.refresh(playerId);
-        }
+        visualizerRegistrar.refresh(playerId);
     }
 
     /**
