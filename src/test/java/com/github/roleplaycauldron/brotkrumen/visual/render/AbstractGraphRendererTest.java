@@ -33,15 +33,15 @@ class AbstractGraphRendererTest {
     private final List<World> worlds = new ArrayList<>();
 
     @Test
-    void defaultDistancesPreserveExistingVisibilityRadius() {
+    void defaultViewDistanceControlsVisibilityRadius() {
         final UUID worldId = UUID.randomUUID();
         final UUID viewerId = UUID.randomUUID();
         final RendererHarness renderer = new RendererHarness(plugin(new YamlConfiguration(), worldId, viewerId), viewerId);
-        final VisualGraphSnapshot snapshot = snapshot(worldId, 31, 33);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 15, 17);
 
         renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
 
-        assertEquals(1, renderer.nodeUpdates, "Default radius should include nodes within 32 blocks");
+        assertEquals(1, renderer.nodeUpdates, "Default visible radius should include only nodes within 16 blocks");
     }
 
     @Test
@@ -56,7 +56,7 @@ class AbstractGraphRendererTest {
 
         renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
 
-        assertEquals(1, renderer.nodeUpdates, "Configured radius should include only nodes within 5 blocks");
+        assertEquals(1, renderer.nodeUpdates, "Configured visible radius should include only nodes within 4 blocks");
     }
 
     @Test
@@ -84,11 +84,11 @@ class AbstractGraphRendererTest {
         final UUID worldId = UUID.randomUUID();
         final UUID viewerId = UUID.randomUUID();
         final RendererHarness renderer = new RendererHarness(plugin(config, worldId, viewerId), viewerId);
-        final VisualGraphSnapshot snapshot = snapshot(worldId, 31, 33);
+        final VisualGraphSnapshot snapshot = snapshot(worldId, 15, 17);
 
         renderer.apply(snapshot, ProfileGraphDesignResolver.defaults());
 
-        assertEquals(1, renderer.nodeUpdates, "Negative values should fall back to the 32 block default radius");
+        assertEquals(1, renderer.nodeUpdates, "Negative values should fall back to the 16 block default visible radius");
     }
 
     @Test

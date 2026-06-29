@@ -79,7 +79,6 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
             display.setBlock(design.blockMaterial().createBlockData());
             display.setTransformation(nodeTransformation(design.scale()));
             display.teleport(node.node().toCenterLocation());
-            player.showEntity(plugin, display);
         }
         return display;
     }
@@ -103,9 +102,18 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
         if (display != null) {
             display.setBlock(design.blockMaterial().createBlockData());
             updateEdgeTransformation(display, source.node(), target.node(), design);
-            player.showEntity(plugin, display);
         }
         return display;
+    }
+
+    @Override
+    protected void updateNodeVisibility(final BlockDisplay handle, final Player player, final boolean visible) {
+        updateDisplayVisibility(handle, player, visible);
+    }
+
+    @Override
+    protected void updateEdgeVisibility(final BlockDisplay handle, final Player player, final boolean visible) {
+        updateDisplayVisibility(handle, player, visible);
     }
 
     @Override
@@ -116,6 +124,11 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
     @Override
     protected void removeEdge(final BlockDisplay handle) {
         removeDisplay(handle);
+    }
+
+    @Override
+    protected boolean retainsInvisibleHandles() {
+        return true;
     }
 
     private BlockDisplay spawnNodeDisplay(final Location location, final BlockNodeDesign design) {
@@ -184,6 +197,17 @@ public class BlockDisplayGraphRenderer extends AbstractGraphRenderer<BlockDispla
     private void removeDisplay(final BlockDisplay display) {
         if (display != null && display.isValid()) {
             display.remove();
+        }
+    }
+
+    private void updateDisplayVisibility(final BlockDisplay display, final Player player, final boolean visible) {
+        if (display == null || !display.isValid()) {
+            return;
+        }
+        if (visible) {
+            player.showEntity(plugin, display);
+        } else {
+            player.hideEntity(plugin, display);
         }
     }
 

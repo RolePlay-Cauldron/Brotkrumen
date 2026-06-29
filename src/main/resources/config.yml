@@ -92,13 +92,14 @@ visualizer:
   # Default preset used when a graph has no usable block-display preset.
   defaultBlockDisplayPreset: 'ember'
 
-  # Controls the base distance, in blocks, used to decide which graph nodes and edges are visible to a viewer.
-  # Larger values can increase the number of active rendered elements.
-  viewDistance: 16.0
+  # Controls the distance, in blocks, where graph nodes and edges are rendered visibly to a viewer.
+  # Larger values can increase the number of visible rendered elements.
+  viewDistance: 26.0
 
-  # Extends the base view distance, in blocks, so graph elements stay active beyond the immediate view range.
-  # The renderer uses viewDistance + spawnDistanceBuffer as the effective spawn radius.
-  spawnDistanceBuffer: 16.0
+  # Extends block-display spawn and retention distance beyond the visible view range.
+  # Block-display renderers use viewDistance + spawnDistanceBuffer as the spawn radius and hide retained
+  # entities outside viewDistance. Spellbook effect renderers ignore this buffer.
+  spawnDistanceBuffer: 32.0
 
   # Guided path visualization settings used by /bk resolve.
   guidedPath:
