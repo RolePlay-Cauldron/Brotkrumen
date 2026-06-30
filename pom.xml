@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <revision>1.0.0</revision>
+    <revision>1.0.1</revision>
     <changelist>-SNAPSHOT</changelist>
     <brotkrumen.version>${revision}-DEV-UNOFFICIAL</brotkrumen.version>
     <minecraft.api.version>1.21</minecraft.api.version>
