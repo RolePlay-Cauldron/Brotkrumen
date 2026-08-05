@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased] - ${maven.build.timestamp}
 ### Added
 ### Changed
+- Updated spellbook dependency from 0.0.11-alpha to 0.0.12-alpha
 ### Deprecated
 ### Removed
 ### Fixed
