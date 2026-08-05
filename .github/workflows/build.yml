@@ -16,11 +16,11 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Setup JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: 21
@@ -44,7 +44,7 @@ jobs:
         run: |
           mvn verify -Dbrotkrumen.version="${{ steps.build-version.outputs.version }}"
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: RolePlay-Cauldron-Artifacts
           path: |

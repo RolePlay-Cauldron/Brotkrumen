@@ -32,7 +32,7 @@ runs:
         RUN_NUMBER: ${{ inputs.run-number }}
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
       run: |
-        revision="$(sed -n 's:.*<revision>\(.*\)</revision>.*:\1:p' pom.xml | head -n 1)"
+        revision="$(sed -n 's:.*<revision>\(.*\)</revision>.*:\1:p; /<revision>/q' pom.xml)"
 
         if [[ -z "$revision" ]]; then
           echo "Could not read <revision> from pom.xml" >&2
@@ -44,7 +44,7 @@ runs:
         elif [[ "$EVENT_NAME" == "release" ]]; then
           version="$revision"
         elif [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then
-          revision_commit="$(git log --first-parent -m -G '^[[:space:]]*<revision>.*</revision>' --format='%H' -- pom.xml | head -n 1)"
+          revision_commit="$(git log -1 --first-parent -m -G '^[[:space:]]*<revision>.*</revision>' --format='%H' -- pom.xml)"
 
           if [[ -z "$revision_commit" ]]; then
             echo "Could not find the most recent <revision> change in git history" >&2
