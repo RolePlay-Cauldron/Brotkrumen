@@ -114,44 +114,46 @@ class VisualPresetLoaderTest {
     }
 
     @Test
-    void invalidPresetsAreSkippedWhileValidPresetRemainsAvailable() {
+    void invalidPresetFailsTheEntireLoadAndLogsEveryValidationError() {
         final WrappedLogger logger = mock(WrappedLogger.class);
-        final VisualPresetRegistry registry = loader(logger).parse(yaml("""
-                valid:
-                  block-display:
-                    nodes:
-                      DEFAULT: { material: STONE, scale: 0.4 }
-                    edges:
-                      DEFAULT_LOCAL: { material: STONE, thickness: 0.2, node-clearance: 0.5 }
-                Valid:
-                  block-display:
-                    nodes:
-                      DEFAULT: { material: DIRT, scale: 0.4 }
-                    edges:
-                      DEFAULT_LOCAL: { material: DIRT, thickness: 0.2, node-clearance: 0.5 }
-                badRole:
-                  block-display:
-                    nodes:
-                      MISSING_ROLE: { material: STONE, scale: 0.4 }
-                    edges:
-                      DEFAULT_LOCAL: { material: STONE, thickness: 0.2, node-clearance: 0.5 }
-                badSection:
-                  unknown: true
-                badEffect:
-                  particle:
-                    nodes:
-                      DEFAULT:
-                        shape: { type: does-not-exist }
-                        particle: { type: FLAME }
-                    edges:
-                      DEFAULT_LOCAL:
-                        shape: { type: line, points: 4 }
-                        particle: { type: FLAME }
-                """));
+        final VisualPresetLoadException failure = assertThrows(VisualPresetLoadException.class,
+                () -> loader(logger).parse(yaml("""
+                        valid:
+                          block-display:
+                            nodes:
+                              DEFAULT: { material: STONE, scale: 0.4 }
+                            edges:
+                              DEFAULT_LOCAL: { material: STONE, thickness: 0.2, node-clearance: 0.5 }
+                        Valid:
+                          block-display:
+                            nodes:
+                              DEFAULT: { material: DIRT, scale: 0.4 }
+                            edges:
+                              DEFAULT_LOCAL: { material: DIRT, thickness: 0.2, node-clearance: 0.5 }
+                        badRole:
+                          block-display:
+                            nodes:
+                              MISSING_ROLE: { material: STONE, scale: 0.4 }
+                            edges:
+                              DEFAULT_LOCAL: { material: STONE, thickness: 0.2, node-clearance: 0.5 }
+                        badSection:
+                          unknown: true
+                        badEffect:
+                          particle:
+                            nodes:
+                              DEFAULT:
+                                shape: { type: does-not-exist }
+                                particle: { type: FLAME }
+                            edges:
+                              DEFAULT_LOCAL:
+                                shape: { type: line, points: 4 }
+                                particle: { type: FLAME }
+                        """)));
 
-        assertEquals(java.util.Set.of("valid"), registry.presetNames(),
-                "Only the valid preset should survive validation");
-        verify(logger, atLeast(4)).error(contains("Skipping visual preset"));
+        assertTrue(failure.getMessage().contains("badRole"), "Failure should identify every invalid preset");
+        assertTrue(failure.getMessage().contains("badSection"), "Failure should identify every invalid preset");
+        assertTrue(failure.getMessage().contains("badEffect"), "Failure should identify every invalid preset");
+        verify(logger, atLeast(4)).error(contains("Invalid visual preset"));
     }
 
     @Test
@@ -164,15 +166,20 @@ class VisualPresetLoaderTest {
     }
 
     @Test
-    void reloadKeepsCurrentRegistryWhenNoValidPresetExists() throws IOException {
+    void reloadRejectsInvalidRegistryAndLeavesTheCallersCurrentRegistryAvailable() throws IOException {
         final VisualPresetRegistry current = loader(null).parse(resourceYaml("presets.yml"));
         final WrappedLogger logger = mock(WrappedLogger.class);
         final JavaPlugin plugin = pluginWithPresetFile("");
+        VisualPresetRegistry active = current;
 
-        final VisualPresetRegistry reloaded = new VisualPresetLoader(plugin, logger).reload(current);
+        try {
+            active = new VisualPresetLoader(plugin, logger).reload();
+        } catch (final VisualPresetLoadException expected) {
+            // Empty
+        }
 
-        assertSame(current, reloaded, "Reload should retain previous cache when the new file has no valid presets");
-        verify(logger).error(contains("Keeping the previous preset cache"));
+        assertSame(current, active, "A failed reload must leave the previous cache active");
+        verify(logger).error(contains("No visual presets were defined"));
     }
 
     private VisualPresetLoader loader(final WrappedLogger logger) {
