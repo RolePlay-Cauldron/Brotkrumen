@@ -195,6 +195,7 @@ public class GraphTable {
 
         try (Connection con = conProvider.getConnection()) {
             con.setAutoCommit(false);
+            StorageException updateFailure = null;
 
             try {
                 try (PreparedStatement statement = con.prepareStatement(updateGraphSql)) {
@@ -209,13 +210,36 @@ public class GraphTable {
                 syncEdges(con, graph);
 
                 con.commit();
-            } catch (final SQLException ignored) {
-                con.rollback();
+            } catch (final SQLException failure) {
+                rollbackAfterFailedGraphUpdate(con, failure);
+                updateFailure = new StorageException("Failed to update graph with id " + graph.getGraphId(), failure);
+                throw updateFailure;
             } finally {
-                con.setAutoCommit(true);
+                restoreAutoCommit(con, updateFailure, graph.getGraphId());
             }
         } catch (final SQLException e) {
             throw new StorageException("Failed to update graph with id " + graph.getGraphId(), e);
+        }
+    }
+
+    private void rollbackAfterFailedGraphUpdate(final Connection con, final SQLException failure) {
+        try {
+            con.rollback();
+        } catch (final SQLException rollbackFailure) {
+            failure.addSuppressed(rollbackFailure);
+        }
+    }
+
+    private void restoreAutoCommit(final Connection con, final StorageException updateFailure, final int graphId) {
+        try {
+            con.setAutoCommit(true);
+        } catch (final SQLException restoreFailure) {
+            if (updateFailure != null) {
+                updateFailure.addSuppressed(restoreFailure);
+                return;
+            }
+            throw new StorageException("Failed to restore auto-commit after updating graph with id " + graphId,
+                    restoreFailure);
         }
     }
 

@@ -7,12 +7,16 @@ import com.github.roleplaycauldron.spellbook.effect.config.EffectConfigParser;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -20,7 +24,7 @@ import java.util.Map;
  * Loads and validates file-backed visual presets.
  */
 @SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.GodClass", "PMD.TooManyMethods",
-        "PMD.ExceptionAsFlowControl", "PMD.AvoidCatchingGenericException"})
+        "PMD.ExceptionAsFlowControl", "PMD.AvoidCatchingGenericException", "PMD.CyclomaticComplexity"})
 public final class VisualPresetLoader {
 
     private static final String PRESETS_RESOURCE = "presets.yml";
@@ -64,18 +68,13 @@ public final class VisualPresetLoader {
     }
 
     /**
-     * Reloads presets, retaining the current cache if reload produces no valid entries.
+     * Reloads presets after fully validating the new configuration.
      *
-     * @param current current registry
-     * @return reloaded registry or current registry
+     * @return fully validated registry
+     * @throws VisualPresetLoadException if the new configuration cannot be fully loaded
      */
-    public VisualPresetRegistry reload(final VisualPresetRegistry current) {
-        final VisualPresetRegistry registry = loadFromDataFolder();
-        if (registry.isEmpty()) {
-            error("Preset reload failed: no valid presets were loaded. Keeping the previous preset cache.");
-            return current;
-        }
-        return registry;
+    public VisualPresetRegistry reload() {
+        return loadForStartup();
     }
 
     /**
@@ -86,15 +85,16 @@ public final class VisualPresetLoader {
      */
     public VisualPresetRegistry parse(final ConfigurationSection root) {
         final Map<String, VisualPreset> presets = new LinkedHashMap<>();
+        final List<String> failures = new ArrayList<>();
         for (final String key : root.getKeys(false)) {
             final String path = key;
             final String normalized = VisualPresetRegistry.normalizePresetName(key);
             if (normalized.isBlank()) {
-                error("Skipping visual preset '" + path + "': preset name must not be blank.");
+                failures.add("Invalid visual preset '" + path + "': preset name must not be blank.");
                 continue;
             }
             if (presets.containsKey(normalized)) {
-                error("Skipping visual preset '" + path + "': duplicate normalized name '" + normalized + "'.");
+                failures.add("Invalid visual preset '" + path + "': duplicate normalized name '" + normalized + "'.");
                 continue;
             }
 
@@ -110,8 +110,17 @@ public final class VisualPresetLoader {
                 }
                 presets.put(normalized, preset);
             } catch (final RuntimeException failure) {
-                error("Skipping visual preset '" + path + "': " + failure.getMessage());
+                failures.add("Invalid visual preset '" + path + "': " + failure.getMessage());
             }
+        }
+        if (!failures.isEmpty()) {
+            failures.forEach(this::error);
+            throw new VisualPresetLoadException(failures);
+        }
+        if (presets.isEmpty()) {
+            final String message = "No visual presets were defined in presets.yml.";
+            error(message);
+            throw new VisualPresetLoadException(message);
         }
         return new VisualPresetRegistry(presets);
     }
@@ -121,7 +130,15 @@ public final class VisualPresetLoader {
         if (!file.isFile()) {
             plugin.saveResource(PRESETS_RESOURCE, false);
         }
-        return parse(YamlConfiguration.loadConfiguration(file));
+        final YamlConfiguration configuration = new YamlConfiguration();
+        try {
+            configuration.load(file);
+        } catch (final IOException | InvalidConfigurationException failure) {
+            final String message = "Could not load presets.yml: " + failure.getMessage();
+            error(message, failure);
+            throw new VisualPresetLoadException(message, failure);
+        }
+        return parse(configuration);
     }
 
     private void validatePresetSections(final ConfigurationSection section, final String path) {
@@ -271,6 +288,12 @@ public final class VisualPresetLoader {
     private void error(final String message) {
         if (log != null) {
             log.error(message);
+        }
+    }
+
+    private void error(final String message, final Throwable failure) {
+        if (log != null) {
+            log.error(message, failure);
         }
     }
 }

@@ -226,7 +226,7 @@ public class Brotkrumen extends JavaPlugin {
                     .loadForStartup();
             return true;
         } catch (final VisualPresetLoadException failure) {
-            log.error("Could not start the plugin because visual presets are unavailable: " + failure.getMessage());
+            log.error("Could not start the plugin because visual presets are unavailable: " + failure.getMessage(), failure);
             return false;
         }
     }
@@ -255,7 +255,7 @@ public class Brotkrumen extends JavaPlugin {
                 saveResource(resourcePath, false);
             }
         } catch (final IOException failure) {
-            log.error("Could not check locale resource '" + resourcePath + "': " + failure.getMessage());
+            log.error("Could not check locale resource '" + resourcePath + "': " + failure.getMessage(), failure);
         }
     }
 
@@ -282,10 +282,12 @@ public class Brotkrumen extends JavaPlugin {
 
     /**
      * Reloads visual presets from presets.yml.
+     *
+     * @throws VisualPresetLoadException if the new preset configuration is invalid
      */
     public void reloadVisualPresets() {
         this.visualPresetRegistry = new VisualPresetLoader(this, loggerFactory.create(VisualPresetLoader.class))
-                .reload(visualPresetRegistry);
+                .reload();
     }
 
     /**

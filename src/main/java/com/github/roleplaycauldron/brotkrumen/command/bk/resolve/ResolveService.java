@@ -55,7 +55,7 @@ public class ResolveService {
      * Creates a resolve service.
      *
      * @param graphRepository graph service
-     * @param pathFinder   pathfinder
+     * @param pathFinder      pathfinder
      */
     public ResolveService(final GraphRepository graphRepository, final PathFinder pathFinder) {
         this(graphRepository, null, pathFinder);
@@ -66,7 +66,7 @@ public class ResolveService {
      *
      * @param graphRepository        graph service
      * @param graphNetworkRepository graph network service
-     * @param pathFinder          pathfinder
+     * @param pathFinder             pathfinder
      */
     public ResolveService(final GraphRepository graphRepository, final GraphNetworkRepository graphNetworkRepository,
                           final PathFinder pathFinder) {

@@ -11,6 +11,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Deprecated
 ### Removed
 ### Fixed
+- Missing error messages when reloading faulty formated visual presets
 ### Security
 
 ## [1.0.0] - 2026-06-29
