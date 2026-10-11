@@ -112,6 +112,24 @@ messages:
         selectedWarpActiveGraphOnly: "<#F43F5E>Ausgewählte Warps können nur auf den aktiven Graph zielen."
         warpCostNonNegative: "<#F43F5E>Warp-Kosten dürfen nicht negativ sein."
         warpNotFound: "<#F43F5E>Kein Warp mit diesem Key vorhanden."
+      wand:
+        itemName:
+          crumb: "<#FACC15>Brotkrumen-Zauberstab <#CBD5E1>· Krume"
+          thread: "<#38BDF8>Brotkrumen-Zauberstab <#CBD5E1>· Faden"
+        itemLore:
+          crumb: "<#CBD5E1>Rechtsklick: Knoten platzieren. Linksklick: auswählen. Schleichen + Rechtsklick: zurücknehmen. Schleichen + Linksklick in die Luft: Modus wechseln."
+          thread: "<#CBD5E1>Linksklick: auswählen. Rechtsklick: verbinden oder ändern. Rechtsklick in die Luft: nächste Eigenschaft. Schleichen + Rechtsklick: löschen. Schleichen + Linksklick in die Luft: Modus wechseln."
+        given: "<#22C55E>Du hast einen Brotkrumen-Zauberstab erhalten."
+        alreadyCarried: "<#FACC15>Du trägst bereits einen Brotkrumen-Zauberstab."
+        mode:
+          crumb: "<#22C55E>Zauberstab-Modus: <#FACC15>Krume</#FACC15> <#CBD5E1>(Knoten platzieren und auswählen)"
+          thread: "<#22C55E>Zauberstab-Modus: <#38BDF8>Faden</#38BDF8> <#CBD5E1>(verbinden und bearbeiten)"
+        property:
+          type: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Kantentyp</#38BDF8> (gerichtet / ungerichtet)"
+          state: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Kantenzustand</#38BDF8> (offen / blockiert)"
+          traversal: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Durchquerung</#38BDF8> (normal / Teleport)"
+        nothingNearby: "<#F43F5E>Kein Knoten oder keine Kante in der Nähe des angeklickten Blocks."
+
       status:
         sessionStartedCreate: "<#22C55E>Editor gestartet. <#CBD5E1>Schritte für Graph <#38BDF8><graph></#38BDF8> werden aufgezeichnet."
         sessionStartedEdit: "<#22C55E>Editor gestartet. <#CBD5E1>Graph <#38BDF8><graph></#38BDF8> wird bearbeitet."

@@ -121,6 +121,24 @@ messages:
         warpCostNonNegative: "<#F43F5E>Warp cost must not be negative."
         warpNotFound: "<#F43F5E>No warp with that key exists."
 
+      wand:
+        itemName:
+          crumb: "<#FACC15>Brotkrumen Wand <#CBD5E1>· Crumb"
+          thread: "<#38BDF8>Brotkrumen Wand <#CBD5E1>· Thread"
+        itemLore:
+          crumb: "<#CBD5E1>Right-click: place node. Left-click: select. Sneak + right-click: undo. Sneak + left-click in air: switch mode."
+          thread: "<#CBD5E1>Left-click: select. Right-click: connect or change. Right-click in air: next property. Sneak + right-click: delete. Sneak + left-click in air: switch mode."
+        given: "<#22C55E>You received a Brotkrumen Wand."
+        alreadyCarried: "<#FACC15>You already carry a Brotkrumen Wand."
+        mode:
+          crumb: "<#22C55E>Wand mode: <#FACC15>Crumb</#FACC15> <#CBD5E1>(place and select nodes)"
+          thread: "<#22C55E>Wand mode: <#38BDF8>Thread</#38BDF8> <#CBD5E1>(connect and edit)"
+        property:
+          type: "<#CBD5E1>Wand edits: <#38BDF8>edge type</#38BDF8> (directed / undirected)"
+          state: "<#CBD5E1>Wand edits: <#38BDF8>edge state</#38BDF8> (open / blocked)"
+          traversal: "<#CBD5E1>Wand edits: <#38BDF8>traversal</#38BDF8> (normal / teleport)"
+        nothingNearby: "<#F43F5E>No node or edge found near the clicked block."
+
       status:
         sessionStartedCreate: "<#22C55E>Editor started. <#CBD5E1>Tracing steps for graph <#38BDF8><graph></#38BDF8>."
         sessionStartedEdit: "<#22C55E>Editor started. <#CBD5E1>Editing graph <#38BDF8><graph></#38BDF8>."

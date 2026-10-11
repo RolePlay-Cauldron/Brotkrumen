@@ -1,0 +1,185 @@
+package com.github.roleplaycauldron.brotkrumen.editor;
+
+import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommandFeedback;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Supplier;
+
+/**
+ * Handles editor wand clicks.
+ */
+public final class WandListener implements Listener {
+
+    private static final String NOTHING_NEARBY = "commands.bkeditor.wand.nothingNearby";
+
+    private static final String NO_SELECTION = "commands.bkeditor.common.noSelection";
+
+    private static final int PARTICLE_COUNT = 8;
+
+    private static final double PARTICLE_SPREAD = 0.2D;
+
+    private final EditorService editorService;
+
+    private final WandItems wandItems;
+
+    private final Supplier<WandSettings> settings;
+
+    private final EditorCommandFeedback feedback;
+
+    /**
+     * Creates the wand listener.
+     *
+     * @param editorService editor service
+     * @param wandItems     wand item helper
+     * @param settings      supplier of the current wand settings
+     * @param feedback      editor feedback renderer
+     */
+    public WandListener(final EditorService editorService, final WandItems wandItems,
+                        final Supplier<WandSettings> settings, final EditorCommandFeedback feedback) {
+        this.editorService = editorService;
+        this.wandItems = wandItems;
+        this.settings = settings;
+        this.feedback = feedback;
+    }
+
+    /**
+     * Handles wand interactions for players with an active editor session.
+     *
+     * @param event interaction event
+     */
+    @EventHandler
+    public void onInteract(final PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || event.getAction() == Action.PHYSICAL) {
+            return;
+        }
+        final Player player = event.getPlayer();
+        final UUID playerId = player.getUniqueId();
+        if (!wandItems.isWand(event.getItem())) {
+            return;
+        }
+        final Optional<WandMode> mode = editorService.wandMode(playerId);
+        if (mode.isEmpty()) {
+            return;
+        }
+        event.setUseItemInHand(Event.Result.DENY);
+        event.setUseInteractedBlock(Event.Result.DENY);
+        event.setCancelled(true);
+
+        final Action action = event.getAction();
+        if (action == Action.LEFT_CLICK_AIR && player.isSneaking()) {
+            toggleMode(player);
+            return;
+        }
+        if (mode.get() == WandMode.CRUMB) {
+            handleCrumb(player, action, event.getClickedBlock(), event.getBlockFace());
+        } else {
+            handleThread(player, action, event.getClickedBlock(), event.getBlockFace());
+        }
+    }
+
+    private void toggleMode(final Player player) {
+        final EditorService.EditorResult result = editorService.toggleWandMode(player.getUniqueId());
+        editorService.wandMode(player.getUniqueId()).ifPresent(mode -> wandItems.refresh(player, mode));
+        sendResult(player, result, player.getLocation());
+    }
+
+    private void handleThread(final Player player, final Action action, final Block block, final BlockFace face) {
+        final UUID playerId = player.getUniqueId();
+        switch (action) {
+            case LEFT_CLICK_BLOCK -> {
+                if (block != null) {
+                    select(player, placementLocation(block, face));
+                }
+            }
+            case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> {
+                if (player.isSneaking()) {
+                    removeSelection(player);
+                } else if (action == Action.RIGHT_CLICK_AIR) {
+                    sendResult(player, editorService.advanceWandProperty(playerId), player.getLocation());
+                } else {
+                    sendResult(player, editorService.wandPrimaryAction(playerId, settings.get().defaultEdgeType()),
+                            player.getLocation());
+                }
+            }
+            default -> {
+                // Other actions are intentionally ignored in Thread mode.
+            }
+        }
+    }
+
+    private void removeSelection(final Player player) {
+        final UUID playerId = player.getUniqueId();
+        switch (editorService.wandSelection(playerId)) {
+            case NODE -> editorService.deleteSelectedNodeAsync(playerId,
+                    result -> sendResult(player, result, player.getLocation()));
+            case EDGE -> sendResult(player, editorService.removeSelectedEdge(playerId), player.getLocation());
+            default -> sendResult(player, EditorService.EditorResult.failure(NO_SELECTION), player.getLocation());
+        }
+    }
+
+    private void handleCrumb(final Player player, final Action action, final Block block, final BlockFace face) {
+        switch (action) {
+            case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> {
+                if (player.isSneaking()) {
+                    sendResult(player, editorService.undo(player.getUniqueId(), 1), player.getLocation());
+                } else if (block != null) {
+                    final Location target = placementLocation(block, face);
+                    sendResult(player, editorService.placeNodeAtExactLocation(player.getUniqueId(), target), target);
+                }
+            }
+            case LEFT_CLICK_BLOCK -> {
+                if (block != null) {
+                    select(player, placementLocation(block, face));
+                }
+            }
+            default -> {
+                // Other actions are intentionally ignored in Crumb mode.
+            }
+        }
+    }
+
+    private void select(final Player player, final Location target) {
+        EditorService.EditorResult result = editorService.selectNearbyNode(player.getUniqueId(), target);
+        if (!result.success()) {
+            final EditorService.EditorResult edgeResult = editorService.selectNearbyEdge(player.getUniqueId(), target);
+            result = edgeResult.success() ? edgeResult : EditorService.EditorResult.failure(NOTHING_NEARBY);
+        }
+        sendResult(player, result, target);
+    }
+
+    private Location placementLocation(final Block block, final BlockFace face) {
+        if (settings.get().offsetFromSideFace() && face != null) {
+            return block.getRelative(face).getLocation().add(0.5D, 0.0D, 0.5D);
+        }
+        return block.getLocation().add(0.5D, 1.0D, 0.5D);
+    }
+
+    private void sendResult(final Player player, final EditorService.EditorResult result,
+                            final Location effectLocation) {
+        feedback.send(player, result);
+        if (!result.success()) {
+            return;
+        }
+        final WandSettings current = settings.get();
+        if (current.soundFeedback()) {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.5F, 1.5F);
+        }
+        if (current.particleFeedback()) {
+            player.spawnParticle(Particle.HAPPY_VILLAGER, effectLocation, PARTICLE_COUNT, PARTICLE_SPREAD, PARTICLE_SPREAD,
+                    PARTICLE_SPREAD, 0.0D);
+        }
+    }
+}

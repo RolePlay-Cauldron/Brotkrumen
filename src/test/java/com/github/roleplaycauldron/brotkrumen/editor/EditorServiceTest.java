@@ -191,6 +191,98 @@ class EditorServiceTest {
     }
 
     @Test
+    void exactPlacementIgnoresGroundSnappingAndNodeDistance() {
+        lenient().when(world.getHighestBlockYAt(any(Location.class))).thenReturn(63);
+        startCreation(new EditorService.EditorSettings(100, EditorService.PlacementMode.PREVIEW,
+                EditorService.PlacementMode.PREVIEW, true, true, "ember"));
+
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(2.0D, 80.0D, 3.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(2.5D, 80.0D, 3.0D)).success());
+
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertEquals(2, graph.getNodes().size());
+        assertTrue(graph.getNodes().stream().allMatch(node -> node.y() == 80.0D));
+    }
+
+    @Test
+    void wandModeTogglesAndPropertyCursorWraps() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        assertTrue(service.toggleWandMode(PLAYER_ID).success());
+        assertEquals(Optional.of(WandMode.THREAD), service.wandMode(PLAYER_ID));
+        assertEquals("commands.bkeditor.wand.property.state", service.advanceWandProperty(PLAYER_ID).actionBarMessage());
+        assertEquals("commands.bkeditor.wand.property.traversal",
+                service.advanceWandProperty(PLAYER_ID).actionBarMessage());
+        assertEquals("commands.bkeditor.wand.property.type", service.advanceWandProperty(PLAYER_ID).actionBarMessage());
+        assertTrue(service.toggleWandMode(PLAYER_ID).success());
+        assertEquals(Optional.of(WandMode.CRUMB), service.wandMode(PLAYER_ID));
+    }
+
+    @Test
+    void wandPrimaryActionConnectsSelectedNodesThenCyclesActiveProperty() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+
+        assertEquals(EditorService.WandSelection.NONE, service.wandSelection(PLAYER_ID));
+        assertFalse(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertEquals(EditorService.WandSelection.NODE, service.wandSelection(PLAYER_ID));
+        assertFalse(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
+        assertEquals(EditorService.WandSelection.EDGE, service.wandSelection(PLAYER_ID));
+        assertEquals(1, service.getWorkingGraph(PLAYER_ID).getEdges().size());
+
+        assertTrue(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
+        assertEquals(2, service.getWorkingGraph(PLAYER_ID).getEdges().size());
+
+        service.advanceWandProperty(PLAYER_ID);
+        assertTrue(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
+        assertTrue(service.getWorkingGraph(PLAYER_ID).getEdges().stream()
+                .allMatch(edge -> edge.flags().contains(EdgeFlag.BLOCKED)));
+
+        service.advanceWandProperty(PLAYER_ID);
+        assertTrue(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
+        assertTrue(service.getWorkingGraph(PLAYER_ID).getEdges().stream()
+                .allMatch(edge -> edge.flags().contains(EdgeFlag.TELEPORT)));
+    }
+
+    @Test
+    void wandModeDefaultsToCrumbAndIsEmptyWithoutSession() {
+        assertTrue(service.wandMode(PLAYER_ID).isEmpty());
+
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        assertEquals(Optional.of(WandMode.CRUMB), service.wandMode(PLAYER_ID));
+    }
+
+    @Test
+    void lifecycleListenerIsNotifiedOnStartAndCancel() {
+        final EditorService.SessionLifecycleListener listener = mock(EditorService.SessionLifecycleListener.class);
+        service.setSessionLifecycleListener(listener);
+
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        verify(listener).sessionStarted(PLAYER_ID);
+
+        assertTrue(service.cancel(PLAYER_ID).success());
+        verify(listener).sessionEnded(PLAYER_ID);
+    }
+
+    @Test
+    void lifecycleListenerIsNotifiedWhenSessionIsFinished() {
+        final EditorService.SessionLifecycleListener listener = mock(EditorService.SessionLifecycleListener.class);
+        service.setSessionLifecycleListener(listener);
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+
+        verify(listener).sessionEnded(PLAYER_ID);
+    }
+
+    @Test
     void continueCanWaitForNodeBeforeAutoPlacement() {
         final Graph graph = new Graph(7, "Existing");
         graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));

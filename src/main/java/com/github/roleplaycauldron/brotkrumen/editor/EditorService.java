@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -93,6 +94,8 @@ public class EditorService {
     private final WrappedLogger log;
 
     private final EditorVisualizerRegistrar visualizerRegistrar;
+
+    private final AtomicReference<SessionLifecycleListener> lifecycleListener = new AtomicReference<>();
 
     /**
      * Creates a new editor service.
@@ -209,6 +212,7 @@ public class EditorService {
         final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
+        notifySessionStarted(playerId);
         return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of(GRAPH_KEY, graphName));
     }
 
@@ -253,6 +257,7 @@ public class EditorService {
         final EditorSession session = EditorSession.create(newGraph(graphName), settings.normalized());
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
+        notifySessionStarted(playerId);
         return EditorResult.success("commands.bkeditor.status.sessionStartedCreate", Map.of(GRAPH_KEY, graphName));
     }
 
@@ -349,6 +354,7 @@ public class EditorService {
         loadSessionInterGraphEdges(session);
         playerEditors.put(playerId, session);
         registerVisualizer(playerId, session);
+        notifySessionStarted(playerId);
         return EditorResult.success("commands.bkeditor.status.sessionStartedEdit", Map.of(GRAPH_KEY, graphName));
     }
 
@@ -391,6 +397,7 @@ public class EditorService {
                 loadSessionInterGraphEdges(session, interGraphEdges);
                 playerEditors.put(playerId, session);
                 registerVisualizer(playerId, session);
+                notifySessionStarted(playerId);
                 callback.accept(EditorResult.success("commands.bkeditor.status.sessionStartedEdit",
                         Map.of(GRAPH_KEY, graphName)));
             });
@@ -627,7 +634,11 @@ public class EditorService {
     }
 
     private void addNodeToPath(final EditorSession session, final Location loc) {
-        final Location placement = placementLocation(session, loc);
+        addNodeToPath(session, loc, true);
+    }
+
+    private void addNodeToPath(final EditorSession session, final Location loc, final boolean snapToGround) {
+        final Location placement = snapToGround ? placementLocation(session, loc) : loc;
         final Node created = session.graph.addNode(new Node(null, placement));
 
         if (session.lastPlacedNode != null) {
@@ -675,6 +686,21 @@ public class EditorService {
      * @return operation result
      */
     public EditorResult placeNode(final UUID playerId, final Location loc) {
+        return placeNode(playerId, loc, true);
+    }
+
+    /**
+     * Manually places a node at exactly the specified location, ignoring ground snapping.
+     *
+     * @param playerId editor player id
+     * @param loc      exact node location
+     * @return operation result
+     */
+    public EditorResult placeNodeAtExactLocation(final UUID playerId, final Location loc) {
+        return placeNode(playerId, loc, false);
+    }
+
+    private EditorResult placeNode(final UUID playerId, final Location loc, final boolean snapToGround) {
         final EditorSession session = playerEditors.get(playerId);
         if (session == null) {
             return EditorResult.failure(NOT_EDITING);
@@ -683,9 +709,204 @@ public class EditorService {
             return EditorResult.failure("commands.bkeditor.common.editAnchorRequired");
         }
 
-        addNodeToPath(session, loc);
+        addNodeToPath(session, loc, snapToGround);
         refreshVisualizer(playerId);
         return EditorResult.success("commands.bkeditor.status.nodePlaced");
+    }
+
+    /**
+     * Retrieves the wand mode of an editor session.
+     *
+     * @param playerId editor player id
+     * @return the wand mode, or empty when the player is not editing
+     */
+    public Optional<WandMode> wandMode(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        return session == null ? Optional.empty() : Optional.of(session.wandMode);
+    }
+
+    /**
+     * Toggles the wand mode between Crumb and Thread.
+     *
+     * @param playerId editor player id
+     * @return result whose action bar message names the new mode
+     */
+    public EditorResult toggleWandMode(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        session.wandMode = session.wandMode.toggled();
+        return EditorResult.success("", "commands.bkeditor.wand.mode." + session.wandMode.configValue());
+    }
+
+    /**
+     * Advances the wand property cursor to the next edge property.
+     *
+     * @param playerId editor player id
+     * @return result whose action bar message names the active property
+     */
+    public EditorResult advanceWandProperty(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        session.wandProperty = session.wandProperty.next();
+        return EditorResult.success("", "commands.bkeditor.wand.property." + session.wandProperty.configValue());
+    }
+
+    /**
+     * Reports what is currently selected for wand actions.
+     *
+     * @param playerId editor player id
+     * @return selection kind
+     */
+    public WandSelection wandSelection(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return WandSelection.NONE;
+        }
+        if (session.selectedEdge != null || session.selectedInterGraphEdge != null) {
+            return WandSelection.EDGE;
+        }
+        return session.selectedNode == null ? WandSelection.NONE : WandSelection.NODE;
+    }
+
+    /**
+     * Performs the Thread mode primary action: cycles the active property of the selected edge, or connects the
+     * two selected nodes when no edge is selected.
+     *
+     * @param playerId        editor player id
+     * @param defaultEdgeType edge type used when a new edge is created
+     * @return operation result
+     */
+    public EditorResult wandPrimaryAction(final UUID playerId, final EdgeType defaultEdgeType) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        if (session.selectedEdge != null || session.selectedInterGraphEdge != null) {
+            return cycleSelectedEdgeProperty(playerId, session);
+        }
+        if (session.selectedNode == null) {
+            return EditorResult.failure("commands.bkeditor.common.noSelection");
+        }
+        if (session.edgeEndpointOne == null || session.edgeEndpointTwo == null) {
+            return EditorResult.failure("commands.bkeditor.common.twoNodesRequired");
+        }
+        return createSelectedNodeEdge(playerId, defaultEdgeType);
+    }
+
+    private EditorResult cycleSelectedEdgeProperty(final UUID playerId, final EditorSession session) {
+        final Set<EdgeFlag> flags = session.selectedInterGraphEdge != null
+                ? session.selectedInterGraphEdge.flags()
+                : session.selectedEdge.flags();
+        return switch (session.wandProperty) {
+            case TYPE -> updateSelectedEdgeType(playerId,
+                    flags.contains(EdgeFlag.UNDIRECTED) ? EdgeType.DIRECTED : EdgeType.UNDIRECTED);
+            case STATE -> updateSelectedEdgeState(playerId,
+                    flags.contains(EdgeFlag.BLOCKED) ? EdgeState.OPEN : EdgeState.BLOCKED);
+            case TRAVERSAL -> updateSelectedEdgeTraversal(playerId,
+                    flags.contains(EdgeFlag.TELEPORT) ? EdgeTraversal.NORMAL : EdgeTraversal.TELEPORT);
+        };
+    }
+
+    /**
+     * Registers the listener notified when editor sessions start and end.
+     *
+     * @param listener lifecycle listener, or null to clear it
+     */
+    public void setSessionLifecycleListener(final SessionLifecycleListener listener) {
+        this.lifecycleListener.set(listener);
+    }
+
+    private void notifySessionStarted(final UUID playerId) {
+        final SessionLifecycleListener listener = lifecycleListener.get();
+        if (listener != null) {
+            listener.sessionStarted(playerId);
+        }
+    }
+
+    private void notifySessionEnded(final UUID playerId) {
+        final SessionLifecycleListener listener = lifecycleListener.get();
+        if (listener != null) {
+            listener.sessionEnded(playerId);
+        }
+    }
+
+    /**
+     * Finishes the route creation session and persists changes.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    public EditorResult finishRouteCreation(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+
+        if (plugin == null) {
+            try {
+                graphRepository.saveGraph(session.graph);
+                saveWarps(session);
+                saveInterGraphEdges(session);
+                unregisterVisualizer(playerId);
+            } catch (final Exception e) {
+                log.errorF("The graph could not be saved: {}", e.getMessage());
+                return EditorResult.failure("commands.bkeditor.error.graphSave");
+            } finally {
+                playerEditors.remove(playerId);
+                notifySessionEnded(playerId);
+            }
+            return EditorResult.success("commands.bkeditor.status.sessionFinished");
+        }
+
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                graphRepository.saveGraph(session.graph);
+                saveWarps(session);
+                saveInterGraphEdges(session);
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    playerEditors.remove(playerId);
+                    unregisterVisualizer(playerId);
+                    notifySessionEnded(playerId);
+                    final Player player = plugin.getServer().getPlayer(playerId);
+                    if (player != null) {
+                        player.sendMessage(plugin.getLocalization()
+                                .getPrefixedMessage("commands.bkeditor.status.sessionFinished"));
+                    }
+                });
+            } catch (final Exception e) {
+                log.errorF("The graph could not be saved: {}", e.getMessage());
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    final Player player = plugin.getServer().getPlayer(playerId);
+                    if (player != null) {
+                        player.sendMessage(plugin.getLocalization()
+                                .getPrefixedMessage("commands.bkeditor.error.graphSaveWithReason",
+                                        Map.of("reason", e.getMessage())));
+                    }
+                });
+            }
+        });
+        return EditorResult.success("commands.bkeditor.status.sessionSaving");
+    }
+
+    /**
+     * Cancels the current editor session.
+     *
+     * @param playerId editor player id
+     * @return operation result
+     */
+    public EditorResult cancel(final UUID playerId) {
+        if (playerEditors.remove(playerId) == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+
+        unregisterVisualizer(playerId);
+        notifySessionEnded(playerId);
+        return EditorResult.success("commands.bkeditor.status.sessionCancelled");
     }
 
     /**
@@ -914,63 +1135,6 @@ public class EditorService {
         return EditorGeometry.segmentDistance(source, target, loc);
     }
 
-    /**
-     * Finishes the route creation session and persists changes.
-     *
-     * @param playerId editor player id
-     * @return operation result
-     */
-    @SuppressWarnings("PMD.AvoidCatchingGenericException")
-    public EditorResult finishRouteCreation(final UUID playerId) {
-        final EditorSession session = playerEditors.get(playerId);
-        if (session == null) {
-            return EditorResult.failure(NOT_EDITING);
-        }
-
-        if (plugin == null) {
-            try {
-                graphRepository.saveGraph(session.graph);
-                saveWarps(session);
-                saveInterGraphEdges(session);
-                unregisterVisualizer(playerId);
-            } catch (final Exception e) {
-                log.errorF("The graph could not be saved: {}", e.getMessage());
-                return EditorResult.failure("commands.bkeditor.error.graphSave");
-            } finally {
-                playerEditors.remove(playerId);
-            }
-            return EditorResult.success("commands.bkeditor.status.sessionFinished");
-        }
-
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                graphRepository.saveGraph(session.graph);
-                saveWarps(session);
-                saveInterGraphEdges(session);
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    playerEditors.remove(playerId);
-                    unregisterVisualizer(playerId);
-                    final Player player = plugin.getServer().getPlayer(playerId);
-                    if (player != null) {
-                        player.sendMessage(plugin.getLocalization()
-                                .getPrefixedMessage("commands.bkeditor.status.sessionFinished"));
-                    }
-                });
-            } catch (final Exception e) {
-                log.errorF("The graph could not be saved: {}", e.getMessage());
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    final Player player = plugin.getServer().getPlayer(playerId);
-                    if (player != null) {
-                        player.sendMessage(plugin.getLocalization()
-                                .getPrefixedMessage("commands.bkeditor.error.graphSaveWithReason",
-                                        Map.of("reason", e.getMessage())));
-                    }
-                });
-            }
-        });
-        return EditorResult.success("commands.bkeditor.status.sessionSaving");
-    }
-
     private void saveWarps(final EditorSession session) {
         if (warpRepositoryInstance == null) {
             return;
@@ -988,21 +1152,6 @@ public class EditorService {
             return;
         }
         graphNetworkRepository.saveInterGraphEdges(session.workspaceNetwork);
-    }
-
-    /**
-     * Cancels the current editor session.
-     *
-     * @param playerId editor player id
-     * @return operation result
-     */
-    public EditorResult cancel(final UUID playerId) {
-        if (playerEditors.remove(playerId) == null) {
-            return EditorResult.failure(NOT_EDITING);
-        }
-
-        unregisterVisualizer(playerId);
-        return EditorResult.success("commands.bkeditor.status.sessionCancelled");
     }
 
     /**
@@ -2199,6 +2348,26 @@ public class EditorService {
     }
 
     /**
+     * Kind of element a wand action would act on.
+     */
+    public enum WandSelection {
+        /**
+         * Nothing is selected.
+         */
+        NONE,
+
+        /**
+         * A node is selected.
+         */
+        NODE,
+
+        /**
+         * An edge is selected.
+         */
+        EDGE
+    }
+
+    /**
      * Placement mode for nodes.
      */
     public enum PlacementMode {
@@ -2405,6 +2574,26 @@ public class EditorService {
     private enum EditorMode {
         CREATE,
         EDIT
+    }
+
+    /**
+     * Receives editor session lifecycle notifications.
+     */
+    public interface SessionLifecycleListener {
+
+        /**
+         * Called after an editor session started for a player.
+         *
+         * @param playerId editor player id
+         */
+        void sessionStarted(UUID playerId);
+
+        /**
+         * Called after an editor session ended for a player.
+         *
+         * @param playerId editor player id
+         */
+        void sessionEnded(UUID playerId);
     }
 
     /**
@@ -2681,6 +2870,10 @@ public class EditorService {
         private Node lastPlacedNode;
 
         private String preset;
+
+        private WandMode wandMode = WandMode.CRUMB;
+
+        private WandProperty wandProperty = WandProperty.TYPE;
 
         private EditorSession(final EditorMode mode, final Graph graph, final EditorSettings settings) {
             this.mode = mode;
