@@ -6,9 +6,11 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -188,7 +190,9 @@ class WandListenerTest {
         when(editorService.wandSelection(PLAYER_ID)).thenReturn(EditorService.WandSelection.NODE);
 
         listener.onInteract(event);
+        verify(editorService, never()).deleteSelectedNodeAsync(any(), any());
 
+        listener.onInteract(event);
         verify(editorService).deleteSelectedNodeAsync(eq(PLAYER_ID), any());
 
         when(editorService.wandSelection(PLAYER_ID)).thenReturn(EditorService.WandSelection.EDGE);
@@ -196,7 +200,9 @@ class WandListenerTest {
                 .thenReturn(EditorService.EditorResult.success("commands.bkeditor.edge.removed"));
 
         listener.onInteract(event);
+        verify(editorService, never()).removeSelectedEdge(any());
 
+        listener.onInteract(event);
         verify(editorService).removeSelectedEdge(PLAYER_ID);
     }
 
@@ -214,11 +220,27 @@ class WandListenerTest {
     }
 
     @Test
-    void ignoresOffHandInteractions() {
-        when(event.getHand()).thenReturn(EquipmentSlot.OFF_HAND);
+    void offHandWandIsHandledLikeMainHandWand() {
+        lenient().when(event.getHand()).thenReturn(EquipmentSlot.OFF_HAND);
+        when(event.getAction()).thenReturn(Action.RIGHT_CLICK_BLOCK);
 
         listener.onInteract(event);
 
-        verify(event, never()).setCancelled(true);
+        verify(event).setCancelled(true);
+        verify(editorService).placeNodeAtExactLocation(eq(PLAYER_ID), any(Location.class));
+    }
+
+    @Test
+    void entityInteractionWithWandIsCancelledDuringSession() {
+        final PlayerInteractEntityEvent entityEvent = mock(PlayerInteractEntityEvent.class);
+        final PlayerInventory inventory = mock(PlayerInventory.class);
+        when(entityEvent.getPlayer()).thenReturn(player);
+        when(entityEvent.getHand()).thenReturn(EquipmentSlot.HAND);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getItem(EquipmentSlot.HAND)).thenReturn(item);
+
+        listener.onInteractEntity(entityEvent);
+
+        verify(entityEvent).setCancelled(true);
     }
 }

@@ -43,6 +43,7 @@ import com.github.roleplaycauldron.spellbook.core.scheduler.SimpleScheduler;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Starting point of the plugin.
@@ -69,6 +71,12 @@ public class Brotkrumen extends JavaPlugin {
      * The service for warp-related operations.
      */
     private WrappedLogger log;
+
+    private final ReentrantLock wandSettingsLock = new ReentrantLock();
+
+    private FileConfiguration cachedWandConfig;
+
+    private WandSettings cachedWandSettings;
 
     /**
      * The storage handler for database operations.
@@ -172,7 +180,7 @@ public class Brotkrumen extends JavaPlugin {
                 graphNetworkRepository, warpRepository);
         final ResolveGuidanceSessionManager resolveSessions = new ResolveGuidanceSessionManager(reg);
 
-        final WandItems wandItems = new WandItems(this, () -> WandSettings.fromConfig(getConfig()), localization);
+        final WandItems wandItems = new WandItems(this, this::wandSettings, localization);
         registerWandLifecycle(editorService, wandItems);
 
         registerCommands(executor, editorService, resolveSessions, wandItems);
@@ -241,12 +249,28 @@ public class Brotkrumen extends JavaPlugin {
         }
     }
 
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+    private WandSettings wandSettings() {
+        wandSettingsLock.lock();
+        try {
+            final FileConfiguration current = getConfig();
+            // Identity comparison is intentional: the config instance is replaced on reload.
+            if (current != cachedWandConfig) {
+                cachedWandSettings = WandSettings.fromConfig(current, message -> log.warnF("%s", message));
+                cachedWandConfig = current;
+            }
+            return cachedWandSettings;
+        } finally {
+            wandSettingsLock.unlock();
+        }
+    }
+
     private void registerWandLifecycle(final EditorService editorService, final WandItems wandItems) {
         editorService.setSessionLifecycleListener(new EditorService.SessionLifecycleListener() {
             @Override
             public void sessionStarted(final UUID playerId) {
                 final Player player = getServer().getPlayer(playerId);
-                if (player != null && WandSettings.fromConfig(getConfig()).giveOnSessionStart()) {
+                if (player != null && wandSettings().giveOnSessionStart()) {
                     wandItems.give(player, WandMode.CRUMB);
                 }
             }
@@ -273,7 +297,7 @@ public class Brotkrumen extends JavaPlugin {
                                    final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
         getServer().getPluginManager().registerEvents(new WandListener(editorService, wandItems,
-                () -> WandSettings.fromConfig(getConfig()), new EditorCommandFeedback(localization)), this);
+                this::wandSettings, new EditorCommandFeedback(localization)), this);
         getServer().getPluginManager().registerEvents(new PlayerDisconnectCleanupListener(resolveSessions, editorService, reg), this);
     }
 

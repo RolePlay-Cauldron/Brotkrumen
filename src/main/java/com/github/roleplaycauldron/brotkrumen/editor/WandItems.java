@@ -4,6 +4,7 @@ import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -93,7 +94,7 @@ public final class WandItems {
      *
      * @param player target player
      * @param mode   wand mode shown on the new item
-     * @return true if a wand was added to the inventory
+     * @return true if a wand was added; false if one is already carried or the inventory is full
      */
     public boolean give(final Player player, final WandMode mode) {
         final PlayerInventory inventory = player.getInventory();
@@ -102,18 +103,27 @@ public final class WandItems {
                 return false;
             }
         }
-        inventory.addItem(create(mode)).values()
-                .forEach(rest -> player.getWorld().dropItemNaturally(player.getLocation(), rest));
+        if (inventory.firstEmpty() == -1) {
+            return false;
+        }
+        inventory.addItem(create(mode));
         return true;
     }
 
     /**
-     * Removes all wands from a player's inventory.
+     * Removes all wands from a player's inventory, ender chest and cursor.
      *
      * @param player target player
      */
     public void removeFrom(final Player player) {
-        final PlayerInventory inventory = player.getInventory();
+        removeFrom(player.getInventory());
+        removeFrom(player.getEnderChest());
+        if (isWand(player.getItemOnCursor())) {
+            player.setItemOnCursor(null);
+        }
+    }
+
+    private void removeFrom(final Inventory inventory) {
         final ItemStack[] contents = inventory.getContents();
         for (int slot = 0; slot < contents.length; slot++) {
             if (isWand(contents[slot])) {

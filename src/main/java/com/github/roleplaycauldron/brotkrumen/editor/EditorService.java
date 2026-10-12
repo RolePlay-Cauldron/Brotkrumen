@@ -366,7 +366,7 @@ public class EditorService {
      * @param settings  editor settings
      * @param callback  result callback on the main thread
      */
-    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    @SuppressWarnings({"PMD.AvoidCatchingGenericException", "PMD.CognitiveComplexity"})
     public void startGraphEditAsync(final UUID playerId, final String graphName, final EditorSettings settings,
                                     final Consumer<EditorResult> callback) {
         final EditorResult validation = validateStart(playerId, graphName, settings);
@@ -391,6 +391,13 @@ public class EditorService {
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (graph.isEmpty()) {
                     callback.accept(EditorResult.failure(GRAPH_NOT_FOUND));
+                    return;
+                }
+                if (plugin.getServer().getPlayer(playerId) == null) {
+                    return;
+                }
+                if (playerEditors.containsKey(playerId)) {
+                    callback.accept(EditorResult.failure("commands.bkeditor.common.alreadyEditing"));
                     return;
                 }
                 final EditorSession session = EditorSession.edit(graph.get(), settings.normalized());

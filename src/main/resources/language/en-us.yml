@@ -138,6 +138,7 @@ messages:
           state: "<#CBD5E1>Wand edits: <#38BDF8>edge state</#38BDF8> (open / blocked)"
           traversal: "<#CBD5E1>Wand edits: <#38BDF8>traversal</#38BDF8> (normal / teleport)"
         nothingNearby: "<#F43F5E>No node or edge found near the clicked block."
+        confirmDelete: "<#FACC15>Sneak + right-click again within 5 seconds to confirm deletion."
 
       status:
         sessionStartedCreate: "<#22C55E>Editor started. <#CBD5E1>Tracing steps for graph <#38BDF8><graph></#38BDF8>."

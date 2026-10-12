@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Configuration of the editor wand.
@@ -37,7 +38,25 @@ public record WandSettings(Material material, boolean giveOnSessionStart, boolea
      * @return wand settings
      */
     public static WandSettings fromConfig(final FileConfiguration config) {
-        final Material material = parseMaterial(config.getString("wand.material", FALLBACK_MATERIAL.name()));
+        return fromConfig(config, message -> {
+        });
+    }
+
+    /**
+     * Reads wand settings from the plugin configuration, reporting replaced invalid values to the given sink.
+     *
+     * @param config  plugin configuration
+     * @param warning receives a message for every value that was replaced by its default
+     * @return wand settings
+     */
+    public static WandSettings fromConfig(final FileConfiguration config, final Consumer<String> warning) {
+        final String configured = config.getString("wand.material", FALLBACK_MATERIAL.name());
+        Material material = parseMaterial(configured);
+        if (material == null) {
+            warning.accept("Invalid wand.material '" + configured + "'; using " + FALLBACK_MATERIAL.name()
+                    + ". The wand must be a non-placeable, non-tool item.");
+            material = FALLBACK_MATERIAL;
+        }
         return new WandSettings(material,
                 config.getBoolean("wand.giveOnSessionStart", true),
                 config.getBoolean("wand.offsetFromSideFace", false),
@@ -49,6 +68,10 @@ public record WandSettings(Material material, boolean giveOnSessionStart, boolea
 
     private static Material parseMaterial(final String value) {
         final Material parsed = value == null ? null : Material.matchMaterial(value.trim().toUpperCase(Locale.ROOT));
-        return parsed == null || !parsed.isItem() || parsed.isAir() ? FALLBACK_MATERIAL : parsed;
+        if (parsed == null || !parsed.isItem() || parsed.isAir() || parsed.isBlock()
+                || parsed.getMaxDurability() > 0 || parsed.name().endsWith("_BUCKET")) {
+            return null;
+        }
+        return parsed;
     }
 }

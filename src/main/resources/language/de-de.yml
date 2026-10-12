@@ -129,6 +129,7 @@ messages:
           state: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Kantenzustand</#38BDF8> (offen / blockiert)"
           traversal: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Durchquerung</#38BDF8> (normal / Teleport)"
         nothingNearby: "<#F43F5E>Kein Knoten oder keine Kante in der Nähe des angeklickten Blocks."
+        confirmDelete: "<#FACC15>Schleichen + Rechtsklick innerhalb von 5 Sekunden erneut ausführen, um das Löschen zu bestätigen."
 
       status:
         sessionStartedCreate: "<#22C55E>Editor gestartet. <#CBD5E1>Schritte für Graph <#38BDF8><graph></#38BDF8> werden aufgezeichnet."

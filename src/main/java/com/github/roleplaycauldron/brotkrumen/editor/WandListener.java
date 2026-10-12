@@ -11,9 +11,14 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -21,11 +26,16 @@ import java.util.function.Supplier;
 /**
  * Handles editor wand clicks.
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public final class WandListener implements Listener {
 
     private static final String NOTHING_NEARBY = "commands.bkeditor.wand.nothingNearby";
 
     private static final String NO_SELECTION = "commands.bkeditor.common.noSelection";
+
+    private static final String CONFIRM_DELETE = "commands.bkeditor.wand.confirmDelete";
+
+    private static final long DELETE_CONFIRM_WINDOW_MILLIS = 5_000L;
 
     private static final int PARTICLE_COUNT = 8;
 
@@ -38,6 +48,8 @@ public final class WandListener implements Listener {
     private final Supplier<WandSettings> settings;
 
     private final EditorCommandFeedback feedback;
+
+    private final Map<UUID, Long> pendingDeletes = new HashMap<>();
 
     /**
      * Creates the wand listener.
@@ -62,7 +74,7 @@ public final class WandListener implements Listener {
      */
     @EventHandler
     public void onInteract(final PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND || event.getAction() == Action.PHYSICAL) {
+        if (event.getAction() == Action.PHYSICAL) {
             return;
         }
         final Player player = event.getPlayer();
@@ -83,11 +95,59 @@ public final class WandListener implements Listener {
             toggleMode(player);
             return;
         }
-        if (mode.get() == WandMode.CRUMB) {
-            handleCrumb(player, action, event.getClickedBlock(), event.getBlockFace());
-        } else {
-            handleThread(player, action, event.getClickedBlock(), event.getBlockFace());
+        final Block block = event.getClickedBlock();
+        if (action == Action.LEFT_CLICK_BLOCK) {
+            if (block != null) {
+                select(player, placementLocation(block, event.getBlockFace()));
+            }
+            return;
         }
+        if (mode.get() == WandMode.CRUMB) {
+            handleCrumb(player, action, block, event.getBlockFace());
+        } else {
+            handleThread(player, action);
+        }
+    }
+
+    /**
+     * Blocks vanilla entity interactions while a wand is held during an editor session.
+     *
+     * @param event entity interaction event
+     */
+    @EventHandler
+    public void onInteractEntity(final PlayerInteractEntityEvent event) {
+        final Player player = event.getPlayer();
+        final ItemStack held = player.getInventory().getItem(event.getHand());
+        if (wandItems.isWand(held) && editorService.wandMode(player.getUniqueId()).isPresent()) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Prevents wands from being dropped into the world while a session is active.
+     *
+     * @param event drop event
+     */
+    @EventHandler
+    public void onDrop(final PlayerDropItemEvent event) {
+        if (wandItems.isWand(event.getItemDrop().getItemStack())
+                && editorService.wandMode(event.getPlayer().getUniqueId()).isPresent()) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Removes wands left over from sessions that ended without cleanup, for example after a crash.
+     *
+     * @param event join event
+     */
+    @EventHandler
+    public void onJoin(final PlayerJoinEvent event) {
+        final Player player = event.getPlayer();
+        if (editorService.wandMode(player.getUniqueId()).isEmpty()) {
+            wandItems.removeFrom(player);
+        }
+        pendingDeletes.remove(player.getUniqueId());
     }
 
     private void toggleMode(final Player player) {
@@ -96,14 +156,9 @@ public final class WandListener implements Listener {
         sendResult(player, result, player.getLocation());
     }
 
-    private void handleThread(final Player player, final Action action, final Block block, final BlockFace face) {
+    private void handleThread(final Player player, final Action action) {
         final UUID playerId = player.getUniqueId();
         switch (action) {
-            case LEFT_CLICK_BLOCK -> {
-                if (block != null) {
-                    select(player, placementLocation(block, face));
-                }
-            }
             case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> {
                 if (player.isSneaking()) {
                     removeSelection(player);
@@ -122,6 +177,18 @@ public final class WandListener implements Listener {
 
     private void removeSelection(final Player player) {
         final UUID playerId = player.getUniqueId();
+        final EditorService.WandSelection selection = editorService.wandSelection(playerId);
+        if (selection == EditorService.WandSelection.NONE) {
+            sendResult(player, EditorService.EditorResult.failure(NO_SELECTION), player.getLocation());
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        final Long requested = pendingDeletes.remove(playerId);
+        if (requested == null || now - requested > DELETE_CONFIRM_WINDOW_MILLIS) {
+            pendingDeletes.put(playerId, now);
+            feedback.send(player, EditorService.EditorResult.failure(CONFIRM_DELETE));
+            return;
+        }
         switch (editorService.wandSelection(playerId)) {
             case NODE -> editorService.deleteSelectedNodeAsync(playerId,
                     result -> sendResult(player, result, player.getLocation()));
@@ -138,11 +205,6 @@ public final class WandListener implements Listener {
                 } else if (block != null) {
                     final Location target = placementLocation(block, face);
                     sendResult(player, editorService.placeNodeAtExactLocation(player.getUniqueId(), target), target);
-                }
-            }
-            case LEFT_CLICK_BLOCK -> {
-                if (block != null) {
-                    select(player, placementLocation(block, face));
                 }
             }
             default -> {
