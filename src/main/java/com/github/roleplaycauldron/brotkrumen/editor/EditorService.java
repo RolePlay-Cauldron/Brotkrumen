@@ -465,6 +465,29 @@ public class EditorService {
     }
 
     /**
+     * Makes the selected node of the active graph the point from which placement continues.
+     *
+     * @param playerId editor player id
+     * @return result of the anchor change; a failure when the selected node is not part of the active graph
+     */
+    public EditorResult useSelectedNodeAsAppendAnchor(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        if (session.selectedNode == null || session.selectedNodeRef == null
+                || session.selectedNodeRef.graphDbId() != session.graph.getGraphId()) {
+            return EditorResult.failure("commands.bkeditor.common.noSelection");
+        }
+        session.selectedAppendNode = session.selectedNode;
+        session.lastPlacedNode = session.selectedNode;
+        if (session.placementMode == PlacementMode.WAITING_FOR_ANCHOR) {
+            session.placementMode = PlacementMode.AUTO;
+        }
+        return EditorResult.success("commands.bkeditor.status.appendAnchorSelected");
+    }
+
+    /**
      * Selects the closest nearby edge without changing placement state.
      *
      * @param playerId editor player id
@@ -815,6 +838,7 @@ public class EditorService {
                     flags.contains(EdgeFlag.BLOCKED) ? EdgeState.OPEN : EdgeState.BLOCKED);
             case TRAVERSAL -> updateSelectedEdgeTraversal(playerId,
                     flags.contains(EdgeFlag.TELEPORT) ? EdgeTraversal.NORMAL : EdgeTraversal.TELEPORT);
+            case DIRECTION -> flipSelectedEdge(playerId);
         };
     }
 
@@ -1371,6 +1395,40 @@ public class EditorService {
                 callback.accept(EditorResult.success("commands.bkeditor.reference.cleared"));
             });
         });
+    }
+
+    /**
+     * Reverses source and target of the selected directed edge while preserving state and traversal flags.
+     *
+     * @param playerId editor player id
+     * @return mutation result
+     */
+    public EditorResult flipSelectedEdge(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        if (session.selectedEdge == null && session.selectedInterGraphEdge == null) {
+            return EditorResult.failure("commands.bkeditor.common.edgeSelectionRequiredFlip");
+        }
+        if (session.selectedInterGraphEdge != null) {
+            final InterGraphEdge selected = session.selectedInterGraphEdge;
+            if (selected.flags().contains(EdgeFlag.UNDIRECTED)) {
+                return EditorResult.failure("commands.bkeditor.common.edgeFlipUndirected");
+            }
+            session.selectedInterGraphEdge = replaceInterGraphRelationship(session, selected.target(),
+                    selected.source(), selected.cost(), EdgeType.DIRECTED, selected.flags()).getFirst();
+        } else {
+            final Edge selected = session.selectedEdge;
+            if (selected.flags().contains(EdgeFlag.UNDIRECTED)) {
+                return EditorResult.failure("commands.bkeditor.common.edgeFlipUndirected");
+            }
+            final Graph graph = graphById(session, session.selectedEdgeGraphId);
+            session.selectedEdge = replaceRelationship(graph, selected.target(), selected.source(), selected.cost(),
+                    EdgeType.DIRECTED, selected.flags()).getFirst();
+        }
+        refreshVisualizer(playerId);
+        return EditorResult.success("commands.bkeditor.edge.flipped");
     }
 
     /**

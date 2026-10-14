@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Repeats editor actionbar guidance for players waiting to continue placement.
@@ -17,6 +18,8 @@ public final class EditorWaitingActionBarReminder {
 
     private final EditorService editorService;
 
+    private final Predicate<Player> suppressed;
+
     private Localization localization;
 
     /**
@@ -25,7 +28,18 @@ public final class EditorWaitingActionBarReminder {
      * @param editorService editor state provider
      */
     public EditorWaitingActionBarReminder(final EditorService editorService) {
+        this(editorService, player -> false);
+    }
+
+    /**
+     * Creates a reminder sender that stays silent for some players.
+     *
+     * @param editorService editor state provider
+     * @param suppressed    true for players who should not receive the reminder, for example while they hold the wand
+     */
+    public EditorWaitingActionBarReminder(final EditorService editorService, final Predicate<Player> suppressed) {
         this.editorService = editorService;
+        this.suppressed = suppressed;
     }
 
     /**
@@ -48,7 +62,7 @@ public final class EditorWaitingActionBarReminder {
                 continue;
             }
             final Player player = playerLookup.apply(playerId);
-            if (player != null) {
+            if (player != null && !suppressed.test(player)) {
                 player.sendActionBar(localization == null
                         ? net.kyori.adventure.text.Component.empty()
                         : localization.getFormattedMessage(EditorService.waitingAnchorActionBarMessage()));

@@ -287,7 +287,9 @@ public class Brotkrumen extends JavaPlugin {
 
     private void registerCommands(final EffectExecutor executor, final EditorService editorService,
                                   final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
-        new EditorWaitingActionBarReminder(editorService).start(this);
+        new EditorWaitingActionBarReminder(editorService, player ->
+                wandItems.isWand(player.getInventory().getItemInMainHand())
+                        || wandItems.isWand(player.getInventory().getItemInOffHand())).start(this);
         new EditorCommand(this, loggerFactory, editorService, graphRepository, localization, wandItems);
         new BkCommand(this, graphRepository, graphNetworkRepository, editorService.warpRepository(), storage, reg,
                 loggerFactory, executor, localization, resolveSessions);
@@ -295,7 +297,8 @@ public class Brotkrumen extends JavaPlugin {
 
     private void registerListeners(final EditorService editorService,
                                    final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
-        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
+        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService, wandItems,
+                this::wandSettings), this);
         getServer().getPluginManager().registerEvents(new WandListener(editorService, wandItems,
                 this::wandSettings, new EditorCommandFeedback(localization)), this);
         getServer().getPluginManager().registerEvents(new PlayerDisconnectCleanupListener(resolveSessions, editorService, reg), this);

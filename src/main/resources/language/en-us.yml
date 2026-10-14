@@ -107,6 +107,8 @@ messages:
         edgeSelectionRequiredState: "<#F43F5E>Select a graph edge before changing its state."
         edgeSelectionRequiredRemove: "<#F43F5E>Select a graph edge before removing it."
         edgeSelectionRequiredTraversal: "<#F43F5E>Select a graph edge before changing its traversal."
+        edgeSelectionRequiredFlip: "<#F43F5E>Select a graph edge before flipping its direction."
+        edgeFlipUndirected: "<#F43F5E>Only directed edges can be flipped. Set the edge type to directed first."
         activeGraphAlreadyVisible: "<#F43F5E>The active graph is already visible."
         graphNotVisible: "<#F43F5E>That graph is not visible in the editor view."
         nodeSelectionRequiredConnections: "<#F43F5E>Select a graph node before inspecting connections."
@@ -126,8 +128,18 @@ messages:
           crumb: "<#FACC15>Brotkrumen Wand <#CBD5E1>· Crumb"
           thread: "<#38BDF8>Brotkrumen Wand <#CBD5E1>· Thread"
         itemLore:
-          crumb: "<#CBD5E1>Right-click: place node. Left-click: select. Sneak + right-click: undo. Sneak + left-click in air: switch mode."
-          thread: "<#CBD5E1>Left-click: select. Right-click: connect or change. Right-click in air: next property. Sneak + right-click: delete. Sneak + left-click in air: switch mode."
+          crumb: |
+            <#CBD5E1>Right-click block: place node at block
+            <#CBD5E1>Right-click air: place node at your position
+            <#CBD5E1>Sneak + right-click: undo
+            <#CBD5E1>Left-click: select
+            <#CBD5E1>Sneak + left-click in air: switch mode
+          thread: |
+            <#CBD5E1>Left-click: select
+            <#CBD5E1>Right-click block: connect or change property
+            <#CBD5E1>Right-click air: next property
+            <#CBD5E1>Sneak + right-click: delete
+            <#CBD5E1>Sneak + left-click in air: switch mode
         given: "<#22C55E>You received a Brotkrumen Wand."
         alreadyCarried: "<#FACC15>You already carry a Brotkrumen Wand."
         mode:
@@ -137,6 +149,7 @@ messages:
           type: "<#CBD5E1>Wand edits: <#38BDF8>edge type</#38BDF8> (directed / undirected)"
           state: "<#CBD5E1>Wand edits: <#38BDF8>edge state</#38BDF8> (open / blocked)"
           traversal: "<#CBD5E1>Wand edits: <#38BDF8>traversal</#38BDF8> (normal / teleport)"
+          direction: "<#CBD5E1>Wand edits: <#38BDF8>direction</#38BDF8> (flips a directed edge)"
         nothingNearby: "<#F43F5E>No node or edge found near the clicked block."
         confirmDelete: "<#FACC15>Sneak + right-click again within 5 seconds to confirm deletion."
 
@@ -185,6 +198,7 @@ messages:
         typeUpdated: "<#22C55E>Set selected edge type to <#38BDF8><type></#38BDF8>."
         stateUpdated: "<#22C55E>Set selected edge state to <#38BDF8><state></#38BDF8>."
         traversalUpdated: "<#22C55E>Set selected edge traversal to <#38BDF8><traversal></#38BDF8>."
+        flipped: "<#22C55E>Flipped the direction of the selected edge."
         removed: "<#22C55E>Removed <#38BDF8><count></#38BDF8> selected edge record(s)."
 
       reference:

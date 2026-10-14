@@ -2,6 +2,7 @@ package com.github.roleplaycauldron.brotkrumen.editor;
 
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -11,6 +12,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -59,7 +61,12 @@ public final class WandItems {
 
     private void applyMode(final ItemMeta meta, final WandMode mode) {
         meta.displayName(localization.getFormattedMessage(ITEM_NAME_KEY + mode.configValue()));
-        meta.lore(List.<Component>of(localization.getFormattedMessage(ITEM_LORE_KEY + mode.configValue())));
+        final List<Component> lore = Arrays.stream(localization.getRawMessage(ITEM_LORE_KEY + mode.configValue())
+                        .split("\\R"))
+                .map(line -> localization.getMessageFromString(line)
+                        .decoration(TextDecoration.ITALIC, false))
+                .toList();
+        meta.lore(lore);
     }
 
     /**

@@ -15,10 +15,11 @@ import java.util.function.Consumer;
  * @param soundFeedback      whether wand clicks play a confirmation sound
  * @param particleFeedback   whether wand clicks spawn confirmation particles
  * @param defaultEdgeType    edge type used when the wand connects two nodes
+ * @param autoPlacementWhileHeld whether walking still places nodes automatically while the wand is held
  */
 public record WandSettings(Material material, boolean giveOnSessionStart, boolean offsetFromSideFace,
                            boolean soundFeedback, boolean particleFeedback,
-                           EditorService.EdgeType defaultEdgeType) {
+                           EditorService.EdgeType defaultEdgeType, boolean autoPlacementWhileHeld) {
 
     private static final Material FALLBACK_MATERIAL = Material.BREAD;
 
@@ -28,7 +29,7 @@ public record WandSettings(Material material, boolean giveOnSessionStart, boolea
      * @return default settings
      */
     public static WandSettings defaults() {
-        return new WandSettings(FALLBACK_MATERIAL, true, false, false, false, EditorService.EdgeType.UNDIRECTED);
+        return new WandSettings(FALLBACK_MATERIAL, true, false, false, false, EditorService.EdgeType.UNDIRECTED, false);
     }
 
     /**
@@ -63,7 +64,8 @@ public record WandSettings(Material material, boolean giveOnSessionStart, boolea
                 config.getBoolean("wand.feedback.sounds", false),
                 config.getBoolean("wand.feedback.particles", false),
                 EditorService.EdgeType.parse(config.getString("wand.defaultEdgeType", "undirected"))
-                        .orElse(EditorService.EdgeType.UNDIRECTED));
+                        .orElse(EditorService.EdgeType.UNDIRECTED),
+                config.getBoolean("wand.autoPlacementWhileHeld", false));
     }
 
     private static Material parseMaterial(final String value) {

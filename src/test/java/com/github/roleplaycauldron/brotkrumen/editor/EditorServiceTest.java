@@ -213,6 +213,8 @@ class EditorServiceTest {
         assertEquals("commands.bkeditor.wand.property.state", service.advanceWandProperty(PLAYER_ID).actionBarMessage());
         assertEquals("commands.bkeditor.wand.property.traversal",
                 service.advanceWandProperty(PLAYER_ID).actionBarMessage());
+        assertEquals("commands.bkeditor.wand.property.direction",
+                service.advanceWandProperty(PLAYER_ID).actionBarMessage());
         assertEquals("commands.bkeditor.wand.property.type", service.advanceWandProperty(PLAYER_ID).actionBarMessage());
         assertTrue(service.toggleWandMode(PLAYER_ID).success());
         assertEquals(Optional.of(WandMode.CRUMB), service.wandMode(PLAYER_ID));
@@ -549,6 +551,47 @@ class EditorServiceTest {
         assertFalse(service.showSelection(PLAYER_ID).success(), "Cleared selection should not be inspectable");
         assertNull(service.teleportToSelection(PLAYER_ID, location(0.0D)).destination(),
                 "Cleared selection should not produce a teleport destination");
+    }
+
+    @Test
+    void selectedNodeBecomesAppendAnchorWhenEditingExistingGraph() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        final Node first = graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+
+        assertFalse(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success(), "Nothing is selected");
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(3.0D)).success());
+
+        assertEquals(2, graph.getEdges().size(), "Undirected edge is stored as reciprocal records");
+        assertTrue(graph.getEdges().stream().anyMatch(edge -> edge.source().equals(first.graphId())));
+    }
+
+    @Test
+    @SuppressWarnings("PMD.UnitTestContainsTooManyAsserts")
+    void flipSelectedEdgeReversesDirectedEdgeAndRejectsUndirected() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        final Node first = graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        final Node second = graph.addNode(new Node(UUID.randomUUID(), 4.0D, 0.0D, 0.0D, WORLD_ID));
+
+        assertFalse(service.flipSelectedEdge(PLAYER_ID).success(), "Nothing is selected");
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(4.0D)).success());
+        assertTrue(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+        assertFalse(service.flipSelectedEdge(PLAYER_ID).success(), "Undirected edges cannot be flipped");
+        assertTrue(service.updateSelectedEdgeType(PLAYER_ID, EditorService.EdgeType.DIRECTED).success());
+        assertTrue(service.updateSelectedEdgeState(PLAYER_ID, EditorService.EdgeState.BLOCKED).success());
+
+        assertTrue(service.flipSelectedEdge(PLAYER_ID).success());
+
+        assertEquals(1, graph.getEdges().size());
+        final Edge edge = graph.getEdges().iterator().next();
+        assertEquals(second.graphId(), edge.source());
+        assertEquals(first.graphId(), edge.target());
+        assertTrue(edge.flags().contains(EdgeFlag.DIRECTED));
+        assertTrue(edge.flags().contains(EdgeFlag.BLOCKED), "Flip should preserve the blocked state");
     }
 
     @Test

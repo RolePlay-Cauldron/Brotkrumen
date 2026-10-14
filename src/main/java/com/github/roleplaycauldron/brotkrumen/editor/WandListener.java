@@ -98,7 +98,8 @@ public final class WandListener implements Listener {
         final Block block = event.getClickedBlock();
         if (action == Action.LEFT_CLICK_BLOCK) {
             if (block != null) {
-                select(player, placementLocation(block, event.getBlockFace()));
+                select(player, placementLocation(block, event.getBlockFace()),
+                        mode.get() == WandMode.CRUMB);
             }
             return;
         }
@@ -202,8 +203,8 @@ public final class WandListener implements Listener {
             case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> {
                 if (player.isSneaking()) {
                     sendResult(player, editorService.undo(player.getUniqueId(), 1), player.getLocation());
-                } else if (block != null) {
-                    final Location target = placementLocation(block, face);
+                } else {
+                    final Location target = block == null ? player.getLocation() : placementLocation(block, face);
                     sendResult(player, editorService.placeNodeAtExactLocation(player.getUniqueId(), target), target);
                 }
             }
@@ -213,8 +214,14 @@ public final class WandListener implements Listener {
         }
     }
 
-    private void select(final Player player, final Location target) {
+    private void select(final Player player, final Location target, final boolean setAnchor) {
         EditorService.EditorResult result = editorService.selectNearbyNode(player.getUniqueId(), target);
+        if (result.success() && setAnchor) {
+            final EditorService.EditorResult anchor = editorService.useSelectedNodeAsAppendAnchor(player.getUniqueId());
+            if (anchor.success()) {
+                result = anchor;
+            }
+        }
         if (!result.success()) {
             final EditorService.EditorResult edgeResult = editorService.selectNearbyEdge(player.getUniqueId(), target);
             result = edgeResult.success() ? edgeResult : EditorService.EditorResult.failure(NOTHING_NEARBY);

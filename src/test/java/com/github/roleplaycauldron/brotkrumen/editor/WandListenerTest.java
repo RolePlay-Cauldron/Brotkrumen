@@ -96,6 +96,18 @@ class WandListenerTest {
     }
 
     @Test
+    void rightClickInAirPlacesNodeAtPlayerLocation() {
+        when(event.getAction()).thenReturn(Action.RIGHT_CLICK_AIR);
+        when(event.getClickedBlock()).thenReturn(null);
+        final Location playerLocation = new Location(null, 1.5D, 70.0D, -3.5D);
+        when(player.getLocation()).thenReturn(playerLocation);
+
+        listener.onInteract(event);
+
+        verify(editorService).placeNodeAtExactLocation(PLAYER_ID, playerLocation);
+    }
+
+    @Test
     void sneakRightClickUndoesLastNode() {
         when(event.getAction()).thenReturn(Action.RIGHT_CLICK_BLOCK);
         when(player.isSneaking()).thenReturn(true);
@@ -111,7 +123,7 @@ class WandListenerTest {
     @Test
     void sideFaceOffsetPlacesNodeNextToClickedFace() {
         settings = new WandSettings(settings.material(), true, true, false, false,
-                settings.defaultEdgeType());
+                settings.defaultEdgeType(), false);
         when(event.getAction()).thenReturn(Action.RIGHT_CLICK_BLOCK);
         when(event.getBlockFace()).thenReturn(BlockFace.EAST);
 
@@ -138,6 +150,31 @@ class WandListenerTest {
     }
 
     @Test
+    void crumbLeftClickOnNodeMakesItTheAppendAnchor() {
+        when(event.getAction()).thenReturn(Action.LEFT_CLICK_BLOCK);
+        when(editorService.selectNearbyNode(eq(PLAYER_ID), any(Location.class)))
+                .thenReturn(EditorService.EditorResult.success("commands.bkeditor.selection.selectedNode"));
+        when(editorService.useSelectedNodeAsAppendAnchor(PLAYER_ID))
+                .thenReturn(EditorService.EditorResult.success("commands.bkeditor.status.appendAnchorSelected"));
+
+        listener.onInteract(event);
+
+        verify(editorService).useSelectedNodeAsAppendAnchor(PLAYER_ID);
+    }
+
+    @Test
+    void threadLeftClickDoesNotChangeAppendAnchor() {
+        when(editorService.wandMode(PLAYER_ID)).thenReturn(Optional.of(WandMode.THREAD));
+        when(event.getAction()).thenReturn(Action.LEFT_CLICK_BLOCK);
+        when(editorService.selectNearbyNode(eq(PLAYER_ID), any(Location.class)))
+                .thenReturn(EditorService.EditorResult.success("commands.bkeditor.selection.selectedNode"));
+
+        listener.onInteract(event);
+
+        verify(editorService, never()).useSelectedNodeAsAppendAnchor(any());
+    }
+
+    @Test
     void sneakLeftClickInAirTogglesModeAndRefreshesWands() {
         when(event.getAction()).thenReturn(Action.LEFT_CLICK_AIR);
         when(player.isSneaking()).thenReturn(true);
@@ -155,7 +192,7 @@ class WandListenerTest {
     @Test
     void threadRightClickBlockConnectsOrCyclesWithConfiguredEdgeType() {
         settings = new WandSettings(settings.material(), true, false, false, false,
-                EditorService.EdgeType.DIRECTED);
+                EditorService.EdgeType.DIRECTED, false);
         when(editorService.wandMode(PLAYER_ID)).thenReturn(Optional.of(WandMode.THREAD));
         when(event.getAction()).thenReturn(Action.RIGHT_CLICK_BLOCK);
         when(player.getLocation()).thenReturn(new Location(null, 0.0D, 0.0D, 0.0D));

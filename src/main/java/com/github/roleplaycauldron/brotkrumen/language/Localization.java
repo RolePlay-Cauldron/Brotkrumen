@@ -76,6 +76,16 @@ public class Localization {
     }
 
     /**
+     * Resolves a message with its MiniMessage tags still in place in non-player context.
+     *
+     * @param key message key
+     * @return raw MiniMessage string
+     */
+    public String getRawMessage(final String key) {
+        return resolveFromCandidates(nonPlayerCandidateTags(), key);
+    }
+
+    /**
      * Resolves a raw, unformatted message in non-player context.
      *
      * @param key message key

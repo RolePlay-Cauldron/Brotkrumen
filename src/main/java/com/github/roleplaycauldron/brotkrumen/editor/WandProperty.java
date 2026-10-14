@@ -18,7 +18,12 @@ public enum WandProperty {
     /**
      * Normal or teleport traversal.
      */
-    TRAVERSAL("traversal");
+    TRAVERSAL("traversal"),
+
+    /**
+     * Source and target of a directed edge, flipped on click.
+     */
+    DIRECTION("direction");
 
     private final String serializedValue;
 

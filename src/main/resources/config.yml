@@ -266,6 +266,10 @@ wand:
   # Edge type used when the wand connects two selected nodes in Thread mode: undirected or directed.
   defaultEdgeType: 'undirected'
 
+  # When enabled, walking keeps placing nodes automatically while the wand is held in an editor session.
+  # When disabled, auto-placement pauses while the wand is held and nodes are only placed by clicking.
+  autoPlacementWhileHeld: false
+
   # Optional click feedback. Both options are disabled by default.
   feedback:
     sounds: false
