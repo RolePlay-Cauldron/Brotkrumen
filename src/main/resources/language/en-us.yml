@@ -142,6 +142,9 @@ messages:
             <#CBD5E1>Sneak + left-click in air: switch mode
         given: "<#22C55E>You received a Brotkrumen Wand."
         alreadyCarried: "<#FACC15>You already carry a Brotkrumen Wand."
+        inventoryFull: "<#F43F5E>Your inventory is full. <#CBD5E1>Make room and use <#38BDF8>/bkeditor wand</#38BDF8>."
+        eaten: "<#FACC15>You're supposed to crumb and scatter it, not eat it! <#CBD5E1>Here, have a new one."
+        pausedForAnchor: "<#FACC15>Wand put away, placement paused. <#CBD5E1>Walk through a node or select one with the wand in Crumb mode to resume."
         mode:
           crumb: "<#22C55E>Wand mode: <#FACC15>Crumb</#FACC15> <#CBD5E1>(place and select nodes)"
           thread: "<#22C55E>Wand mode: <#38BDF8>Thread</#38BDF8> <#CBD5E1>(connect and edit)"

@@ -39,10 +39,11 @@ public final class EditorWandSubcommands {
                         return commandContext.getFeedback().send(player,
                                 EditorService.EditorResult.failure("commands.bkeditor.common.notEditing"));
                     }
-                    final boolean given = wandItems.give(player, commandContext.editorService()
+                    final WandItems.GiveResult result = wandItems.give(player, commandContext.editorService()
                             .wandMode(player.getUniqueId()).orElse(WandMode.CRUMB));
-                    return commandContext.getFeedback().send(player, EditorService.EditorResult.success(
-                            given ? "commands.bkeditor.wand.given" : "commands.bkeditor.wand.alreadyCarried"));
+                    return commandContext.getFeedback().send(player, result == WandItems.GiveResult.INVENTORY_FULL
+                            ? EditorService.EditorResult.failure(result.messageKey())
+                            : EditorService.EditorResult.success(result.messageKey()));
                 }));
     }
 }

@@ -270,8 +270,10 @@ public class Brotkrumen extends JavaPlugin {
             @Override
             public void sessionStarted(final UUID playerId) {
                 final Player player = getServer().getPlayer(playerId);
-                if (player != null && wandSettings().giveOnSessionStart()) {
-                    wandItems.give(player, WandMode.CRUMB);
+                if (player != null && wandSettings().giveOnSessionStart()
+                        && wandItems.give(player, WandMode.CRUMB) == WandItems.GiveResult.INVENTORY_FULL) {
+                    player.sendMessage(localization.getPrefixedMessage(
+                            WandItems.GiveResult.INVENTORY_FULL.messageKey()));
                 }
             }
 
@@ -297,10 +299,11 @@ public class Brotkrumen extends JavaPlugin {
 
     private void registerListeners(final EditorService editorService,
                                    final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
+        final EditorCommandFeedback feedback = new EditorCommandFeedback(localization);
         getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService, wandItems,
-                this::wandSettings), this);
+                this::wandSettings, feedback), this);
         getServer().getPluginManager().registerEvents(new WandListener(editorService, wandItems,
-                this::wandSettings, new EditorCommandFeedback(localization)), this);
+                this::wandSettings, feedback), this);
         getServer().getPluginManager().registerEvents(new PlayerDisconnectCleanupListener(resolveSessions, editorService, reg), this);
     }
 

@@ -97,24 +97,37 @@ public final class WandItems {
     }
 
     /**
+     * Checks whether an item can be eaten, which is the case for the default bread wand.
+     *
+     * @param item item to check, may be null
+     * @return true if the item material is edible
+     */
+    public boolean isEdible(final ItemStack item) {
+        return item != null && item.getType().isEdible();
+    }
+
+    /**
      * Gives a wand to a player unless they already carry one.
      *
      * @param player target player
      * @param mode   wand mode shown on the new item
-     * @return true if a wand was added; false if one is already carried or the inventory is full
+     * @return whether a wand was added, or why not
      */
-    public boolean give(final Player player, final WandMode mode) {
+    public GiveResult give(final Player player, final WandMode mode) {
         final PlayerInventory inventory = player.getInventory();
         for (final ItemStack stack : inventory.getContents()) {
             if (isWand(stack)) {
-                return false;
+                return GiveResult.ALREADY_CARRIED;
             }
         }
+        if (isWand(player.getItemOnCursor())) {
+            return GiveResult.ALREADY_CARRIED;
+        }
         if (inventory.firstEmpty() == -1) {
-            return false;
+            return GiveResult.INVENTORY_FULL;
         }
         inventory.addItem(create(mode));
-        return true;
+        return GiveResult.GIVEN;
     }
 
     /**
@@ -136,6 +149,41 @@ public final class WandItems {
             if (isWand(contents[slot])) {
                 inventory.setItem(slot, null);
             }
+        }
+    }
+
+    /**
+     * Outcome of giving a wand to a player.
+     */
+    public enum GiveResult {
+        /**
+         * A new wand was added to the inventory.
+         */
+        GIVEN("commands.bkeditor.wand.given"),
+
+        /**
+         * The player already carries a wand.
+         */
+        ALREADY_CARRIED("commands.bkeditor.wand.alreadyCarried"),
+
+        /**
+         * The inventory has no free slot for the wand.
+         */
+        INVENTORY_FULL("commands.bkeditor.wand.inventoryFull");
+
+        private final String key;
+
+        GiveResult(final String messageKey) {
+            this.key = messageKey;
+        }
+
+        /**
+         * Returns the localization key describing this outcome.
+         *
+         * @return message key
+         */
+        public String messageKey() {
+            return key;
         }
     }
 }

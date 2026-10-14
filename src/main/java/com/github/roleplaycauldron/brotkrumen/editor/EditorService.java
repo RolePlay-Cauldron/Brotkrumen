@@ -71,6 +71,8 @@ public class EditorService {
 
     private static final String NOT_EDITING = "commands.bkeditor.common.notEditing";
 
+    private static final String NO_SELECTION = "commands.bkeditor.common.noSelection";
+
     private static final String GRAPH_NOT_FOUND = "commands.bkeditor.common.graphNotFound";
 
     private static final String EDGE_ID_KEY = "edge_id";
@@ -477,7 +479,7 @@ public class EditorService {
         }
         if (session.selectedNode == null || session.selectedNodeRef == null
                 || session.selectedNodeRef.graphDbId() != session.graph.getGraphId()) {
-            return EditorResult.failure("commands.bkeditor.common.noSelection");
+            return EditorResult.failure(NO_SELECTION);
         }
         session.selectedAppendNode = session.selectedNode;
         session.lastPlacedNode = session.selectedNode;
@@ -560,7 +562,7 @@ public class EditorService {
                     "source", session.selectedInterGraphEdge.source().toString(),
                     "target", session.selectedInterGraphEdge.target().toString()));
         }
-        return EditorResult.failure("commands.bkeditor.common.noSelection");
+        return EditorResult.failure(NO_SELECTION);
     }
 
     /**
@@ -614,7 +616,7 @@ public class EditorService {
                             "commands.bkeditor.selection.teleportedEdge", location))
                     .orElseGet(() -> SelectionTeleportResult.failure("commands.bkeditor.selection.edgeIncomplete"));
         }
-        return SelectionTeleportResult.failure("commands.bkeditor.common.noSelection");
+        return SelectionTeleportResult.failure(NO_SELECTION);
     }
 
     /**
@@ -674,6 +676,7 @@ public class EditorService {
         if (session.lastPlacedNode != null) {
             session.graph.addEdge(session.lastPlacedNode.graphId(), created.graphId(),
                     EditorGeometry.distance(session.lastPlacedNode, placement), Set.of(EdgeFlag.UNDIRECTED));
+            session.placementPredecessors.put(created.graphId(), session.lastPlacedNode);
         }
 
         session.lastPlacedNode = created;
@@ -819,7 +822,7 @@ public class EditorService {
             return cycleSelectedEdgeProperty(playerId, session);
         }
         if (session.selectedNode == null) {
-            return EditorResult.failure("commands.bkeditor.common.noSelection");
+            return EditorResult.failure(NO_SELECTION);
         }
         if (session.edgeEndpointOne == null || session.edgeEndpointTwo == null) {
             return EditorResult.failure("commands.bkeditor.common.twoNodesRequired");
@@ -1624,6 +1627,7 @@ public class EditorService {
         session.workspaceNetwork.removeInterGraphEdgesTouching(session.selectedNodeRef);
         session.workspaceVersion++;
         session.graph.removeNode(session.selectedNode);
+        forgetDeletedPlacementNode(session, nodeId);
         session.pendingWarps.values().removeIf(warp -> warp.targetNodeId().equals(nodeId));
         persistedWarps.forEach(warp -> session.pendingDeletions.add(warp.key()));
         session.selectedNode = null;
@@ -1633,6 +1637,58 @@ public class EditorService {
         clearEdgeEndpoints(session);
         refreshVisualizer(playerId);
         return EditorResult.success("commands.bkeditor.node.deleted", Map.of(NODE_ID_KEY, nodeId.toString()));
+    }
+
+    /**
+     * Drops a deleted node from the placement state, so placement continues from the node it was attached to
+     * instead of connecting new nodes to a node that no longer exists.
+     */
+    private void forgetDeletedPlacementNode(final EditorSession session, final UUID nodeId) {
+        session.createdNodes.removeIf(node -> node.graphId().equals(nodeId));
+        final Node predecessor = session.placementPredecessors.remove(nodeId);
+        if (session.selectedAppendNode != null && session.selectedAppendNode.graphId().equals(nodeId)) {
+            session.selectedAppendNode = null;
+        }
+        if (session.lastPlacedNode != null && session.lastPlacedNode.graphId().equals(nodeId)) {
+            session.lastPlacedNode = currentNode(session.graph, predecessor).orElse(null);
+        }
+    }
+
+    /**
+     * Clears selections and edge endpoints that refer to nodes which are no longer part of their graph.
+     */
+    private void clearStaleSelection(final EditorSession session) {
+        if (isRemoved(session, session.selectedNodeRef)) {
+            session.selectedNode = null;
+            session.selectedNodeRef = null;
+        }
+        if (isSelectedEdgeRemoved(session)) {
+            session.selectedEdge = null;
+        }
+        if (session.selectedInterGraphEdge != null && (isRemoved(session, session.selectedInterGraphEdge.source())
+                || isRemoved(session, session.selectedInterGraphEdge.target()))) {
+            session.selectedInterGraphEdge = null;
+        }
+        if (isRemoved(session, session.edgeEndpointOne) || isRemoved(session, session.edgeEndpointTwo)) {
+            clearEdgeEndpoints(session);
+        }
+    }
+
+    private boolean isRemoved(final EditorSession session, final NodeRef ref) {
+        return ref != null && node(session, ref) == null;
+    }
+
+    private boolean isRemoved(final EditorSession session, final SelectedNode node) {
+        return node != null && isRemoved(session, node.ref());
+    }
+
+    private boolean isSelectedEdgeRemoved(final EditorSession session) {
+        if (session.selectedEdge == null) {
+            return false;
+        }
+        final Graph graph = graphById(session, session.selectedEdgeGraphId);
+        return graph == null || graph.getNodeById(session.selectedEdge.source()) == null
+                || graph.getNodeById(session.selectedEdge.target()) == null;
     }
 
     /**
@@ -1701,14 +1757,29 @@ public class EditorService {
         }
 
         int removed = 0;
+        Node predecessor = null;
         while (removed < amount && !session.createdNodes.isEmpty()) {
-            session.graph.removeNode(session.createdNodes.removeLast());
+            final Node node = session.createdNodes.removeLast();
+            session.graph.removeNode(node);
+            if (session.workspaceNetwork.removeInterGraphEdgesTouching(
+                    new NodeRef(session.graph.getGraphId(), node.graphId())) > 0) {
+                session.workspaceVersion++;
+            }
+            predecessor = session.placementPredecessors.remove(node.graphId());
             removed++;
         }
-        session.lastPlacedNode = session.createdNodes.peekLast();
+        // Continue from the node the oldest undone node was attached to, so undo after an anchor change
+        // returns to that branch instead of the most recently created node.
+        session.lastPlacedNode = currentNode(session.graph, predecessor)
+                .orElseGet(session.createdNodes::peekLast);
+        if (session.selectedAppendNode != null
+                && session.graph.getNodeById(session.selectedAppendNode.graphId()) == null) {
+            session.selectedAppendNode = null;
+        }
         if (session.lastPlacedNode == null) {
             session.lastPlacedNode = session.selectedAppendNode;
         }
+        clearStaleSelection(session);
         session.placementMode = session.continueRequiresNode ? PlacementMode.WAITING_FOR_ANCHOR : PlacementMode.PREVIEW;
         refreshVisualizer(playerId);
 
@@ -1717,6 +1788,65 @@ public class EditorService {
         return session.continueRequiresNode
                 ? EditorResult.success(message.message(), WAITING_FOR_ANCHOR_ACTION_BAR, message.replacements())
                 : message;
+    }
+
+    private Optional<Node> currentNode(final Graph graph, final Node node) {
+        if (node == null) {
+            return Optional.empty();
+        }
+        return graph.getNodes().stream()
+                .filter(candidate -> candidate.graphId().equals(node.graphId()))
+                .findFirst();
+    }
+
+    /**
+     * Pauses automatic placement until the player resumes from an existing node, for example after putting the
+     * wand away while walking-based placement was paused for it. Placement is not paused while the player is still
+     * within the node distance of the node placement continues from, for example after choosing an anchor or placing
+     * a node with the wand, because walking on from there links nodes exactly like regular walking would.
+     *
+     * @param playerId editor player id
+     * @param loc      current player location
+     * @return result asking the player to resume; an empty success when placement continues unchanged
+     */
+    public EditorResult pauseForAppendAnchor(final UUID playerId, final Location loc) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return EditorResult.failure(NOT_EDITING);
+        }
+        if (session.placementMode != PlacementMode.AUTO || isWithinNodeDistance(session, session.lastPlacedNode, loc)) {
+            return EditorResult.success("");
+        }
+        session.placementMode = PlacementMode.WAITING_FOR_ANCHOR;
+        return EditorResult.success("commands.bkeditor.wand.pausedForAnchor", WAITING_FOR_ANCHOR_ACTION_BAR);
+    }
+
+    private boolean isWithinNodeDistance(final EditorSession session, final Node node, final Location loc) {
+        return node == null || EditorGeometry.sameWorld(node, loc)
+                && EditorGeometry.distance(node, loc) <= session.nodeDistance;
+    }
+
+    /**
+     * Identifies the current selection so a pending action can check that the selection did not change.
+     *
+     * @param playerId editor player id
+     * @return identity of the selected node or edge, or empty when nothing is selected
+     */
+    public Optional<String> selectionIdentity(final UUID playerId) {
+        final EditorSession session = playerEditors.get(playerId);
+        if (session == null) {
+            return Optional.empty();
+        }
+        if (session.selectedInterGraphEdge != null) {
+            return Optional.of("inter-edge:" + session.selectedInterGraphEdge.edgeId());
+        }
+        if (session.selectedEdge != null) {
+            return Optional.of("edge:" + session.selectedEdge.edgeId());
+        }
+        if (session.selectedNodeRef != null) {
+            return Optional.of("node:" + session.selectedNodeRef);
+        }
+        return Optional.empty();
     }
 
     /**
@@ -2893,6 +3023,8 @@ public class EditorService {
         private final EditorMode mode;
 
         private final Deque<Node> createdNodes = new LinkedList<>();
+
+        private final Map<UUID, Node> placementPredecessors = new ConcurrentHashMap<>();
 
         private final Map<String, Warp> pendingWarps = new ConcurrentHashMap<>();
 

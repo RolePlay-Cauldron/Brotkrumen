@@ -133,6 +133,9 @@ messages:
             <#CBD5E1>Schleichen + Linksklick in die Luft: Modus wechseln
         given: "<#22C55E>Du hast einen Brotkrumen-Zauberstab erhalten."
         alreadyCarried: "<#FACC15>Du trägst bereits einen Brotkrumen-Zauberstab."
+        inventoryFull: "<#F43F5E>Dein Inventar ist voll. <#CBD5E1>Schaffe Platz und nutze <#38BDF8>/bkeditor wand</#38BDF8>."
+        eaten: "<#FACC15>Den sollst du zerkrümeln und verstreuen, nicht aufessen! <#CBD5E1>Hier hast du einen neuen."
+        pausedForAnchor: "<#FACC15>Zauberstab weggelegt, Platzierung pausiert. <#CBD5E1>Lauf durch einen Knoten oder wähle einen mit dem Zauberstab im Krumen-Modus aus, um weiterzumachen."
         mode:
           crumb: "<#22C55E>Zauberstab-Modus: <#FACC15>Krume</#FACC15> <#CBD5E1>(Knoten platzieren und auswählen)"
           thread: "<#22C55E>Zauberstab-Modus: <#38BDF8>Faden</#38BDF8> <#CBD5E1>(verbinden und bearbeiten)"

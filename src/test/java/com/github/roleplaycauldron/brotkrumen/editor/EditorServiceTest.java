@@ -262,6 +262,72 @@ class EditorServiceTest {
     }
 
     @Test
+    void placementAfterDeletingLastPlacedNodeContinuesFromItsPredecessor() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(5.0D)).success());
+        final EditorService.EditorResult[] deleted = new EditorService.EditorResult[1];
+        service.deleteSelectedNodeAsync(PLAYER_ID, result -> deleted[0] = result);
+        assertTrue(deleted[0].success());
+
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(10.0D)).success());
+
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertEquals(2, graph.getNodes().size());
+        final Node first = nodeAtX(graph, 0.0D);
+        final Node placed = nodeAtX(graph, 10.0D);
+        assertFalse(graph.getEdgesBetween(first.graphId(), placed.graphId()).isEmpty());
+    }
+
+    @Test
+    void undoClearsSelectedEdgeOfRemovedNodes() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyEdge(PLAYER_ID, location(2.5D)).success());
+
+        assertTrue(service.undo(PLAYER_ID, 1).success());
+
+        assertEquals(EditorService.WandSelection.NONE, service.wandSelection(PLAYER_ID));
+        assertFalse(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+    }
+
+    @Test
+    void undoKeepsSelectedNodeThatStillExistsButDropsRemovedEndpoint() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+
+        assertTrue(service.undo(PLAYER_ID, 1).success());
+
+        assertEquals(EditorService.WandSelection.NODE, service.wandSelection(PLAYER_ID));
+        assertFalse(service.wandPrimaryAction(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+    }
+
+    @Test
+    void placementAfterUndoingAnchorAndAllPlacedNodesStartsWithoutEdge() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+
+        assertTrue(service.undo(PLAYER_ID, 2).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(10.0D)).success());
+
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertEquals(1, graph.getNodes().size());
+        assertTrue(graph.getEdges().isEmpty());
+    }
+
+    private Node nodeAtX(final Graph graph, final double x) {
+        return graph.getNodes().stream().filter(node -> node.x() == x).findFirst().orElseThrow();
+    }
+
+    @Test
     void lifecycleListenerIsNotifiedOnStartAndCancel() {
         final EditorService.SessionLifecycleListener listener = mock(EditorService.SessionLifecycleListener.class);
         service.setSessionLifecycleListener(listener);
@@ -554,7 +620,7 @@ class EditorServiceTest {
     }
 
     @Test
-    void selectedNodeBecomesAppendAnchorWhenEditingExistingGraph() {
+    void selectedNodeBecomesAppendAnchor() {
         startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
         final Graph graph = service.getWorkingGraph(PLAYER_ID);
         final Node first = graph.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
@@ -566,6 +632,89 @@ class EditorServiceTest {
 
         assertEquals(2, graph.getEdges().size(), "Undirected edge is stored as reciprocal records");
         assertTrue(graph.getEdges().stream().anyMatch(edge -> edge.source().equals(first.graphId())));
+    }
+
+    @Test
+    void pauseForAppendAnchorWaitsUntilAnchorIsSelected() {
+        startCreation(defaultSettings(EditorService.PlacementMode.AUTO));
+        assertTrue(service.handleMovement(PLAYER_ID, location(0.0D)).success());
+        assertEquals(1, service.getWorkingGraph(PLAYER_ID).getNodes().size());
+
+        final EditorService.EditorResult paused = service.pauseForAppendAnchor(PLAYER_ID, location(20.0D));
+        assertEquals("commands.bkeditor.wand.pausedForAnchor", paused.message());
+        assertTrue(service.isWaitingForAppendAnchor(PLAYER_ID));
+
+        assertTrue(service.handleMovement(PLAYER_ID, location(20.0D)).success());
+        assertEquals(1, service.getWorkingGraph(PLAYER_ID).getNodes().size(), "Walking must not link the far node");
+
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+        assertFalse(service.isWaitingForAppendAnchor(PLAYER_ID));
+    }
+
+    @Test
+    void pauseForAppendAnchorIgnoresInactiveAutoPlacement() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+
+        assertTrue(service.pauseForAppendAnchor(PLAYER_ID, location(20.0D)).message().isBlank());
+        assertFalse(service.isWaitingForAppendAnchor(PLAYER_ID));
+        assertFalse(service.pauseForAppendAnchor(UUID.randomUUID(), location(20.0D)).success());
+    }
+
+    @Test
+    void pauseForAppendAnchorKeepsAnchorChosenNearby() {
+        startCreation(defaultSettings(EditorService.PlacementMode.AUTO));
+        assertTrue(service.handleMovement(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.handleMovement(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+
+        assertTrue(service.pauseForAppendAnchor(PLAYER_ID, location(3.0D)).message().isBlank());
+        assertFalse(service.isWaitingForAppendAnchor(PLAYER_ID));
+
+        assertTrue(service.handleMovement(PLAYER_ID, location(-5.0D)).success());
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        assertFalse(graph.getEdgesBetween(nodeAtX(graph, 0.0D).graphId(), nodeAtX(graph, -5.0D).graphId())
+                .isEmpty(), "Placement continues from the chosen anchor");
+    }
+
+    @Test
+    void undoAfterAnchorChangeContinuesFromAnchor() {
+        startCreation(new EditorService.EditorSettings(4, EditorService.PlacementMode.PREVIEW, false, "ember"));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(10.0D)).success());
+        final Graph graph = service.getWorkingGraph(PLAYER_ID);
+        final Node anchor = graph.getNodes().stream().filter(node -> node.x() == 0.0D).findFirst().orElseThrow();
+
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D, 0.0D, 5.0D)).success());
+        assertTrue(service.undo(PLAYER_ID, 1).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D, 0.0D, -5.0D)).success());
+
+        final Node branch = graph.getNodes().stream().filter(node -> node.z() == -5.0D).findFirst().orElseThrow();
+        assertTrue(graph.getEdges().stream().anyMatch(edge -> edge.source().equals(anchor.graphId())
+                && edge.target().equals(branch.graphId())), "Undo should keep the selected branch anchor");
+    }
+
+    @Test
+    void selectionIdentityChangesWithSelection() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(6.0D)).success());
+
+        assertTrue(service.selectionIdentity(PLAYER_ID).isEmpty());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        final Optional<String> first = service.selectionIdentity(PLAYER_ID);
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(6.0D)).success());
+        final Optional<String> second = service.selectionIdentity(PLAYER_ID);
+        assertTrue(service.selectNearbyEdge(PLAYER_ID, location(3.0D)).success());
+        final Optional<String> edge = service.selectionIdentity(PLAYER_ID);
+
+        assertTrue(first.isPresent());
+        assertNotEquals(first, second);
+        assertNotEquals(second, edge);
     }
 
     @Test
@@ -839,6 +988,35 @@ class EditorServiceTest {
                         network.getInterGraphEdges().isEmpty()
                                 && network.hasGraph(1)
                                 && network.hasGraph(2)));
+    }
+
+    @Test
+    void undoRemovesStagedInterGraphEdgesOfUndoneNodes() {
+        final Graph active = new Graph(1, "Active");
+        final Graph reference = new Graph(2, "Reference");
+        active.addNode(new Node(UUID.randomUUID(), 0.0D, 0.0D, 0.0D, WORLD_ID));
+        reference.addNode(new Node(UUID.randomUUID(), 12.0D, 0.0D, 0.0D, WORLD_ID));
+        when(graphRepository.getGraphByName("Active")).thenReturn(Optional.of(active));
+        when(graphRepository.getGraphByName("Reference")).thenReturn(Optional.of(reference));
+        when(graphNetworkRepository.loadInterGraphEdges(any())).thenReturn(Set.of());
+
+        assertTrue(service.startGraphEdit(PLAYER_ID, "Active", defaultSettings()).success());
+        assertTrue(service.addReferenceGraph(PLAYER_ID, "Reference").success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.useSelectedNodeAsAppendAnchor(PLAYER_ID).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(8.0D)).success());
+        assertTrue(service.clearSelection(PLAYER_ID).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(8.0D)).success());
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(12.0D)).success());
+        assertTrue(service.createSelectedNodeEdge(PLAYER_ID, EditorService.EdgeType.UNDIRECTED).success());
+
+        assertTrue(service.undo(PLAYER_ID, 1).success());
+        assertEquals(EditorService.WandSelection.NONE, service.wandSelection(PLAYER_ID));
+        assertTrue(service.finishRouteCreation(PLAYER_ID).success());
+
+        verify(graphNetworkRepository).saveInterGraphEdges(org.mockito.Mockito
+                .<com.github.roleplaycauldron.brotkrumen.graph.GraphNetwork>argThat(network ->
+                        network.getInterGraphEdges().isEmpty()));
     }
 
     @Test

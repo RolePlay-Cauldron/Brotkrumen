@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.editor;
 
 import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommandFeedback;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -11,11 +12,21 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +37,7 @@ import java.util.function.Supplier;
 /**
  * Handles editor wand clicks.
  */
-@SuppressWarnings("PMD.TooManyMethods")
+@SuppressWarnings({"PMD.TooManyMethods", "PMD.CouplingBetweenObjects"})
 public final class WandListener implements Listener {
 
     private static final String NOTHING_NEARBY = "commands.bkeditor.wand.nothingNearby";
@@ -34,6 +45,8 @@ public final class WandListener implements Listener {
     private static final String NO_SELECTION = "commands.bkeditor.common.noSelection";
 
     private static final String CONFIRM_DELETE = "commands.bkeditor.wand.confirmDelete";
+
+    private static final String WAND_EATEN = "commands.bkeditor.wand.eaten";
 
     private static final long DELETE_CONFIRM_WINDOW_MILLIS = 5_000L;
 
@@ -49,7 +62,7 @@ public final class WandListener implements Listener {
 
     private final EditorCommandFeedback feedback;
 
-    private final Map<UUID, Long> pendingDeletes = new HashMap<>();
+    private final Map<UUID, PendingDelete> pendingDeletes = new HashMap<>();
 
     /**
      * Creates the wand listener.
@@ -86,9 +99,7 @@ public final class WandListener implements Listener {
         if (mode.isEmpty()) {
             return;
         }
-        event.setUseItemInHand(Event.Result.DENY);
-        event.setUseInteractedBlock(Event.Result.DENY);
-        event.setCancelled(true);
+        blockVanillaUse(event, player);
 
         final Action action = event.getAction();
         if (action == Action.LEFT_CLICK_AIR && player.isSneaking()) {
@@ -125,6 +136,74 @@ public final class WandListener implements Listener {
     }
 
     /**
+     * Blocks vanilla interactions at an entity position, such as putting the wand on an armor stand. This event
+     * has its own handler list, so {@link #onInteractEntity(PlayerInteractEntityEvent)} does not receive it.
+     *
+     * @param event entity interaction event
+     */
+    @EventHandler
+    public void onInteractAtEntity(final PlayerInteractAtEntityEvent event) {
+        onInteractEntity(event);
+    }
+
+    /**
+     * Keeps wands out of containers, crafting grids and bundles, so they cannot outlive the editor session. Creative
+     * inventory changes arrive here as well, because {@code InventoryCreativeEvent} shares this handler list.
+     *
+     * @param event inventory click event
+     */
+    @EventHandler
+    public void onInventoryClick(final InventoryClickEvent event) {
+        if (movesWandOutOfPlayerInventory(event)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Keeps wands from being dragged into containers or crafting grids.
+     *
+     * @param event inventory drag event
+     */
+    @EventHandler
+    public void onInventoryDrag(final InventoryDragEvent event) {
+        final int topSize = event.getView().getTopInventory().getSize();
+        if (wandItems.isWand(event.getOldCursor())
+                && event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
+            event.setCancelled(true);
+        }
+    }
+
+    private boolean movesWandOutOfPlayerInventory(final InventoryClickEvent event) {
+        final Inventory clicked = event.getClickedInventory();
+        if (clicked == null) {
+            return false;
+        }
+        if (!(clicked instanceof PlayerInventory)) {
+            return wandItems.isWand(event.getCursor()) || wandItems.isWand(swappedItem(event));
+        }
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+            return wandItems.isWand(event.getCurrentItem())
+                    && event.getView().getTopInventory().getType() != InventoryType.CRAFTING;
+        }
+        return wandItems.isWand(event.getCursor()) && isBundle(event.getCurrentItem())
+                || wandItems.isWand(event.getCurrentItem()) && isBundle(event.getCursor());
+    }
+
+    private ItemStack swappedItem(final InventoryClickEvent event) {
+        final PlayerInventory inventory = event.getWhoClicked().getInventory();
+        if (event.getClick() == ClickType.SWAP_OFFHAND) {
+            return inventory.getItemInOffHand();
+        }
+        final int button = event.getHotbarButton();
+        return button < 0 ? null : inventory.getItem(button);
+    }
+
+    private boolean isBundle(final ItemStack item) {
+        // Name check, because colored bundles are not part of the compiled API version.
+        return item != null && item.getType().name().endsWith("BUNDLE");
+    }
+
+    /**
      * Prevents wands from being dropped into the world while a session is active.
      *
      * @param event drop event
@@ -135,6 +214,29 @@ public final class WandListener implements Listener {
                 && editorService.wandMode(event.getPlayer().getUniqueId()).isPresent()) {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * Replaces a wand eaten during an editor session with a new one, and keeps non-survival players from eating it.
+     *
+     * @param event consume event
+     */
+    @EventHandler
+    public void onConsume(final PlayerItemConsumeEvent event) {
+        final Player player = event.getPlayer();
+        if (!wandItems.isWand(event.getItem())) {
+            return;
+        }
+        final Optional<WandMode> mode = editorService.wandMode(player.getUniqueId());
+        if (mode.isEmpty()) {
+            return;
+        }
+        if (player.getGameMode() != GameMode.SURVIVAL) {
+            event.setCancelled(true);
+            return;
+        }
+        event.setReplacement(wandItems.create(mode.get()));
+        feedback.send(player, EditorService.EditorResult.success(WAND_EATEN));
     }
 
     /**
@@ -149,6 +251,32 @@ public final class WandListener implements Listener {
             wandItems.removeFrom(player);
         }
         pendingDeletes.remove(player.getUniqueId());
+    }
+
+    /**
+     * Drops a pending delete confirmation of a player who leaves.
+     *
+     * @param event quit event
+     */
+    @EventHandler
+    public void onQuit(final PlayerQuitEvent event) {
+        pendingDeletes.remove(event.getPlayer().getUniqueId());
+    }
+
+    private void blockVanillaUse(final PlayerInteractEvent event, final Player player) {
+        if (mayEat(player, event.getItem())) {
+            // Survival players may still eat an edible wand; the consume handler hands out a fresh one.
+            event.setUseInteractedBlock(Event.Result.DENY);
+            event.setUseItemInHand(Event.Result.DEFAULT);
+            return;
+        }
+        event.setUseItemInHand(Event.Result.DENY);
+        event.setUseInteractedBlock(Event.Result.DENY);
+        event.setCancelled(true);
+    }
+
+    private boolean mayEat(final Player player, final ItemStack item) {
+        return player.getGameMode() == GameMode.SURVIVAL && wandItems.isEdible(item);
     }
 
     private void toggleMode(final Player player) {
@@ -184,9 +312,11 @@ public final class WandListener implements Listener {
             return;
         }
         final long now = System.currentTimeMillis();
-        final Long requested = pendingDeletes.remove(playerId);
-        if (requested == null || now - requested > DELETE_CONFIRM_WINDOW_MILLIS) {
-            pendingDeletes.put(playerId, now);
+        final String selected = editorService.selectionIdentity(playerId).orElse("");
+        final PendingDelete requested = pendingDeletes.remove(playerId);
+        if (requested == null || now - requested.requestedAt() > DELETE_CONFIRM_WINDOW_MILLIS
+                || !requested.selection().equals(selected)) {
+            pendingDeletes.put(playerId, new PendingDelete(now, selected));
             feedback.send(player, EditorService.EditorResult.failure(CONFIRM_DELETE));
             return;
         }
@@ -250,5 +380,14 @@ public final class WandListener implements Listener {
             player.spawnParticle(Particle.HAPPY_VILLAGER, effectLocation, PARTICLE_COUNT, PARTICLE_SPREAD, PARTICLE_SPREAD,
                     PARTICLE_SPREAD, 0.0D);
         }
+    }
+
+    /**
+     * Delete request waiting for confirmation.
+     *
+     * @param requestedAt time of the first click in epoch milliseconds
+     * @param selection   identity of the selection the request was made for
+     */
+    private record PendingDelete(long requestedAt, String selection) {
     }
 }
