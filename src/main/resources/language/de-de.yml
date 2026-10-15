@@ -99,6 +99,8 @@ messages:
         edgeSelectionRequiredState: "<#F43F5E>Wähle eine Graph-Kante aus, bevor du ihren Status änderst."
         edgeSelectionRequiredRemove: "<#F43F5E>Wähle eine Graph-Kante aus, bevor du sie entfernst."
         edgeSelectionRequiredTraversal: "<#F43F5E>Wähle eine Graph-Kante aus, bevor du ihre Bewegung änderst."
+        edgeSelectionRequiredFlip: "<#F43F5E>Wähle eine Graph-Kante aus, bevor du ihre Richtung umdrehst."
+        edgeFlipUndirected: "<#F43F5E>Nur gerichtete Kanten können umgedreht werden. Setze den Kantentyp zuerst auf gerichtet."
         activeGraphAlreadyVisible: "<#F43F5E>Der aktive Graph ist bereits sichtbar."
         graphNotVisible: "<#F43F5E>Dieser Graph ist in der Editor-Ansicht nicht sichtbar."
         nodeSelectionRequiredConnections: "<#F43F5E>Wähle einen Graph-Knoten aus, bevor du Verbindungen prüfst."
@@ -112,6 +114,39 @@ messages:
         selectedWarpActiveGraphOnly: "<#F43F5E>Ausgewählte Warps können nur auf den aktiven Graph zielen."
         warpCostNonNegative: "<#F43F5E>Warp-Kosten dürfen nicht negativ sein."
         warpNotFound: "<#F43F5E>Kein Warp mit diesem Key vorhanden."
+      wand:
+        itemName:
+          crumb: "<#FACC15>Brotkrumen-Zauberstab <#CBD5E1>· Krume"
+          thread: "<#38BDF8>Brotkrumen-Zauberstab <#CBD5E1>· Faden"
+        itemLore:
+          crumb: |
+            <#CBD5E1>Rechtsklick Block: Knoten am Block platzieren
+            <#CBD5E1>Rechtsklick Luft: Knoten an deiner Position platzieren
+            <#CBD5E1>Schleichen + Rechtsklick: zurücknehmen
+            <#CBD5E1>Linksklick: auswählen
+            <#CBD5E1>Schleichen + Linksklick in die Luft: Modus wechseln
+          thread: |
+            <#CBD5E1>Linksklick: auswählen
+            <#CBD5E1>Rechtsklick Block: verbinden oder Eigenschaft ändern
+            <#CBD5E1>Rechtsklick Luft: nächste Eigenschaft
+            <#CBD5E1>Schleichen + Rechtsklick: löschen
+            <#CBD5E1>Schleichen + Linksklick in die Luft: Modus wechseln
+        given: "<#22C55E>Du hast einen Brotkrumen-Zauberstab erhalten."
+        alreadyCarried: "<#FACC15>Du trägst bereits einen Brotkrumen-Zauberstab."
+        inventoryFull: "<#F43F5E>Dein Inventar ist voll. <#CBD5E1>Schaffe Platz und nutze <#38BDF8>/bkeditor wand</#38BDF8>."
+        eaten: "<#FACC15>Den sollst du zerkrümeln und verstreuen, nicht aufessen! <#CBD5E1>Hier hast du einen neuen."
+        pausedForAnchor: "<#FACC15>Zauberstab weggelegt, Platzierung pausiert. <#CBD5E1>Lauf durch einen Knoten oder wähle einen mit dem Zauberstab im Krumen-Modus aus, um weiterzumachen."
+        mode:
+          crumb: "<#22C55E>Zauberstab-Modus: <#FACC15>Krume</#FACC15> <#CBD5E1>(Knoten platzieren und auswählen)"
+          thread: "<#22C55E>Zauberstab-Modus: <#38BDF8>Faden</#38BDF8> <#CBD5E1>(verbinden und bearbeiten)"
+        property:
+          type: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Kantentyp</#38BDF8> (gerichtet / ungerichtet)"
+          state: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Kantenzustand</#38BDF8> (offen / blockiert)"
+          traversal: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Durchquerung</#38BDF8> (normal / Teleport)"
+          direction: "<#CBD5E1>Zauberstab ändert: <#38BDF8>Richtung</#38BDF8> (dreht eine gerichtete Kante um)"
+        nothingNearby: "<#F43F5E>Kein Knoten oder keine Kante in der Nähe des angeklickten Blocks."
+        confirmDelete: "<#FACC15>Schleichen + Rechtsklick innerhalb von 5 Sekunden erneut ausführen, um das Löschen zu bestätigen."
+
       status:
         sessionStartedCreate: "<#22C55E>Editor gestartet. <#CBD5E1>Schritte für Graph <#38BDF8><graph></#38BDF8> werden aufgezeichnet."
         sessionStartedEdit: "<#22C55E>Editor gestartet. <#CBD5E1>Graph <#38BDF8><graph></#38BDF8> wird bearbeitet."
@@ -157,6 +192,7 @@ messages:
         typeUpdated: "<#22C55E>Typ der ausgewählten Kante auf <#38BDF8><type></#38BDF8> gesetzt."
         stateUpdated: "<#22C55E>Status der ausgewählten Kante auf <#38BDF8><state></#38BDF8> gesetzt."
         traversalUpdated: "<#22C55E>Bewegungsart der ausgewählten Kante auf <#38BDF8><traversal></#38BDF8> gesetzt."
+        flipped: "<#22C55E>Richtung der ausgewählten Kante umgedreht."
         removed: "<#22C55E><#38BDF8><count></#38BDF8> ausgewählte Kanten-Datensätze entfernt."
 
       reference:

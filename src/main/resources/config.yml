@@ -246,3 +246,31 @@ editor:
   # Temporary editor preview preset selected when a session starts.
   defaultPreset: 'ember'
 
+########
+# Wand #
+########
+
+wand:
+
+  # Whether a Brotkrumen Wand is given automatically when an editor session starts.
+  # /bkeditor wand can always be used to get a wand during a session.
+  giveOnSessionStart: true
+
+  # Item material of the wand. Invalid values fall back to BREAD.
+  material: 'BREAD'
+
+  # When enabled, right-clicking the side of a block places the node next to that side.
+  # When disabled, nodes are always placed on top of the clicked block.
+  offsetFromSideFace: false
+
+  # Edge type used when the wand connects two selected nodes in Thread mode: undirected or directed.
+  defaultEdgeType: 'undirected'
+
+  # When enabled, walking keeps placing nodes automatically while the wand is held in an editor session.
+  # When disabled, auto-placement pauses while the wand is held and nodes are only placed by clicking.
+  autoPlacementWhileHeld: false
+
+  # Optional click feedback. Both options are disabled by default.
+  feedback:
+    sounds: false
+    particles: false

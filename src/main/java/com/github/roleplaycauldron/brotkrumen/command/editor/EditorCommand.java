@@ -1,6 +1,7 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
+import com.github.roleplaycauldron.brotkrumen.editor.WandItems;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.repository.GraphRepository;
 import com.github.roleplaycauldron.spellbook.core.logger.LoggerFactory;
@@ -20,6 +21,8 @@ public class EditorCommand {
      */
     private final EditorCommandContext commandContext;
 
+    private final WandItems wandItems;
+
     /**
      * Initializes the editor command and registers it with the plugin lifecycle.
      *
@@ -28,9 +31,12 @@ public class EditorCommand {
      * @param editorService   The EditorService for managing editor sessions.
      * @param graphRepository The graph repository for graph data operations.
      * @param localization    The localization service.
+     * @param wandItems       The editor wand item helper.
      */
     public EditorCommand(final JavaPlugin plugin, final LoggerFactory loggerFactory, final EditorService editorService,
-                         final GraphRepository graphRepository, final Localization localization) {
+                         final GraphRepository graphRepository, final Localization localization,
+                         final WandItems wandItems) {
+        this.wandItems = wandItems;
         this.commandContext = new EditorCommandContext(plugin, loggerFactory, editorService, graphRepository,
                 localization);
 
@@ -47,6 +53,7 @@ public class EditorCommand {
         final EditorEdgeSubcommands edgeSubcommands = new EditorEdgeSubcommands(commandContext);
         final EditorDeleteSubcommands deleteSubcommands = new EditorDeleteSubcommands(commandContext);
         final EditorWarpSubcommands warpSubcommands = new EditorWarpSubcommands(commandContext);
+        final EditorWandSubcommands wandSubcommands = new EditorWandSubcommands(commandContext, wandItems);
         return Commands.literal("bkeditor")
                 .then(sessionSubcommands.create())
                 .then(sessionSubcommands.edit())
@@ -65,6 +72,7 @@ public class EditorCommand {
                 .then(edgeSubcommands.edge())
                 .then(deleteSubcommands.delete())
                 .then(warpSubcommands.warp())
+                .then(wandSubcommands.wand())
                 .build();
     }
 }

@@ -57,6 +57,9 @@ public final class EditorEdgeSubcommands {
                                     return builder.buildFuture();
                                 })
                                 .executes(this::updateEdgeState)))
+                .then(Commands.literal("flip").executes(context -> commandContext.withPlayer(context,
+                        player -> commandContext.getFeedback().send(player,
+                                commandContext.editorService().flipSelectedEdge(player.getUniqueId())))))
                 .then(Commands.literal("remove").executes(context -> commandContext.withPlayer(context,
                         player -> commandContext.getFeedback().send(player,
                                 commandContext.editorService().removeSelectedEdge(player.getUniqueId())))));
