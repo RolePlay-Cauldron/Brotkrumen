@@ -281,6 +281,25 @@ class EditorServiceTest {
     }
 
     @Test
+    void asyncDeleteDoesNothingWhenSelectionChangedWhileWarpsLoaded() {
+        startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());
+        assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(5.0D)).success());
+        final Node requested = nodeAtX(service.getWorkingGraph(PLAYER_ID), 0.0D);
+        assertTrue(service.selectNearbyNode(PLAYER_ID, location(0.0D)).success());
+        when(warpRepository.getWarpsTargeting(requested.graphId())).thenAnswer(invocation -> {
+            assertTrue(service.selectNearbyNode(PLAYER_ID, location(5.0D)).success());
+            return Set.of();
+        });
+        final EditorService.EditorResult[] deleted = new EditorService.EditorResult[1];
+
+        service.deleteSelectedNodeAsync(PLAYER_ID, result -> deleted[0] = result);
+
+        assertFalse(deleted[0].success());
+        assertEquals(2, service.getWorkingGraph(PLAYER_ID).getNodes().size());
+    }
+
+    @Test
     void undoClearsSelectedEdgeOfRemovedNodes() {
         startCreation(defaultSettings(EditorService.PlacementMode.PREVIEW));
         assertTrue(service.placeNodeAtExactLocation(PLAYER_ID, location(0.0D)).success());

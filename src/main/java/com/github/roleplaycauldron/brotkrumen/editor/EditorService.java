@@ -1571,7 +1571,7 @@ public class EditorService {
         final Collection<Warp> persistedWarps = warpRepositoryInstance == null
                 ? Set.of()
                 : warpRepositoryInstance.getWarpsTargeting(nodeId);
-        return deleteSelectedNode(playerId, persistedWarps);
+        return deleteSelectedNode(playerId, persistedWarps, null);
     }
 
     /**
@@ -1600,7 +1600,7 @@ public class EditorService {
                 return;
             }
             plugin.getServer().getScheduler().runTask(plugin, () ->
-                    callback.accept(deleteSelectedNode(playerId, persistedWarps)));
+                    callback.accept(deleteSelectedNode(playerId, persistedWarps, nodeId)));
         });
     }
 
@@ -1617,11 +1617,22 @@ public class EditorService {
         return EditorResult.success("");
     }
 
-    private EditorResult deleteSelectedNode(final UUID playerId, final Collection<Warp> persistedWarps) {
+    /**
+     * Deletes the selected node.
+     *
+     * @param expectedNodeId node the deletion was requested for, or null to delete whatever is selected; when the
+     *                       selection changed in the meantime, for example while warps were loaded asynchronously,
+     *                       nothing is deleted
+     */
+    private EditorResult deleteSelectedNode(final UUID playerId, final Collection<Warp> persistedWarps,
+                                            final UUID expectedNodeId) {
         final EditorSession session = playerEditors.get(playerId);
         final EditorResult validation = validateDeleteSelectedNode(session);
         if (!validation.success()) {
             return validation;
+        }
+        if (expectedNodeId != null && !expectedNodeId.equals(session.selectedNode.graphId())) {
+            return EditorResult.failure("commands.bkeditor.common.nodeSelectionRequiredDelete");
         }
         final UUID nodeId = session.selectedNode.graphId();
         session.workspaceNetwork.removeInterGraphEdgesTouching(session.selectedNodeRef);

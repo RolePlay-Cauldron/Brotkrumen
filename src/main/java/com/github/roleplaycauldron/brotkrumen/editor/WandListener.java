@@ -12,6 +12,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -24,6 +25,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -251,6 +253,33 @@ public final class WandListener implements Listener {
             wandItems.removeFrom(player);
         }
         pendingDeletes.remove(player.getUniqueId());
+    }
+
+    /**
+     * Keeps the wand out of death drops, so it does not end up in the world as a stray item.
+     *
+     * @param event death event
+     */
+    @EventHandler
+    public void onDeath(final PlayerDeathEvent event) {
+        if (editorService.wandMode(event.getEntity().getUniqueId()).isPresent()) {
+            event.getDrops().removeIf(wandItems::isWand);
+        }
+        pendingDeletes.remove(event.getEntity().getUniqueId());
+    }
+
+    /**
+     * Gives a new wand to a player who respawns in an active editor session, if wands are given on session start.
+     *
+     * @param event respawn event
+     */
+    @EventHandler
+    public void onRespawn(final PlayerRespawnEvent event) {
+        final Player player = event.getPlayer();
+        final Optional<WandMode> mode = editorService.wandMode(player.getUniqueId());
+        if (mode.isPresent() && settings.get().giveOnSessionStart()) {
+            wandItems.give(player, mode.get());
+        }
     }
 
     /**

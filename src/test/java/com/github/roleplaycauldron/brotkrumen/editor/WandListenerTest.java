@@ -9,6 +9,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -19,6 +20,7 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
@@ -32,6 +34,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -495,5 +499,52 @@ class WandListenerTest {
         when(drag.getOldCursor()).thenReturn(item);
         when(drag.getRawSlots()).thenReturn(rawSlots);
         return drag;
+    }
+
+    @Test
+    void deathRemovesWandFromDropsDuringSession() {
+        final ItemStack other = mock(ItemStack.class);
+        final PlayerDeathEvent death = mock(PlayerDeathEvent.class);
+        final List<ItemStack> drops = new ArrayList<>(List.of(item, other));
+        when(death.getEntity()).thenReturn(player);
+        when(death.getDrops()).thenReturn(drops);
+
+        listener.onDeath(death);
+
+        assertEquals(List.of(other), drops);
+    }
+
+    @Test
+    void deathKeepsWandDropsWithoutSession() {
+        final PlayerDeathEvent death = mock(PlayerDeathEvent.class);
+        final List<ItemStack> drops = new ArrayList<>(List.of(item));
+        when(death.getEntity()).thenReturn(player);
+        when(editorService.wandMode(PLAYER_ID)).thenReturn(Optional.empty());
+
+        listener.onDeath(death);
+
+        assertEquals(1, drops.size());
+        verify(death, never()).getDrops();
+    }
+
+    @Test
+    void respawnGivesWandBackDuringSession() {
+        final PlayerRespawnEvent respawn = mock(PlayerRespawnEvent.class);
+        when(respawn.getPlayer()).thenReturn(player);
+
+        listener.onRespawn(respawn);
+
+        verify(wandItems).give(player, WandMode.CRUMB);
+    }
+
+    @Test
+    void respawnGivesNoWandWithoutSession() {
+        final PlayerRespawnEvent respawn = mock(PlayerRespawnEvent.class);
+        when(respawn.getPlayer()).thenReturn(player);
+        when(editorService.wandMode(PLAYER_ID)).thenReturn(Optional.empty());
+
+        listener.onRespawn(respawn);
+
+        verify(wandItems, never()).give(any(), any());
     }
 }
