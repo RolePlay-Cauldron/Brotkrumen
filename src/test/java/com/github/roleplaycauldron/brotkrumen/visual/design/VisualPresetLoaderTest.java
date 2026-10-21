@@ -57,10 +57,24 @@ class VisualPresetLoaderTest {
         assertEquals(Material.CYAN_STAINED_GLASS,
                 prism.blockDisplayDesign().orElseThrow().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL).blockMaterial(),
                 "Prism directed block edge should stay distinct");
-        assertEquals(Particle.WITCH,
+        assertEquals(Particle.CHERRY_LEAVES,
                 prism.spellbookEffectDesign().orElseThrow()
                         .edgeDesign(VisualEdgeRole.DIRECTED_INTER_GRAPH).particle(),
-                "Prism directed inter-graph particle edge should use witch particles");
+                "Prism directed inter-graph particle edge should use cherry leaf particles");
+    }
+
+    @Test
+    void bundledPresetsGiveWarpAndTeleportNodesDistinctParticles() {
+        final VisualPresetRegistry registry = loader(null).parse(resourceYaml("presets.yml"));
+        for (final String name : new String[]{"ember", "prism"}) {
+            final ParticleDesignSet set = registry.find(name).orElseThrow().spellbookEffectDesign().orElseThrow();
+            final ParticleNodeDesign warp = set.nodeDesign(VisualNodeRole.WARP);
+            assertNotEquals(set.nodeDesign(VisualNodeRole.DEFAULT), warp, name + " warp node should differ from default");
+            assertNotEquals(set.nodeDesign(VisualNodeRole.LOCAL_TELEPORT).effect(), warp.effect(),
+                    name + " warp node should differ from local teleport");
+            assertNotEquals(set.nodeDesign(VisualNodeRole.INTERGRAPH_TELEPORT).effect(), warp.effect(),
+                    name + " warp node should differ from inter-graph teleport");
+        }
     }
 
     @Test

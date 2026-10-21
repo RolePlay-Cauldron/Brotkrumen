@@ -1,86 +1,124 @@
+# Visual presets.
+#
+# Particle presets use Spellbook effects. Keep them calm: few points, slow rotation, no bursts.
+#   - Plain nodes and edges are static; only teleport, warp and goal markers animate.
+#   - Warps use a rotating spiral-helix, inter-graph teleports a rotating helix,
+#     local teleports a slowly turning sphere. Prism mirrors the warp spiral.
+#   - 'rotation-speed' / 'angular-speed' are radians per effect step (one step = 2 ticks).
+#   - 'transforms' (translate, rotate, look-at) are optional and applied in order.
+# Block-display presets cannot animate and only use materials, scale and thickness.
+
 ember:
   particle:
     nodes:
       DEFAULT:
         shape:
           type: cube
-          size: 0.45
-          points-per-edge: 5
+          size: 0.4
+          points-per-edge: 3
         particle:
           type: FLAME
       LOCAL_TELEPORT:
         shape:
           type: sphere
-          radius: 0.55
-          points: 36
+          radius: 0.45
+          points: 16
+          angular-speed: 0.1
         particle:
-          type: ASH
+          type: SMALL_FLAME
       INTERGRAPH_TELEPORT:
         shape:
-          type: cube
-          size: 0.5
-          points-per-edge: 5
+          type: helix
+          strands: 2
+          particles-per-strand: 14
+          radius: 0.7
+          height: 1.6
+          turns: 1.0
+          rotation-speed: 0.12
+        transforms:
+          - type: translate
+            x: 0
+            y: -0.5
+            z: 0
         particle:
-          type: LAVA
+          type: SOUL_FIRE_FLAME
       WARP:
         shape:
-          type: sphere
-          radius: 0.55
-          points: 36
+          type: spiral-helix
+          strands: 3
+          particles-per-strand: 6
+          radius: 0.45
+          height: 0.9
+          curve: 2.0
+          rotation-speed: 0.15
+          reverse: false
+        transforms:
+          - type: translate
+            x: 0
+            y: -0.45
+            z: 0
         particle:
           type: PORTAL
       GUIDED_PATH_GOAL:
         shape:
           type: sphere
-          radius: 0.65
-          points: 36
+          radius: 0.6
+          points: 20
+          angular-speed: 0.05
         particle:
           type: HAPPY_VILLAGER
     edges:
       DEFAULT_LOCAL:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: FLAME
       DIRECTED_LOCAL:
         shape:
           type: moving-point
           speed: 1.0
-          spacing: 0.2
-          amount-points: 20
+          spacing: 0.5
+          amount-points: 200
+          ping-pong: false
         particle:
           type: FLAME
       UNDIRECTED_LOCAL:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: FLAME
       BLOCKED:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: SMOKE
       INTER_GRAPH:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: LAVA
       DIRECTED_INTER_GRAPH:
         shape:
           type: moving-point
           speed: 1.0
-          spacing: 0.2
-          amount-points: 20
+          spacing: 0.5
+          amount-points: 200
+          ping-pong: false
         particle:
           type: LAVA
       UNDIRECTED_INTER_GRAPH:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: LAVA
   block-display:
@@ -136,87 +174,115 @@ prism:
       DEFAULT:
         shape:
           type: cube
-          size: 0.45
-          points-per-edge: 5
+          size: 0.4
+          points-per-edge: 3
         particle:
-          type: END_ROD
+          type: SOUL
       LOCAL_TELEPORT:
         shape:
           type: sphere
-          radius: 0.55
-          points: 36
+          radius: 0.45
+          points: 16
+          angular-speed: 0.1
         particle:
-          type: PORTAL
+          type: GLOW
       INTERGRAPH_TELEPORT:
         shape:
-          type: cube
-          size: 0.5
-          points-per-edge: 5
+          type: helix
+          strands: 2
+          particles-per-strand: 6
+          radius: 0.5
+          height: 1.0
+          turns: 1.0
+          rotation-speed: 0.12
+        transforms:
+          - type: translate
+            x: 0
+            y: -0.5
+            z: 0
         particle:
           type: REVERSE_PORTAL
       WARP:
         shape:
-          type: sphere
-          radius: 0.55
-          points: 36
+          type: spiral-helix
+          strands: 3
+          particles-per-strand: 6
+          radius: 0.45
+          height: 0.9
+          curve: 2.0
+          rotation-speed: 0.15
+          reverse: true
+        transforms:
+          - type: translate
+            x: 0
+            y: -0.45
+            z: 0
         particle:
           type: WITCH
       GUIDED_PATH_GOAL:
         shape:
           type: sphere
-          radius: 0.65
-          points: 36
+          radius: 0.6
+          points: 20
+          angular-speed: 0.05
         particle:
-          type: HAPPY_VILLAGER
+          type: TOTEM_OF_UNDYING
     edges:
       DEFAULT_LOCAL:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
-          type: END_ROD
+          type: ENCHANT
       DIRECTED_LOCAL:
         shape:
           type: moving-point
           speed: 1.0
-          spacing: 0.2
-          amount-points: 20
+          spacing: 0.5
+          amount-points: 200
+          ping-pong: false
         particle:
-          type: END_ROD
+          type: SNOWFLAKE
       UNDIRECTED_LOCAL:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
-          type: END_ROD
+          type: ELECTRIC_SPARK
       BLOCKED:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
           type: SMOKE
       INTER_GRAPH:
         shape:
           type: moving-point
           speed: 1.0
-          spacing: 0.18
-          amount-points: 20
+          spacing: 0.5
+          amount-points: 200
+          ping-pong: false
         particle:
           type: WITCH
       DIRECTED_INTER_GRAPH:
         shape:
           type: moving-point
           speed: 1.0
-          spacing: 0.2
-          amount-points: 20
+          spacing: 0.5
+          amount-points: 200
+          ping-pong: false
         particle:
-          type: WITCH
+          type: CHERRY_LEAVES
       UNDIRECTED_INTER_GRAPH:
         shape:
           type: line
-          points: 20
+          spacing: 0.5
+          max-points: 200
         particle:
-          type: WITCH
+          type: WAX_OFF
   block-display:
     nodes:
       DEFAULT:

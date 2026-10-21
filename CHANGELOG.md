@@ -6,7 +6,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] - ${maven.build.timestamp}
 ### Added
+- Animated Spellbook warp effects (spiral helix) for `WARP` nodes in the default presets
 ### Changed
+- Reworked the default particle presets: fewer particles, distinct but calm effects for teleport, warp and goal nodes
 - Updated spellbook dependency from 0.0.11-alpha to 0.0.12-alpha
 - Updated several other dependencies
 ### Deprecated
