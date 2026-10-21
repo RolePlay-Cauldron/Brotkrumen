@@ -27,15 +27,15 @@ class VisualPresetLoaderTest {
     private Path tempDir;
 
     @Test
-    void bundledPresetsLoadEmberAndPrismWithoutDefault() {
+    void bundledPresetsLoadEmberWithoutDefault() {
         final VisualPresetRegistry registry = loader(null).parse(resourceYaml("presets.yml"));
 
-        assertEquals(java.util.Set.of("ember", "prism"), registry.presetNames(),
-                "Bundled presets should expose only ember and prism");
+        assertEquals(java.util.Set.of("ember"), registry.presetNames(),
+                "Bundled presets should expose only ember");
         assertTrue(registry.supports("ember", VisualRenderer.SPELLBOOK_EFFECT),
                 "Ember should support Spellbook effect rendering");
-        assertTrue(registry.supports("prism", VisualRenderer.BLOCK_DISPLAY),
-                "Prism should support block-display rendering");
+        assertTrue(registry.supports("ember", VisualRenderer.BLOCK_DISPLAY),
+                "Ember should support block-display rendering");
         assertFalse(registry.find("default").isPresent(), "No default preset should be bundled");
     }
 
@@ -43,24 +43,30 @@ class VisualPresetLoaderTest {
     void bundledPresetsPreserveCurrentStyleValues() {
         final VisualPresetRegistry registry = loader(null).parse(resourceYaml("presets.yml"));
         final VisualPreset ember = registry.find("ember").orElseThrow();
-        final VisualPreset prism = registry.find("prism").orElseThrow();
 
         assertEquals(Particle.FLAME,
                 ember.spellbookEffectDesign().orElseThrow().nodeDesign(VisualNodeRole.DEFAULT).particle(),
                 "Ember particle default node should use flame");
-        assertEquals(Particle.LAVA,
+        assertEquals(Particle.SOUL_FIRE_FLAME,
                 ember.spellbookEffectDesign().orElseThrow().edgeDesign(VisualEdgeRole.INTER_GRAPH).particle(),
-                "Ember particle inter-graph edge should use lava");
+                "Ember particle inter-graph edge should use soul fire flame");
         assertEquals(Material.COAL_BLOCK,
                 ember.blockDisplayDesign().orElseThrow().nodeDesign(VisualNodeRole.DEFAULT).blockMaterial(),
                 "Ember block default node should use coal block");
-        assertEquals(Material.CYAN_STAINED_GLASS,
-                prism.blockDisplayDesign().orElseThrow().edgeDesign(VisualEdgeRole.DIRECTED_LOCAL).blockMaterial(),
-                "Prism directed block edge should stay distinct");
-        assertEquals(Particle.WITCH,
-                prism.spellbookEffectDesign().orElseThrow()
-                        .edgeDesign(VisualEdgeRole.DIRECTED_INTER_GRAPH).particle(),
-                "Prism directed inter-graph particle edge should use witch particles");
+    }
+
+    @Test
+    void bundledPresetsGiveWarpAndTeleportNodesDistinctParticles() {
+        final VisualPresetRegistry registry = loader(null).parse(resourceYaml("presets.yml"));
+        for (final String name : new String[]{"ember"}) {
+            final ParticleDesignSet set = registry.find(name).orElseThrow().spellbookEffectDesign().orElseThrow();
+            final ParticleNodeDesign warp = set.nodeDesign(VisualNodeRole.WARP);
+            assertNotEquals(set.nodeDesign(VisualNodeRole.DEFAULT), warp, name + " warp node should differ from default");
+            assertNotEquals(set.nodeDesign(VisualNodeRole.LOCAL_TELEPORT).effect(), warp.effect(),
+                    name + " warp node should differ from local teleport");
+            assertNotEquals(set.nodeDesign(VisualNodeRole.INTERGRAPH_TELEPORT).effect(), warp.effect(),
+                    name + " warp node should differ from inter-graph teleport");
+        }
     }
 
     @Test
