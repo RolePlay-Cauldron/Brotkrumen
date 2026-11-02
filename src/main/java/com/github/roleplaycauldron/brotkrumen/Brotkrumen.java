@@ -10,9 +10,14 @@ import com.github.roleplaycauldron.brotkrumen.api.visual.VisualizerService;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommand;
 import com.github.roleplaycauldron.brotkrumen.command.bk.resolve.ResolveGuidanceSessionManager;
 import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommand;
+import com.github.roleplaycauldron.brotkrumen.command.editor.EditorCommandFeedback;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorWaitingActionBarReminder;
 import com.github.roleplaycauldron.brotkrumen.editor.WalkingListener;
+import com.github.roleplaycauldron.brotkrumen.editor.WandItems;
+import com.github.roleplaycauldron.brotkrumen.editor.WandListener;
+import com.github.roleplaycauldron.brotkrumen.editor.WandMode;
+import com.github.roleplaycauldron.brotkrumen.editor.WandSettings;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathFinder;
 import com.github.roleplaycauldron.brotkrumen.graph.search.PathSearchServiceImpl;
 import com.github.roleplaycauldron.brotkrumen.graph.search.SearchRegistryImpl;
@@ -38,6 +43,8 @@ import com.github.roleplaycauldron.spellbook.core.scheduler.SimpleScheduler;
 import com.github.roleplaycauldron.spellbook.effect.executor.EffectExecutor;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.ServicesManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -46,6 +53,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Starting point of the plugin.
@@ -62,6 +71,12 @@ public class Brotkrumen extends JavaPlugin {
      * The service for warp-related operations.
      */
     private WrappedLogger log;
+
+    private final ReentrantLock wandSettingsLock = new ReentrantLock();
+
+    private FileConfiguration cachedWandConfig;
+
+    private WandSettings cachedWandSettings;
 
     /**
      * The storage handler for database operations.
@@ -165,8 +180,11 @@ public class Brotkrumen extends JavaPlugin {
                 graphNetworkRepository, warpRepository);
         final ResolveGuidanceSessionManager resolveSessions = new ResolveGuidanceSessionManager(reg);
 
-        registerCommands(executor, editorService, resolveSessions);
-        registerListeners(editorService, resolveSessions);
+        final WandItems wandItems = new WandItems(this, this::wandSettings, localization);
+        registerWandLifecycle(editorService, wandItems);
+
+        registerCommands(executor, editorService, resolveSessions, wandItems);
+        registerListeners(editorService, resolveSessions, wandItems);
 
         metrics = new Metrics(this, 31_750);
 
@@ -231,17 +249,61 @@ public class Brotkrumen extends JavaPlugin {
         }
     }
 
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
+    private WandSettings wandSettings() {
+        wandSettingsLock.lock();
+        try {
+            final FileConfiguration current = getConfig();
+            // Identity comparison is intentional: the config instance is replaced on reload.
+            if (current != cachedWandConfig) {
+                cachedWandSettings = WandSettings.fromConfig(current, message -> log.warnF("%s", message));
+                cachedWandConfig = current;
+            }
+            return cachedWandSettings;
+        } finally {
+            wandSettingsLock.unlock();
+        }
+    }
+
+    private void registerWandLifecycle(final EditorService editorService, final WandItems wandItems) {
+        editorService.setSessionLifecycleListener(new EditorService.SessionLifecycleListener() {
+            @Override
+            public void sessionStarted(final UUID playerId) {
+                final Player player = getServer().getPlayer(playerId);
+                if (player != null && wandSettings().giveOnSessionStart()
+                        && wandItems.give(player, WandMode.CRUMB) == WandItems.GiveResult.INVENTORY_FULL) {
+                    player.sendMessage(localization.getPrefixedMessage(
+                            WandItems.GiveResult.INVENTORY_FULL.messageKey()));
+                }
+            }
+
+            @Override
+            public void sessionEnded(final UUID playerId) {
+                final Player player = getServer().getPlayer(playerId);
+                if (player != null) {
+                    wandItems.removeFrom(player);
+                }
+            }
+        });
+    }
+
     private void registerCommands(final EffectExecutor executor, final EditorService editorService,
-                                  final ResolveGuidanceSessionManager resolveSessions) {
-        new EditorWaitingActionBarReminder(editorService).start(this);
-        new EditorCommand(this, loggerFactory, editorService, graphRepository, localization);
+                                  final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
+        new EditorWaitingActionBarReminder(editorService, player ->
+                wandItems.isWand(player.getInventory().getItemInMainHand())
+                        || wandItems.isWand(player.getInventory().getItemInOffHand())).start(this);
+        new EditorCommand(this, loggerFactory, editorService, graphRepository, localization, wandItems);
         new BkCommand(this, graphRepository, graphNetworkRepository, editorService.warpRepository(), storage, reg,
                 loggerFactory, executor, localization, resolveSessions);
     }
 
     private void registerListeners(final EditorService editorService,
-                                   final ResolveGuidanceSessionManager resolveSessions) {
-        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService), this);
+                                   final ResolveGuidanceSessionManager resolveSessions, final WandItems wandItems) {
+        final EditorCommandFeedback feedback = new EditorCommandFeedback(localization);
+        getServer().getPluginManager().registerEvents(new WalkingListener(log, editorService, wandItems,
+                this::wandSettings, feedback), this);
+        getServer().getPluginManager().registerEvents(new WandListener(editorService, wandItems,
+                this::wandSettings, feedback), this);
         getServer().getPluginManager().registerEvents(new PlayerDisconnectCleanupListener(resolveSessions, editorService, reg), this);
     }
 
