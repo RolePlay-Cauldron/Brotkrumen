@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
+import com.github.roleplaycauldron.brotkrumen.command.CommandPermissions;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.github.roleplaycauldron.brotkrumen.storage.database.Engine;
 import com.mojang.brigadier.Command;
@@ -42,6 +43,7 @@ public final class BkVersionSubcommand {
      */
     public LiteralArgumentBuilder<CommandSourceStack> version() {
         return Commands.literal("version")
+                .requires(CommandPermissions.requires(CommandPermissions.BK_VERSION))
                 .executes(this::showVersion);
     }
 

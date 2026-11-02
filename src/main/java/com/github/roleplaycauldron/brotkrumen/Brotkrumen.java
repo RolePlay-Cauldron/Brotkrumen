@@ -62,6 +62,8 @@ import java.util.concurrent.locks.ReentrantLock;
 @SuppressWarnings({"PMD.CouplingBetweenObjects", "PMD.TooManyMethods"})
 public class Brotkrumen extends JavaPlugin {
 
+    private final ReentrantLock wandSettingsLock = new ReentrantLock();
+
     /**
      * The logger factory for creating loggers.
      */
@@ -71,8 +73,6 @@ public class Brotkrumen extends JavaPlugin {
      * The service for warp-related operations.
      */
     private WrappedLogger log;
-
-    private final ReentrantLock wandSettingsLock = new ReentrantLock();
 
     private FileConfiguration cachedWandConfig;
 

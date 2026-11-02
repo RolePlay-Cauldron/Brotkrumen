@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk.resolve;
 
+import com.github.roleplaycauldron.brotkrumen.command.CommandPermissions;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCommandContext;
 import com.github.roleplaycauldron.brotkrumen.command.bk.BkCompletionSupport;
 import com.github.roleplaycauldron.brotkrumen.graph.Graph;
@@ -97,12 +98,16 @@ public final class BkResolveSubcommand {
      */
     public LiteralArgumentBuilder<CommandSourceStack> resolve() {
         return Commands.literal("resolve")
+                .requires(CommandPermissions.requiresAny(CommandPermissions.BK_RESOLVE,
+                        CommandPermissions.BK_RESOLVE_CANCEL))
                 .then(Commands.literal(CANCEL_LITERAL)
+                        .requires(CommandPermissions.requires(CommandPermissions.BK_RESOLVE_CANCEL))
                         .executes(this::cancelOwnGuidance)
                         .then(Commands.argument(PLAYER_ARGUMENT, StringArgumentType.word())
                                 .suggests((context, builder) -> suggestOnlinePlayers(builder))
                                 .executes(this::cancelGuidance)))
                 .then(Commands.argument(PLAYER_ARGUMENT, StringArgumentType.word())
+                        .requires(CommandPermissions.requires(CommandPermissions.BK_RESOLVE))
                         .suggests((context, builder) -> suggestOnlinePlayers(builder))
                         .then(Commands.argument(TARGET_ARGUMENT, StringArgumentType.greedyString())
                                 .suggests((context, builder) -> suggestTargets(builder))
@@ -151,7 +156,7 @@ public final class BkResolveSubcommand {
 
     private int resolve(final CommandContext<CommandSourceStack> context) {
         final Player player = resolveTargetPlayer(context);
-        if (player == null) {
+        if (player == null || !mayTarget(context, player)) {
             return 0;
         }
 
@@ -495,7 +500,7 @@ public final class BkResolveSubcommand {
 
     private int cancelGuidance(final CommandContext<CommandSourceStack> context) {
         final Player player = resolveTargetPlayer(context);
-        if (player == null) {
+        if (player == null || !mayTarget(context, player)) {
             return 0;
         }
         return cancelGuidanceForPlayer(context, player);
@@ -509,6 +514,19 @@ public final class BkResolveSubcommand {
             sendKey(context, "commands.bk.resolve.error.noActiveGuidanceForPlayer", Map.of(PLAYER_LITERAL, player.getName()));
         }
         return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * Checks that the sender may act on the given player. Targeting any player other than the sender requires
+     * {@link CommandPermissions#BK_RESOLVE_OTHERS}.
+     */
+    private boolean mayTarget(final CommandContext<CommandSourceStack> context, final Player target) {
+        final CommandSender sender = context.getSource().getSender();
+        if (sender.equals(target) || sender.hasPermission(CommandPermissions.BK_RESOLVE_OTHERS)) {
+            return true;
+        }
+        sendKey(context, "commands.bk.resolve.error.noPermissionOthers");
+        return false;
     }
 
     private Player resolveTargetPlayer(final CommandContext<CommandSourceStack> context) {

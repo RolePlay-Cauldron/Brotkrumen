@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.editor;
 
+import com.github.roleplaycauldron.brotkrumen.command.CommandPermissions;
 import com.github.roleplaycauldron.brotkrumen.editor.EditorService;
 import com.github.roleplaycauldron.brotkrumen.editor.WandItems;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
@@ -55,6 +56,7 @@ public class EditorCommand {
         final EditorWarpSubcommands warpSubcommands = new EditorWarpSubcommands(commandContext);
         final EditorWandSubcommands wandSubcommands = new EditorWandSubcommands(commandContext, wandItems);
         return Commands.literal("bkeditor")
+                .requires(CommandPermissions.requires(CommandPermissions.EDITOR))
                 .then(sessionSubcommands.create())
                 .then(sessionSubcommands.edit())
                 .then(sessionSubcommands.rename())
