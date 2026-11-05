@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
+import com.github.roleplaycauldron.brotkrumen.command.CommandPermissions;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -38,8 +39,12 @@ public final class BkListSubcommands {
      */
     public LiteralArgumentBuilder<CommandSourceStack> list() {
         return Commands.literal("list")
-                .then(Commands.literal("graph").executes(this::listGraphs))
-                .then(Commands.literal("network").executes(this::listNetworks));
+                .requires(CommandPermissions.requiresAny(CommandPermissions.BK_LIST_GRAPH,
+                        CommandPermissions.BK_LIST_NETWORK))
+                .then(Commands.literal("graph")
+                        .requires(CommandPermissions.requires(CommandPermissions.BK_LIST_GRAPH)).executes(this::listGraphs))
+                .then(Commands.literal("network")
+                        .requires(CommandPermissions.requires(CommandPermissions.BK_LIST_NETWORK)).executes(this::listNetworks));
     }
 
     private int listGraphs(final CommandContext<CommandSourceStack> context) {

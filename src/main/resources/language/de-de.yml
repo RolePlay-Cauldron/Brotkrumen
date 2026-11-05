@@ -56,6 +56,7 @@ messages:
           consoleMustSpecifyPlayer: "<#F43F5E>Die Konsole muss einen Spieler angeben: <#38BDF8>/bk resolve cancel <player></#38BDF8>."
           noActiveGuidanceForPlayer: "<#F43F5E>Kein aktiver Resolve-Hinweis für <#38BDF8><player></#38BDF8>."
           playerNotOnline: "<#F43F5E>Spieler <#38BDF8><player></#38BDF8> ist nicht online."
+          noPermissionOthers: "<#F43F5E>Du darfst keine anderen Spieler als Ziel angeben."
         parse:
           error:
             missingTarget: "<#F43F5E>Bitte gib ein Graph- oder Knoten-Ziel an."

@@ -1,5 +1,6 @@
 package com.github.roleplaycauldron.brotkrumen.command.bk;
 
+import com.github.roleplaycauldron.brotkrumen.command.CommandPermissions;
 import com.github.roleplaycauldron.brotkrumen.language.Localization;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -39,7 +40,7 @@ public final class BkReloadSubcommand {
      */
     public LiteralArgumentBuilder<CommandSourceStack> reload() {
         return Commands.literal("reload")
-                .requires(source -> source.getSender().hasPermission("brotkrumen.command.bk.reload"))
+                .requires(CommandPermissions.requires(CommandPermissions.BK_RELOAD))
                 .executes(this::execute);
     }
 

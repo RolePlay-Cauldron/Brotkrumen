@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - An editor wand (`/bkeditor wand`) to create and edit a graph more easy including config options to configure this feature.
 - `bkeditor edge flip` subcommand to flip directed edges
+- Permissions to the commands. See the [permissions](https://roleplay-cauldron.github.io/brotkrumen/guide/permissions/) page for more information.
 ### Changed
 - Updated spellbook dependency from 0.0.11-alpha to 0.0.12-alpha
 - Updated several other dependencies

@@ -60,6 +60,7 @@ messages:
           consoleMustSpecifyPlayer: "<#F43F5E>Console must specify a player: <#38BDF8>/bk resolve cancel <player></#38BDF8>."
           noActiveGuidanceForPlayer: "<#F43F5E>No active resolve guidance for <#38BDF8><player></#38BDF8>."
           playerNotOnline: "<#F43F5E>Player <#38BDF8><player></#38BDF8> is not online."
+          noPermissionOthers: "<#F43F5E>You are not allowed to target other players."
 
         parse:
           error:
